@@ -26,28 +26,52 @@ export default function SaisieurfacesPage() {
   const [currentSelection, setCurrentSelection] = useState<'murs' | 'plafond' | 'boiseries' | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Charger le type de pièce depuis sessionStorage
+  // Charger le type de pièce depuis sessionStorage ou éditer une pièce existante
   useEffect(() => {
-    const type = sessionStorage.getItem('colibri-temp-piece-type') as TypePiece;
-    if (!type) {
-      router.push('/sinistre/piece');
-      return;
-    }
-    setTypePiece(type);
+    const editPieceId = sessionStorage.getItem('colibri-edit-piece-id');
     
-    // Générer un nom par défaut
-    const pieces = getStoredPieces();
-    const count = pieces.filter(p => p.typePiece === type).length + 1;
-    const labels: Record<TypePiece, string> = {
-      'piece-de-vie': 'Pièce de vie',
-      'chambre': 'Chambre',
-      'cuisine': 'Cuisine',
-      'salle-de-bain': 'Salle de bain',
-      'toilettes': 'Toilettes',
-      'entree': 'Entrée',
-      'couloir': 'Couloir',
-    };
-    setNomPiece(`${labels[type]} ${count}`);
+    if (editPieceId) {
+      // Mode édition
+      const pieces = getStoredPieces();
+      const pieceToEdit = pieces.find(p => p.id === editPieceId);
+      
+      if (pieceToEdit) {
+        setTypePiece(pieceToEdit.typePiece);
+        setNomPiece(pieceToEdit.nom);
+        setSurfaces({
+          murs: pieceToEdit.surfaceMurs.toString(),
+          plafond: pieceToEdit.surfacePlafond?.toString() || '',
+          boiseries: pieceToEdit.surfaceBoiseries?.toString() || '',
+        });
+        setCouleurMurs(pieceToEdit.couleurMurs);
+        setCouleurPlafond(pieceToEdit.couleurPlafond || null);
+        setCouleurBoiseries(pieceToEdit.couleurBoiseries || null);
+      } else {
+        router.push('/sinistre/piece');
+      }
+    } else {
+      // Mode création
+      const type = sessionStorage.getItem('colibri-temp-piece-type') as TypePiece;
+      if (!type) {
+        router.push('/sinistre/piece');
+        return;
+      }
+      setTypePiece(type);
+      
+      // Générer un nom par défaut
+      const pieces = getStoredPieces();
+      const count = pieces.filter(p => p.typePiece === type).length + 1;
+      const labels: Record<TypePiece, string> = {
+        'piece-de-vie': 'Pièce de vie',
+        'chambre': 'Chambre',
+        'cuisine': 'Cuisine',
+        'salle-de-bain': 'Salle de bain',
+        'toilettes': 'Toilettes',
+        'entree': 'Entrée',
+        'couloir': 'Couloir',
+      };
+      setNomPiece(`${labels[type]} ${count}`);
+    }
   }, [router]);
 
   const handleOpenCouleurModal = (type: 'murs' | 'plafond' | 'boiseries') => {
@@ -110,26 +134,45 @@ export default function SaisieurfacesPage() {
 
     if (!validateForm() || !typePiece) return;
 
-    // Créer l'objet pièce
-    const nouvellePiece: Piece = {
-      id: Date.now().toString(),
-      typePiece,
-      nom: nomPiece,
-      surfaceMurs: parseFloat(surfaces.murs),
-      surfacePlafond: surfaces.plafond ? parseFloat(surfaces.plafond) : undefined,
-      surfaceBoiseries: surfaces.boiseries ? parseFloat(surfaces.boiseries) : undefined,
-      couleurMurs: couleurMurs!,
-      couleurPlafond: couleurPlafond || undefined,
-      couleurBoiseries: couleurBoiseries || undefined,
-    };
+    const editPieceId = sessionStorage.getItem('colibri-edit-piece-id');
+    const pieces = getStoredPieces();
+
+    if (editPieceId) {
+      // Mode édition : mettre à jour la pièce existante
+      const pieceIndex = pieces.findIndex(p => p.id === editPieceId);
+      if (pieceIndex !== -1) {
+        pieces[pieceIndex] = {
+          id: editPieceId,
+          typePiece,
+          nom: nomPiece,
+          surfaceMurs: parseFloat(surfaces.murs),
+          surfacePlafond: surfaces.plafond ? parseFloat(surfaces.plafond) : undefined,
+          surfaceBoiseries: surfaces.boiseries ? parseFloat(surfaces.boiseries) : undefined,
+          couleurMurs: couleurMurs!,
+          couleurPlafond: couleurPlafond || undefined,
+          couleurBoiseries: couleurBoiseries || undefined,
+        };
+      }
+      sessionStorage.removeItem('colibri-edit-piece-id');
+    } else {
+      // Mode création : ajouter une nouvelle pièce
+      const nouvellePiece: Piece = {
+        id: Date.now().toString(),
+        typePiece,
+        nom: nomPiece,
+        surfaceMurs: parseFloat(surfaces.murs),
+        surfacePlafond: surfaces.plafond ? parseFloat(surfaces.plafond) : undefined,
+        surfaceBoiseries: surfaces.boiseries ? parseFloat(surfaces.boiseries) : undefined,
+        couleurMurs: couleurMurs!,
+        couleurPlafond: couleurPlafond || undefined,
+        couleurBoiseries: couleurBoiseries || undefined,
+      };
+      pieces.push(nouvellePiece);
+      sessionStorage.removeItem('colibri-temp-piece-type');
+    }
 
     // Sauvegarder dans localStorage
-    const pieces = getStoredPieces();
-    pieces.push(nouvellePiece);
     setStoredPieces(pieces);
-
-    // Nettoyer sessionStorage
-    sessionStorage.removeItem('colibri-temp-piece-type');
 
     // Naviguer vers le récapitulatif
     router.push('/sinistre/recapitulatif');
