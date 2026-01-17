@@ -9,6 +9,14 @@ import { getStoredPieces, STORAGE_KEYS } from '@/lib/store/sinistreStore';
 import { calculerQuantites, type ResultatCalcul } from '@/lib/calcul';
 import type { Piece } from '@/lib/types';
 
+// Produits de rénovation (trous/fissures)
+const PRODUITS_RENOVATION = [
+  { handle: 'pate-a-renover-multi-materiaux', titre: 'Pâte à rénover multi matériaux', prix: 29.20 },
+  { handle: 'couteau-de-peintre', titre: 'Couteau de peintre (spatule)', prix: 7.80 },
+  { handle: 'papier-a-poncer', titre: 'Papier à poncer grain 120', prix: 3.60 },
+  { handle: 'cale-a-poncer-auto-agrippante', titre: 'Cale à poncer', prix: 6.40 },
+];
+
 export default function OptionsPage() {
   const router = useRouter();
   const [pieces, setPieces] = useState<Piece[]>([]);
@@ -16,6 +24,7 @@ export default function OptionsPage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [optionSousCouche, setOptionSousCouche] = useState(true);
   const [optionKit, setOptionKit] = useState(true);
+  const [optionRenovation, setOptionRenovation] = useState(false);
 
   useEffect(() => {
     const stored = getStoredPieces();
@@ -29,28 +38,40 @@ export default function OptionsPage() {
     const calcul = calculerQuantites(stored);
     setResultat(calcul);
 
+    // Charger les options sauvegardées
+    const savedOptions = localStorage.getItem(STORAGE_KEYS.OPTIONS);
+    if (savedOptions) {
+      const parsed = JSON.parse(savedOptions);
+      setOptionSousCouche(parsed.sousCouche ?? true);
+      setOptionKit(parsed.kit ?? true);
+      setOptionRenovation(parsed.renovation ?? false);
+    }
+
     // Sauvegarder le calcul dans localStorage
     localStorage.setItem(STORAGE_KEYS.CALCUL, JSON.stringify(calcul));
-    localStorage.setItem(STORAGE_KEYS.OPTIONS, JSON.stringify({
-      sousCouche: true,
-      kit: true,
-    }));
 
     setIsLoaded(true);
   }, [router]);
 
-  const handleOptionChange = (option: 'sousCouche' | 'kit', value: boolean) => {
+  const saveOptions = (sousCouche: boolean, kit: boolean, renovation: boolean) => {
+    localStorage.setItem(STORAGE_KEYS.OPTIONS, JSON.stringify({
+      sousCouche,
+      kit,
+      renovation,
+    }));
+  };
+
+  const handleOptionChange = (option: 'sousCouche' | 'kit' | 'renovation', value: boolean) => {
     if (option === 'sousCouche') {
       setOptionSousCouche(value);
-    } else {
+      saveOptions(value, optionKit, optionRenovation);
+    } else if (option === 'kit') {
       setOptionKit(value);
+      saveOptions(optionSousCouche, value, optionRenovation);
+    } else if (option === 'renovation') {
+      setOptionRenovation(value);
+      saveOptions(optionSousCouche, optionKit, value);
     }
-
-    // Mettre à jour localStorage
-    localStorage.setItem(STORAGE_KEYS.OPTIONS, JSON.stringify({
-      sousCouche: option === 'sousCouche' ? value : optionSousCouche,
-      kit: option === 'kit' ? value : optionKit,
-    }));
   };
 
   const handleContinue = () => {
@@ -59,6 +80,24 @@ export default function OptionsPage() {
 
   const handleBack = () => {
     router.push('/sinistre/recapitulatif');
+  };
+
+  // Calculer le coût total estimé
+  const calculerCoutTotal = (): number => {
+    if (!resultat) return 0;
+    let total = 0;
+    
+    // Kit
+    if (optionKit) {
+      total += resultat.kit.prix;
+    }
+    
+    // Produits rénovation
+    if (optionRenovation) {
+      total += PRODUITS_RENOVATION.reduce((sum, p) => sum + p.prix, 0);
+    }
+    
+    return total;
   };
 
   if (!isLoaded || !resultat) {
@@ -116,7 +155,7 @@ export default function OptionsPage() {
       {/* Peintures */}
       <Card>
         <CardHeader>
-          <CardTitle>Peintures de finition</CardTitle>
+          <CardTitle>Peintures de finition (2 couches)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -160,7 +199,7 @@ export default function OptionsPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Sous-couche</CardTitle>
+              <CardTitle>Sous-couche (1 couche)</CardTitle>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -250,6 +289,68 @@ export default function OptionsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Question trous/fissures */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Préparation des surfaces</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-start gap-4 p-4 border border-gray-200 rounded-lg">
+              <input
+                type="checkbox"
+                id="renovation"
+                checked={optionRenovation}
+                onChange={(e) => handleOptionChange('renovation', e.target.checked)}
+                className="w-5 h-5 mt-1 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <label htmlFor="renovation" className="flex-1 cursor-pointer">
+                <p className="font-medium text-gray-900">
+                  Y a-t-il des trous ou fissures à reboucher ?
+                </p>
+                <p className="text-sm text-gray-600 mt-1">
+                  Si oui, nous ajouterons le matériel nécessaire pour préparer vos surfaces avant peinture.
+                </p>
+              </label>
+            </div>
+
+            {optionRenovation && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <h5 className="font-medium text-amber-900 mb-3">Matériel de rénovation inclus :</h5>
+                <div className="space-y-2">
+                  {PRODUITS_RENOVATION.map((produit) => (
+                    <div key={produit.handle} className="flex justify-between text-sm">
+                      <span className="text-amber-800">{produit.titre}</span>
+                      <span className="font-medium text-amber-900">{produit.prix.toFixed(2)} €</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between text-sm pt-2 border-t border-amber-300">
+                    <span className="font-medium text-amber-900">Total rénovation</span>
+                    <span className="font-bold text-amber-900">
+                      {PRODUITS_RENOVATION.reduce((sum, p) => sum + p.prix, 0).toFixed(2)} €
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Coût total estimé (hors peintures) */}
+      {(optionKit || optionRenovation) && (
+        <Card className="bg-primary-50 border-primary-200">
+          <CardContent className="py-4">
+            <div className="flex justify-between items-center">
+              <span className="font-medium text-primary-900">Coût matériel estimé (hors peintures)</span>
+              <span className="text-xl font-bold text-primary-600">{calculerCoutTotal().toFixed(2)} €</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Navigation buttons */}
       <div className="flex justify-between pt-4">

@@ -6,18 +6,42 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
 import { getStoredPieces, getStoredAssure, STORAGE_KEYS } from '@/lib/store/sinistreStore';
-import type { ResultatCalcul } from '@/lib/calcul';
+import type { ResultatCalcul, CalculPeinture, CalculSousCouche } from '@/lib/calcul';
 import type { Piece, Assure } from '@/lib/types';
+
+// Produits de rénovation
+const PRODUITS_RENOVATION = [
+  { handle: 'pate-a-renover-multi-materiaux', titre: 'Pâte à rénover multi matériaux', prix: 29.20 },
+  { handle: 'couteau-de-peintre', titre: 'Couteau de peintre (spatule)', prix: 7.80 },
+  { handle: 'papier-a-poncer', titre: 'Papier à poncer grain 120', prix: 3.60 },
+  { handle: 'cale-a-poncer-auto-agrippante', titre: 'Cale à poncer', prix: 6.40 },
+];
+
+// Prix estimés par litre (à ajuster selon les vrais prix Shopify)
+const PRIX_PAR_LITRE = {
+  peinture: {
+    '1L': 24.90,
+    '3L': 59.90,
+    '12L': 199.90,
+  },
+  sousCouche: {
+    '1L': 19.90,
+    '3L': 49.90,
+    '12L': 159.90,
+  },
+};
 
 interface LignePanier {
   id: string;
-  type: 'peinture' | 'sous-couche' | 'kit';
+  type: 'peinture' | 'sous-couche' | 'kit' | 'renovation';
   titre: string;
   description: string;
-  quantite: string;
-  prixUnitaire?: number;
-  prixTotal?: number;
+  quantite: number;
+  unite: string;
+  prixUnitaire: number;
+  prixTotal: number;
   imageUrl?: string;
+  editable: boolean;
 }
 
 export default function PanierPage() {
@@ -25,7 +49,7 @@ export default function PanierPage() {
   const [assure, setAssure] = useState<Assure | null>(null);
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [resultat, setResultat] = useState<ResultatCalcul | null>(null);
-  const [options, setOptions] = useState({ sousCouche: true, kit: true });
+  const [options, setOptions] = useState({ sousCouche: true, kit: true, renovation: false });
   const [lignesPanier, setLignesPanier] = useState<LignePanier[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -53,6 +77,22 @@ export default function PanierPage() {
     setIsLoaded(true);
   }, [router]);
 
+  // Calculer le prix d'une peinture
+  const calculerPrixPeinture = (peinture: CalculPeinture): number => {
+    return peinture.contenants.reduce((total, c) => {
+      const prixContenant = PRIX_PAR_LITRE.peinture[c.contenance] || 0;
+      return total + (prixContenant * c.quantite);
+    }, 0);
+  };
+
+  // Calculer le prix d'une sous-couche
+  const calculerPrixSousCouche = (sousCouche: CalculSousCouche): number => {
+    return sousCouche.contenants.reduce((total, c) => {
+      const prixContenant = PRIX_PAR_LITRE.sousCouche[c.contenance] || 0;
+      return total + (prixContenant * c.quantite);
+    }, 0);
+  };
+
   // Construire les lignes du panier
   useEffect(() => {
     if (!resultat) return;
@@ -64,14 +104,19 @@ export default function PanierPage() {
       const contenantsStr = peinture.contenants
         .map(c => `${c.quantite}×${c.contenance}`)
         .join(' + ');
+      const prix = calculerPrixPeinture(peinture);
 
       lignes.push({
         id: `peinture-${index}`,
         type: 'peinture',
         titre: peinture.couleur.titre,
         description: `${peinture.surfaceTotale.toFixed(1)} m² - ${contenantsStr}`,
-        quantite: `${peinture.litresCommandes}L`,
+        quantite: peinture.litresCommandes,
+        unite: 'L',
+        prixUnitaire: prix / peinture.litresCommandes,
+        prixTotal: prix,
         imageUrl: peinture.couleur.imageUrl,
+        editable: false,
       });
     });
 
@@ -81,13 +126,18 @@ export default function PanierPage() {
         const contenantsStr = sousCouche.contenants
           .map(c => `${c.quantite}×${c.contenance}`)
           .join(' + ');
+        const prix = calculerPrixSousCouche(sousCouche);
 
         lignes.push({
           id: `sous-couche-${index}`,
           type: 'sous-couche',
           titre: `Sous-couche ${sousCouche.type}`,
           description: `${sousCouche.surfaceTotale.toFixed(1)} m² - ${contenantsStr}`,
-          quantite: `${sousCouche.litresCommandes}L`,
+          quantite: sousCouche.litresCommandes,
+          unite: 'L',
+          prixUnitaire: prix / sousCouche.litresCommandes,
+          prixTotal: prix,
+          editable: false,
         });
       });
     }
@@ -99,13 +149,38 @@ export default function PanierPage() {
         type: 'kit',
         titre: resultat.kit.titre,
         description: `Pour surfaces ${resultat.kit.type === 'petite' ? '≤ 30' : '> 30'} m²`,
-        quantite: '1',
+        quantite: 1,
+        unite: '',
+        prixUnitaire: resultat.kit.prix,
         prixTotal: resultat.kit.prix,
+        editable: false,
+      });
+    }
+
+    // Produits de rénovation (si option activée)
+    if (options.renovation) {
+      PRODUITS_RENOVATION.forEach((produit) => {
+        lignes.push({
+          id: `renovation-${produit.handle}`,
+          type: 'renovation',
+          titre: produit.titre,
+          description: 'Préparation des surfaces',
+          quantite: 1,
+          unite: '',
+          prixUnitaire: produit.prix,
+          prixTotal: produit.prix,
+          editable: false,
+        });
       });
     }
 
     setLignesPanier(lignes);
   }, [resultat, options]);
+
+  // Calculer le total
+  const calculerTotal = (): number => {
+    return lignesPanier.reduce((total, ligne) => total + ligne.prixTotal, 0);
+  };
 
   const handleGeneratePdf = async () => {
     setIsGeneratingPdf(true);
@@ -120,6 +195,8 @@ export default function PanierPage() {
           pieces,
           resultat,
           options,
+          lignesPanier,
+          total: calculerTotal(),
         }),
       });
 
@@ -127,17 +204,16 @@ export default function PanierPage() {
         throw new Error('Erreur lors de la génération du PDF');
       }
 
-      // Récupérer le HTML et l'ouvrir dans une nouvelle fenêtre pour impression
-      const html = await response.text();
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(html);
-        printWindow.document.close();
-        // Attendre le chargement puis imprimer
-        printWindow.onload = () => {
-          printWindow.print();
-        };
-      }
+      // Récupérer le blob PDF et le télécharger directement
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `commande-colibri-${Date.now()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
 
       // Naviguer vers la confirmation
       router.push('/sinistre/confirmation');
@@ -161,6 +237,8 @@ export default function PanierPage() {
     );
   }
 
+  const total = calculerTotal();
+
   return (
     <div className="space-y-6">
       {/* Step indicator */}
@@ -176,10 +254,40 @@ export default function PanierPage() {
         </p>
       </div>
 
-      {/* Informations assuré */}
+      {/* Résumé du projet + Coût total en haut */}
+      <Card className="bg-primary-50 border-primary-200">
+        <CardContent className="py-4">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 items-center">
+            <div className="text-center">
+              <p className="text-xl font-bold text-primary-600">{resultat.resume.nombrePieces}</p>
+              <p className="text-xs text-primary-800">Pièce{resultat.resume.nombrePieces > 1 ? 's' : ''}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xl font-bold text-primary-600">{resultat.resume.nombreCouleurs}</p>
+              <p className="text-xs text-primary-800">Couleur{resultat.resume.nombreCouleurs > 1 ? 's' : ''}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xl font-bold text-primary-600">{resultat.surfaceTotale.toFixed(1)} m²</p>
+              <p className="text-xs text-primary-800">Surface totale</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xl font-bold text-primary-600">
+                {resultat.peintures.reduce((sum, p) => sum + p.litresCommandes, 0)}L
+              </p>
+              <p className="text-xs text-primary-800">Peinture</p>
+            </div>
+            <div className="text-center sm:border-l sm:border-primary-300 sm:pl-4">
+              <p className="text-2xl font-bold text-primary-700">{total.toFixed(2)} €</p>
+              <p className="text-xs text-primary-800">Total estimé</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Vos informations */}
       <Card>
         <CardHeader>
-          <CardTitle>Informations assuré</CardTitle>
+          <CardTitle>Vos informations</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -211,7 +319,7 @@ export default function PanierPage() {
         </CardContent>
       </Card>
 
-      {/* Panier */}
+      {/* Panier avec prix */}
       <Card>
         <CardHeader>
           <CardTitle>Produits sélectionnés</CardTitle>
@@ -235,6 +343,12 @@ export default function PanierPage() {
                     {ligne.type === 'kit' && (
                       <span className="text-2xl">🧰</span>
                     )}
+                    {ligne.type === 'renovation' && (
+                      <span className="text-2xl">🔧</span>
+                    )}
+                    {ligne.type === 'peinture' && !ligne.imageUrl && (
+                      <span className="text-2xl">🎨</span>
+                    )}
                   </div>
                 )}
 
@@ -245,45 +359,29 @@ export default function PanierPage() {
                 </div>
 
                 {/* Quantité */}
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">{ligne.quantite}</p>
-                  {ligne.prixTotal && (
-                    <p className="text-sm text-gray-500">{ligne.prixTotal.toFixed(2)} €</p>
-                  )}
+                <div className="text-center min-w-[60px]">
+                  <p className="font-medium text-gray-900">
+                    {ligne.quantite}{ligne.unite}
+                  </p>
+                </div>
+
+                {/* Prix */}
+                <div className="text-right min-w-[80px]">
+                  <p className="font-semibold text-gray-900">{ligne.prixTotal.toFixed(2)} €</p>
                 </div>
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Résumé surfaces */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Résumé des surfaces</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Surfaces murs</span>
-              <span className="font-medium">{resultat.resume.surfaceMurs.toFixed(1)} m²</span>
+          {/* Total */}
+          <div className="mt-4 pt-4 border-t-2 border-gray-200">
+            <div className="flex justify-between items-center">
+              <span className="text-lg font-semibold text-gray-900">Total estimé</span>
+              <span className="text-2xl font-bold text-primary-600">{total.toFixed(2)} €</span>
             </div>
-            {resultat.resume.surfacePlafonds > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Surfaces plafonds</span>
-                <span className="font-medium">{resultat.resume.surfacePlafonds.toFixed(1)} m²</span>
-              </div>
-            )}
-            {resultat.resume.surfaceBoiseries > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Surfaces boiseries</span>
-                <span className="font-medium">{resultat.resume.surfaceBoiseries.toFixed(1)} m²</span>
-              </div>
-            )}
-            <div className="flex justify-between text-sm pt-2 border-t border-gray-200">
-              <span className="font-medium text-gray-900">Surface totale</span>
-              <span className="font-bold text-primary-600">{resultat.surfaceTotale.toFixed(1)} m²</span>
-            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              * Prix indicatifs. Les prix définitifs seront confirmés lors de la commande.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -312,7 +410,7 @@ export default function PanierPage() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Générer le PDF de commande
+              Télécharger le PDF de commande
             </>
           )}
         </Button>
@@ -329,7 +427,7 @@ export default function PanierPage() {
           <div>
             <h4 className="text-sm font-medium text-green-800">Prêt à commander</h4>
             <p className="text-sm text-green-700 mt-1">
-              Le PDF généré contiendra tous les détails de votre commande. 
+              Le PDF sera téléchargé directement sur votre appareil. 
               Vous pourrez le transmettre à votre assureur ou le conserver pour vos archives.
             </p>
           </div>

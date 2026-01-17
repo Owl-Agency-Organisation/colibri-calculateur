@@ -31,9 +31,13 @@ export function CouleurModal({ isOpen, onClose, onSelect }: CouleurModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Charger les collections au montage
+  // Reset l'état et charger les collections à chaque ouverture
   useEffect(() => {
     if (isOpen) {
+      // Reset à chaque ouverture - toujours revenir aux collections
+      setSelectedCollection(null);
+      setProducts([]);
+      setError(null);
       loadCollections();
     }
   }, [isOpen]);
@@ -106,6 +110,13 @@ export function CouleurModal({ isOpen, onClose, onSelect }: CouleurModalProps) {
     }
   };
 
+  const handleClose = () => {
+    // Reset l'état à la fermeture aussi
+    setSelectedCollection(null);
+    setProducts([]);
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -113,7 +124,7 @@ export function CouleurModal({ isOpen, onClose, onSelect }: CouleurModalProps) {
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-        onClick={onClose}
+        onClick={handleClose}
       />
 
       {/* Modal */}
@@ -125,7 +136,7 @@ export function CouleurModal({ isOpen, onClose, onSelect }: CouleurModalProps) {
               Choisir une couleur
             </h2>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
