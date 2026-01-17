@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
-import { getStoredAssure, clearAllData, STORAGE_KEYS } from '@/lib/store/sinistreStore';
+import { getStoredAssure, clearAllData } from '@/lib/store/sinistreStore';
 import type { Assure } from '@/lib/types';
 
 export default function ConfirmationPage() {
@@ -25,16 +25,14 @@ export default function ConfirmationPage() {
     setNumeroCommande(`COL-${Date.now().toString(36).toUpperCase()}`);
   }, [router]);
 
+  const handleBackToPanier = () => {
+    router.push('/sinistre/panier');
+  };
+
   const handleNewCommand = () => {
     // Effacer toutes les données et recommencer
     clearAllData();
     router.push('/sinistre');
-  };
-
-  const handleBackToHome = () => {
-    // Effacer les données et retourner à l'accueil
-    clearAllData();
-    router.push('/');
   };
 
   if (!assure) {
@@ -58,10 +56,10 @@ export default function ConfirmationPage() {
           </svg>
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-          Commande générée avec succès !
+          PDF téléchargé avec succès !
         </h1>
         <p className="text-gray-600 max-w-md mx-auto">
-          Votre bon de commande a été créé. Vous pouvez l'imprimer ou le sauvegarder en PDF.
+          Votre récapitulatif de commande a été téléchargé. Vous pouvez le transmettre à votre assureur.
         </p>
       </div>
 
@@ -70,7 +68,7 @@ export default function ConfirmationPage() {
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-sm text-gray-500">Numéro de commande</p>
+              <p className="text-sm text-gray-500">Référence</p>
               <p className="text-lg font-bold text-primary-600">{numeroCommande}</p>
             </div>
             <div className="text-right">
@@ -86,7 +84,7 @@ export default function ConfirmationPage() {
           </div>
           
           <div className="border-t border-gray-200 pt-4">
-            <p className="text-sm text-gray-500 mb-1">Assuré</p>
+            <p className="text-sm text-gray-500 mb-1">Bénéficiaire</p>
             <p className="font-medium text-gray-900">
               {assure.civilite} {assure.prenom} {assure.nom}
             </p>
@@ -105,9 +103,9 @@ export default function ConfirmationPage() {
                 <span className="text-primary-600 font-semibold text-sm">1</span>
               </div>
               <div>
-                <p className="font-medium text-gray-900">Imprimez ou sauvegardez le PDF</p>
+                <p className="font-medium text-gray-900">Retrouvez le PDF dans vos téléchargements</p>
                 <p className="text-sm text-gray-600">
-                  Le document s'est ouvert dans une nouvelle fenêtre. Utilisez Ctrl+P (ou Cmd+P) pour l'imprimer ou le sauvegarder en PDF.
+                  Le fichier a été téléchargé automatiquement sur votre appareil.
                 </p>
               </div>
             </div>
@@ -118,7 +116,7 @@ export default function ConfirmationPage() {
               <div>
                 <p className="font-medium text-gray-900">Transmettez à votre assureur</p>
                 <p className="text-sm text-gray-600">
-                  Envoyez le bon de commande à votre assureur pour validation dans le cadre de votre sinistre.
+                  Envoyez le récapitulatif à votre assureur pour validation dans le cadre de votre sinistre.
                 </p>
               </div>
             </div>
@@ -127,9 +125,9 @@ export default function ConfirmationPage() {
                 <span className="text-primary-600 font-semibold text-sm">3</span>
               </div>
               <div>
-                <p className="font-medium text-gray-900">Recevez vos produits</p>
+                <p className="font-medium text-gray-900">Passez commande</p>
                 <p className="text-sm text-gray-600">
-                  Une fois validé, votre commande sera traitée et expédiée à l'adresse indiquée.
+                  Une fois validé par votre assureur, passez commande sur notre boutique en ligne.
                 </p>
               </div>
             </div>
@@ -141,19 +139,42 @@ export default function ConfirmationPage() {
       <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
         <Button
           variant="outline"
-          onClick={handleNewCommand}
+          onClick={handleBackToPanier}
+          className="flex items-center gap-2"
         >
-          Nouvelle commande
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Retour au panier
         </Button>
         <Button
-          onClick={handleBackToHome}
+          onClick={handleNewCommand}
+          className="flex items-center gap-2"
         >
-          Retour à l'accueil
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          Nouvelle estimation
         </Button>
       </div>
 
+      {/* Lien vers la boutique */}
+      <div className="text-center pt-4">
+        <a
+          href="https://colibripeinture.fr"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary-600 hover:text-primary-700 font-medium inline-flex items-center gap-1"
+        >
+          Visiter notre boutique
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+        </a>
+      </div>
+
       {/* Contact */}
-      <div className="text-center text-sm text-gray-500 pt-4">
+      <div className="text-center text-sm text-gray-500 pt-2">
         <p>
           Une question ? Contactez-nous à{' '}
           <a href="mailto:contact@colibri-peintures.fr" className="text-primary-600 hover:underline">
