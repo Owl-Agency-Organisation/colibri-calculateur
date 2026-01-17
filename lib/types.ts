@@ -26,9 +26,14 @@ export type TypePiece =
 
 export interface Piece {
   id: string;
-  type: TypePiece;
-  plafond: Surface | null;
-  murs: Surface[];
+  typePiece: TypePiece;
+  nom: string;
+  surfaceMurs: number;
+  surfacePlafond?: number;
+  surfaceBoiseries?: number;
+  couleurMurs: Couleur;
+  couleurPlafond?: Couleur;
+  couleurBoiseries?: Couleur;
 }
 
 // ========== SURFACE ==========
