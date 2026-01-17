@@ -72,3 +72,6 @@ export function clearSinistreData(): void {
     console.error('Error clearing sinistre data:', error);
   }
 }
+
+// Alias pour clearSinistreData
+export const clearAllData = clearSinistreData;
