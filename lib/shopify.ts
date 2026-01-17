@@ -21,7 +21,7 @@ const SHOPIFY_GRAPHQL_ENDPOINT = `https://${SHOPIFY_STORE_DOMAIN}/api/${SHOPIFY_
 /**
  * Fonction utilitaire pour faire des requêtes GraphQL vers Shopify
  */
-async function shopifyFetch<T>({
+export async function shopifyFetch<T>({
   query,
   variables = {},
 }: {
