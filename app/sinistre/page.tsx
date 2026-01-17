@@ -23,6 +23,8 @@ export default function IdentificationPage() {
   const [formData, setFormData] = useState<Assure>(initialAssure);
   const [errors, setErrors] = useState<Partial<Record<keyof Assure, string>>>({});
   const [touched, setTouched] = useState<Partial<Record<keyof Assure, boolean>>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Charger les données depuis localStorage au montage
   useEffect(() => {
@@ -109,12 +111,64 @@ export default function IdentificationPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Créer un client Shopify
+  const createShopifyCustomer = async () => {
+    try {
+      const response = await fetch('/api/shopify/customer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: formData.prenom,
+          lastName: formData.nom,
+          email: formData.email,
+          phone: formData.telephone,
+          address: formData.adresse,
+          city: formData.ville,
+          postalCode: formData.codePostal,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Failed to create customer:', error);
+        // Ne pas bloquer le flux si la création échoue
+        console.warn('Customer creation failed, continuing anyway');
+      } else {
+        const data = await response.json();
+        console.log('Customer created successfully:', data);
+        // Sauvegarder le customerId si nécessaire pour plus tard
+        if (data.customerId) {
+          localStorage.setItem('shopify_customer_id', data.customerId);
+        }
+      }
+    } catch (error) {
+      console.error('Error creating customer:', error);
+      // Ne pas bloquer le flux si la création échoue
+      console.warn('Customer creation error, continuing anyway');
+    }
+  };
+
   // Soumettre le formulaire
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (validateForm()) {
-      router.push('/sinistre/piece');
+      setIsSubmitting(true);
+      setSubmitError(null);
+      
+      try {
+        // Créer le client Shopify (asynchrone mais non-bloquant)
+        await createShopifyCustomer();
+        
+        // Continuer vers l'étape suivante
+        router.push('/sinistre/piece');
+      } catch (error) {
+        console.error('Unexpected error:', error);
+        setSubmitError('Une erreur est survenue. Veuillez réessayer.');
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -123,7 +177,8 @@ export default function IdentificationPage() {
     formData.nom.trim() !== '' &&
     formData.prenom.trim() !== '' &&
     isValidEmail(formData.email) &&
-    isValidPhone(formData.telephone);
+    isValidPhone(formData.telephone) &&
+    !isSubmitting;
 
   if (!isLoaded) {
     return (
@@ -236,6 +291,13 @@ export default function IdentificationPage() {
               </div>
             </div>
 
+            {/* Error message */}
+            {submitError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-700">{submitError}</p>
+              </div>
+            )}
+
             {/* Submit button */}
             <div className="flex justify-end pt-4">
               <Button
@@ -244,7 +306,7 @@ export default function IdentificationPage() {
                 disabled={!isFormValid}
                 className="w-full sm:w-auto"
               >
-                Suivant →
+                {isSubmitting ? 'Traitement...' : 'Suivant →'}
               </Button>
             </div>
           </form>
