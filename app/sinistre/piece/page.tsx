@@ -1,9 +1,11 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
+import { getStoredPieces } from '@/lib/store/sinistreStore';
 import type { TypePiece } from '@/lib/types';
 
 // Types de pièces disponibles avec leurs icônes
@@ -19,6 +21,13 @@ const TYPES_PIECES: { value: TypePiece; label: string; icon: string }[] = [
 
 export default function SelectionPiecePage() {
   const router = useRouter();
+  const [hasPieces, setHasPieces] = useState(false);
+
+  useEffect(() => {
+    // Vérifier si des pièces existent déjà
+    const pieces = getStoredPieces();
+    setHasPieces(pieces.length > 0);
+  }, []);
 
   const handleSelectPiece = (typePiece: TypePiece) => {
     // Stocker le type de pièce temporairement
@@ -29,6 +38,11 @@ export default function SelectionPiecePage() {
 
   const handleBack = () => {
     router.push('/sinistre');
+  };
+
+  const handleContinue = () => {
+    // Si des pièces existent, aller directement au récapitulatif
+    router.push('/sinistre/recapitulatif');
   };
 
   return (
@@ -42,7 +56,10 @@ export default function SelectionPiecePage() {
           Type de pièce sinistrée
         </h1>
         <p className="text-gray-600">
-          Sélectionnez le type de pièce à peindre
+          {hasPieces 
+            ? 'Ajoutez une nouvelle pièce ou continuez vers le récapitulatif'
+            : 'Sélectionnez le type de pièce à peindre'
+          }
         </p>
       </div>
 
@@ -82,6 +99,14 @@ export default function SelectionPiecePage() {
         >
           ← Précédent
         </Button>
+        {hasPieces && (
+          <Button
+            size="lg"
+            onClick={handleContinue}
+          >
+            Voir le récapitulatif →
+          </Button>
+        )}
       </div>
 
       {/* Info box */}

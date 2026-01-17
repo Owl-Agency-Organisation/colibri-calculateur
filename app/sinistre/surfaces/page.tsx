@@ -25,14 +25,19 @@ export default function SaisieurfacesPage() {
   const [showCouleurModal, setShowCouleurModal] = useState(false);
   const [currentSelection, setCurrentSelection] = useState<'murs' | 'plafond' | 'boiseries' | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [hasPieces, setHasPieces] = useState(false);
 
   // Charger le type de pièce depuis sessionStorage ou éditer une pièce existante
   useEffect(() => {
+    const pieces = getStoredPieces();
+    setHasPieces(pieces.length > 0);
+    
     const editPieceId = sessionStorage.getItem('colibri-edit-piece-id');
     
     if (editPieceId) {
       // Mode édition
-      const pieces = getStoredPieces();
+      setIsEditMode(true);
       const pieceToEdit = pieces.find(p => p.id === editPieceId);
       
       if (pieceToEdit) {
@@ -59,7 +64,6 @@ export default function SaisieurfacesPage() {
       setTypePiece(type);
       
       // Générer un nom par défaut
-      const pieces = getStoredPieces();
       const count = pieces.filter(p => p.typePiece === type).length + 1;
       const labels: Record<TypePiece, string> = {
         'piece-de-vie': 'Pièce de vie',
@@ -179,7 +183,17 @@ export default function SaisieurfacesPage() {
   };
 
   const handleBack = () => {
+    // Nettoyer les données temporaires
+    sessionStorage.removeItem('colibri-edit-piece-id');
+    sessionStorage.removeItem('colibri-temp-piece-type');
     router.push('/sinistre/piece');
+  };
+
+  const handleSkipToRecap = () => {
+    // Nettoyer les données temporaires et aller au récapitulatif
+    sessionStorage.removeItem('colibri-edit-piece-id');
+    sessionStorage.removeItem('colibri-temp-piece-type');
+    router.push('/sinistre/recapitulatif');
   };
 
   if (!typePiece) {
@@ -390,15 +404,27 @@ export default function SaisieurfacesPage() {
               >
                 ← Précédent
               </Button>
-              <Button type="submit" size="lg">
-                Suivant →
-              </Button>
+              <div className="flex gap-3">
+                {/* Bouton pour aller au récapitulatif si des pièces existent et qu'on n'est pas en mode édition */}
+                {hasPieces && !isEditMode && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSkipToRecap}
+                  >
+                    Voir le récapitulatif
+                  </Button>
+                )}
+                <Button type="submit" size="lg">
+                  {isEditMode ? 'Enregistrer' : 'Suivant'} →
+                </Button>
+              </div>
             </div>
           </form>
         </CardContent>
       </Card>
 
-      {/* Couleur modal */}
+      {/* Couleur Modal */}
       <CouleurModal
         isOpen={showCouleurModal}
         onClose={() => {

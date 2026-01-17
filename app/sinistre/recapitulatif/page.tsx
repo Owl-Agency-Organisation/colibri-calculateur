@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
+import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { getStoredPieces, setStoredPieces } from '@/lib/store/sinistreStore';
 import type { Piece, TypePiece } from '@/lib/types';
 
@@ -22,6 +23,8 @@ export default function RecapitulatifPage() {
   const router = useRouter();
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [pieceToDelete, setPieceToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     const stored = getStoredPieces();
@@ -43,17 +46,30 @@ export default function RecapitulatifPage() {
     router.push('/sinistre/surfaces');
   };
 
-  const handleDeletePiece = (pieceId: string) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cette pièce ?')) {
-      const updatedPieces = pieces.filter(p => p.id !== pieceId);
-      setPieces(updatedPieces);
-      setStoredPieces(updatedPieces);
-      
-      // Si plus de pièces, retourner à la sélection
-      if (updatedPieces.length === 0) {
-        router.push('/sinistre/piece');
-      }
+  const handleDeleteClick = (pieceId: string) => {
+    setPieceToDelete(pieceId);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!pieceToDelete) return;
+    
+    const updatedPieces = pieces.filter(p => p.id !== pieceToDelete);
+    setPieces(updatedPieces);
+    setStoredPieces(updatedPieces);
+    
+    setShowDeleteModal(false);
+    setPieceToDelete(null);
+    
+    // Si plus de pièces, retourner à la sélection
+    if (updatedPieces.length === 0) {
+      router.push('/sinistre/piece');
     }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setPieceToDelete(null);
   };
 
   const handleContinue = () => {
@@ -61,7 +77,8 @@ export default function RecapitulatifPage() {
   };
 
   const handleBack = () => {
-    router.push('/sinistre');
+    // Retourner à l'étape 2 (choix de pièce), pas à l'étape 1
+    router.push('/sinistre/piece');
   };
 
   const calculateTotalSurface = (piece: Piece): number => {
@@ -70,6 +87,11 @@ export default function RecapitulatifPage() {
     if (piece.surfaceBoiseries) total += piece.surfaceBoiseries;
     return total;
   };
+
+  // Trouver le nom de la pièce à supprimer pour le message
+  const pieceToDeleteName = pieceToDelete 
+    ? pieces.find(p => p.id === pieceToDelete)?.nom || 'cette pièce'
+    : '';
 
   if (!isLoaded) {
     return (
@@ -204,7 +226,7 @@ export default function RecapitulatifPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleDeletePiece(piece.id)}
+                    onClick={() => handleDeleteClick(piece.id)}
                     className="text-red-600 hover:text-red-700 hover:border-red-300"
                   >
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -238,7 +260,7 @@ export default function RecapitulatifPage() {
           variant="outline"
           onClick={handleBack}
         >
-          ← Retour
+          ← Retour au choix de pièce
         </Button>
         <Button
           size="lg"
@@ -265,6 +287,18 @@ export default function RecapitulatifPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal de confirmation de suppression */}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        title="Supprimer cette pièce ?"
+        message={`Êtes-vous sûr de vouloir supprimer "${pieceToDeleteName}" ? Cette action est irréversible.`}
+        confirmLabel="Supprimer"
+        cancelLabel="Annuler"
+        confirmVariant="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+      />
     </div>
   );
 }
