@@ -6,7 +6,8 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
 import { getStoredPieces, STORAGE_KEYS } from '@/lib/store/sinistreStore';
-import { calculerQuantites, type ResultatCalcul } from '@/lib/calcul';
+import { calculerQuantitesPeinture } from '@/lib/calcul';
+import type { ResultatCalcul } from '@/lib/calcul/types';
 import type { Piece } from '@/lib/types';
 
 // Produits de rénovation (trous/fissures)
@@ -34,9 +35,24 @@ export default function OptionsPage() {
     }
     setPieces(stored);
 
-    // Calculer les quantités
-    const calcul = calculerQuantites(stored);
-    setResultat(calcul);
+    // Calculer les quantités (fonction asynchrone maintenant)
+    const calculateAsync = async () => {
+      try {
+        const calcul = await calculerQuantitesPeinture(stored);
+        setResultat(calcul);
+        
+        // Sauvegarder le calcul dans localStorage
+        localStorage.setItem(STORAGE_KEYS.CALCUL, JSON.stringify(calcul));
+        
+        setIsLoaded(true);
+      } catch (error) {
+        console.error('Erreur calcul quantités:', error);
+        // TODO: Gérer l'erreur avec un message utilisateur
+        setIsLoaded(true);
+      }
+    };
+
+    calculateAsync();
 
     // Charger les options sauvegardées
     const savedOptions = localStorage.getItem(STORAGE_KEYS.OPTIONS);
@@ -46,11 +62,6 @@ export default function OptionsPage() {
       setOptionKit(parsed.kit ?? true);
       setOptionRenovation(parsed.renovation ?? false);
     }
-
-    // Sauvegarder le calcul dans localStorage
-    localStorage.setItem(STORAGE_KEYS.CALCUL, JSON.stringify(calcul));
-
-    setIsLoaded(true);
   }, [router]);
 
   const saveOptions = (sousCouche: boolean, kit: boolean, renovation: boolean) => {
