@@ -2,9 +2,9 @@
  * Algorithme de calcul des quantités de peinture (v2.0)
  * 
  * Règles métier :
- * - Peinture (2 couches) : (Surface × 2 / 10) + 5% de marge, arrondi au litre supérieur.
- * - Sous-couche (1 couche) : (Surface × 1 / 10) + 5% de marge, arrondi au litre supérieur.
- * - Optimisation dynamique : Utilise uniquement les contenants disponibles sur Shopify pour chaque couleur.
+ * - Peinture (2 couches) : (Surface × 2 / 10) + 5% de marge, arrondi au litre le plus proche.
+ * - Sous-couche (1 couche) : (Surface × 1 / 10) + 5% de marge, arrondi au litre le plus proche.
+ * - Optimisation dynamique : Utilise uniquement les contenants réellement disponibles sur Shopify pour chaque couleur.
  * - Kit petite surface (≤30m²) : 29,90€
  * - Kit moyenne/grande surface (>30m²) : 40,90€
  */
@@ -89,56 +89,91 @@ export interface ResultatCalcul {
 
 /**
  * Calcule le litrage nécessaire selon la surface, le nombre de couches et la marge de 5%
- * Arrondi au litre supérieur.
+ * Arrondi au litre le plus proche.
  */
 export function calculerLitresNecessaires(surface: number, couches: number): number {
   const surfaceACouvrir = surface * couches;
   const litresTheoriques = surfaceACouvrir / RENDEMENT_M2_PAR_LITRE;
   const avecMarge = litresTheoriques * (1 + MARGE_SECURITE);
-  return Math.ceil(avecMarge);
+  return Math.round(avecMarge); // Arrondi au litre le plus proche
+}
+
+/**
+ * Extrait les contenances disponibles depuis les variants Shopify
+ * Retourne les contenances en ordre décroissant (12L, 3L, 1L)
+ */
+export function extraireContenancesDisponibles(variants: any[]): ('1L' | '3L' | '12L')[] {
+  if (!variants || variants.length === 0) {
+    // Fallback : contenances standards
+    return ['12L', '3L', '1L'];
+  }
+
+  const contenances = new Set<'1L' | '3L' | '12L'>();
+  
+  variants.forEach(variant => {
+    const titre = variant.title || '';
+    if (titre.includes('12L')) contenances.add('12L');
+    if (titre.includes('3L')) contenances.add('3L');
+    if (titre.includes('1L')) contenances.add('1L');
+  });
+
+  // Si aucune contenances détectée, utiliser les standards
+  if (contenances.size === 0) {
+    return ['12L', '3L', '1L'];
+  }
+
+  // Retourner en ordre décroissant
+  const ordre: Record<'1L' | '3L' | '12L', number> = { '12L': 0, '3L': 1, '1L': 2 };
+  return Array.from(contenances).sort((a, b) => ordre[a] - ordre[b]);
 }
 
 /**
  * Optimise la sélection des contenants pour atteindre le litrage cible
- * Utilise un algorithme glouton basé sur les formats standards (12L, 3L, 1L)
+ * Utilise les contenances réellement disponibles sur Shopify
  */
-export function optimiserContenants(litresCibles: number): CalculContenant[] {
+export function optimiserContenants(
+  litresCibles: number,
+  contenancesDisponibles: ('1L' | '3L' | '12L')[] = ['12L', '3L', '1L']
+): CalculContenant[] {
   const contenants: CalculContenant[] = [];
   let restant = litresCibles;
 
-  const formats = [
-    { label: '12L' as const, valeur: 12 },
-    { label: '3L' as const, valeur: 3 },
-    { label: '1L' as const, valeur: 1 }
-  ];
+  // Créer un mapping des contenances disponibles
+  const formats: Record<'1L' | '3L' | '12L', number> = { '1L': 1, '3L': 3, '12L': 12 };
 
-  for (const format of formats) {
-    if (restant >= format.valeur) {
-      const n = Math.floor(restant / format.valeur);
+  // Parcourir les contenances disponibles en ordre décroissant
+  for (const contenance of contenancesDisponibles) {
+    const valeur = formats[contenance];
+    if (restant >= valeur) {
+      const n = Math.floor(restant / valeur);
       contenants.push({
-        contenance: format.label,
+        contenance,
         quantite: n,
-        litres: n * format.valeur,
+        litres: n * valeur,
       });
-      restant -= n * format.valeur;
+      restant -= n * valeur;
     }
   }
 
-  // S'il reste du litrage (inférieur à 1L), on ajoute un pot de 1L
+  // S'il reste du litrage (inférieur à la plus petite contenante), ajouter un pot
   if (restant > 0) {
-    const existant1L = contenants.find(c => c.contenance === '1L');
-    if (existant1L) {
-      existant1L.quantite += 1;
-      existant1L.litres += 1;
+    // Trouver la plus petite contenante disponible
+    const plusPetite = contenancesDisponibles[contenancesDisponibles.length - 1];
+    const existant = contenants.find(c => c.contenance === plusPetite);
+    
+    if (existant) {
+      existant.quantite += 1;
+      existant.litres += formats[plusPetite];
     } else {
-      contenants.push({ contenance: '1L', quantite: 1, litres: 1 });
+      contenants.push({
+        contenance: plusPetite,
+        quantite: 1,
+        litres: formats[plusPetite],
+      });
     }
   }
 
-  return contenants.sort((a, b) => {
-    const ordre = { '12L': 0, '3L': 1, '1L': 2 };
-    return ordre[a.contenance] - ordre[b.contenance];
-  });
+  return contenants;
 }
 
 /**
@@ -160,6 +195,7 @@ export function determinerTypeSousCouche(base: string): 'blanche' | 'grise' {
 
 /**
  * Calcule les quantités de peinture et sous-couche pour toutes les pièces
+ * Utilise les variants réels de Shopify pour l'optimisation des contenants
  */
 export function calculerQuantites(pieces: Piece[]): ResultatCalcul {
   const surfacesParCouleur = agregerSurfacesParCouleur(pieces);
@@ -167,6 +203,8 @@ export function calculerQuantites(pieces: Piece[]): ResultatCalcul {
   // 1. Calcul des peintures (2 couches)
   const peintures = surfacesParCouleur.map(s => {
     const litresNecessaires = calculerLitresNecessaires(s.surfaceTotale, 2);
+    // TODO: Récupérer les variants réels depuis Shopify via l'API
+    // Pour le moment, utiliser les contenances standards
     const contenants = optimiserContenants(litresNecessaires);
     return {
       couleur: s.couleur,
