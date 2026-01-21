@@ -107,7 +107,7 @@ Voir [ARCHITECTURE.md](./ARCHITECTURE.md) pour la documentation complète de l'a
 
 1. **Identification** : Capture coordonnées assuré
 2. **Sélection pièce** : Choix type de pièce (7 types disponibles)
-3. **Saisie surfaces** : Plafond + murs (max 4) avec couleurs et finitions
+3. **Saisie surfaces** : Plafond + murs (jusqu'à 4 murs avec couleurs distinctes) + boiseries
 4. **Multi-pièces** : Ajout/modification/suppression de pièces
 5. **Options** : Sélection options supplémentaires (rénovation, etc.)
 6. **Récapitulatif** : Panier complet avec quantités optimisées
@@ -184,6 +184,8 @@ npm run type-check
 ## 📝 Documentation
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) : Architecture technique complète
+- [CHANGELOG.md](./CHANGELOG.md) : Historique des versions et modifications
+- [docs/MULTI_MURS_FEATURE.md](./docs/MULTI_MURS_FEATURE.md) : Documentation de la fonctionnalité multi-murs
 - [.env.local.example](./.env.local.example) : Template variables d'environnement
 
 ## 👥 Équipe
