@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { Assure, Piece } from '@/lib/types';
-import type { ResultatCalcul } from '@/lib/calcul';
+import type { ResultatCalcul } from '@/lib/calcul/types';
 
 // Produits de rénovation
 const PRODUITS_RENOVATION = [
@@ -60,12 +60,12 @@ export async function POST(request: NextRequest) {
     // Générer le HTML du PDF
     const html = generatePdfHtml(assure, pieces, resultat, options, lignesPanier, total);
 
-    // Retourner le HTML comme "PDF" (le navigateur le téléchargera)
+    // Retourner le HTML comme \"PDF\" (le navigateur le téléchargera)
     // Note: Pour un vrai PDF, on utiliserait puppeteer ou une API comme html2pdf
     return new NextResponse(html, {
       headers: {
         'Content-Type': 'text/html',
-        'Content-Disposition': `attachment; filename="commande-colibri-${Date.now()}.html"`,
+        'Content-Disposition': `attachment; filename=\"commande-colibri-${Date.now()}.html\"`,
       },
     });
   } catch (error) {
@@ -133,10 +133,10 @@ function generatePdfHtml(
 
   return `
 <!DOCTYPE html>
-<html lang="fr">
+<html lang=\"fr\">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset=\"UTF-8\">
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
   <title>Commande Colibri - ${numeroCommande}</title>
   <style>
     * {
@@ -342,37 +342,37 @@ function generatePdfHtml(
   </style>
 </head>
 <body>
-  <div class="header">
-    <div class="logo">
+  <div class=\"header\">
+    <div class=\"logo\">
       Colibri<span>.</span>
-      <div style="font-size: 11px; font-weight: normal; color: #666; margin-top: 5px;">
+      <div style=\"font-size: 11px; font-weight: normal; color: #666; margin-top: 5px;\">
         Peintures biosourcées
       </div>
     </div>
-    <div class="document-info">
+    <div class=\"document-info\">
       <h1>Récapitulatif de commande</h1>
       <p><strong>Réf. ${numeroCommande}</strong></p>
       <p>Date : ${date}</p>
     </div>
   </div>
 
-  <div class="section">
-    <h2 class="section-title">Vos informations</h2>
-    <div class="info-grid">
-      <div class="info-item">
+  <div class=\"section\">
+    <h2 class=\"section-title\">Vos informations</h2>
+    <div class=\"info-grid\">
+      <div class=\"info-item\">
         <label>Nom complet</label>
         <p>${assure.civilite} ${assure.prenom} ${assure.nom}</p>
       </div>
-      <div class="info-item">
+      <div class=\"info-item\">
         <label>Email</label>
         <p>${assure.email}</p>
       </div>
-      <div class="info-item">
+      <div class=\"info-item\">
         <label>Téléphone</label>
         <p>${assure.telephone}</p>
       </div>
       ${assure.adresse ? `
-      <div class="info-item">
+      <div class=\"info-item\">
         <label>Adresse</label>
         <p>${assure.adresse}${assure.codePostal ? `, ${assure.codePostal}` : ''}${assure.ville ? ` ${assure.ville}` : ''}</p>
       </div>
@@ -380,30 +380,30 @@ function generatePdfHtml(
     </div>
   </div>
 
-  <div class="section">
-    <h2 class="section-title">Détail des pièces</h2>
-    <div class="pieces-list">
+  <div class=\"section\">
+    <h2 class=\"section-title\">Détail des pièces</h2>
+    <div class=\"pieces-list\">
       ${pieces.map(piece => `
-        <div class="piece-item">
-          <h4>${piece.nom} <span class="badge badge-green">${piece.typePiece}</span></h4>
-          <div class="piece-details">
+        <div class=\"piece-item\">
+          <h4>${piece.nom} <span class=\"badge badge-green\">${piece.typePiece}</span></h4>
+          <div class=\"piece-details\">
             <div>
               <label>Murs</label>
               <strong>${piece.surfaceMurs} m²</strong>
-              <div style="color: #666;">${piece.couleurMurs.titre}</div>
+              <div style=\"color: #666;\">${piece.couleurMurs.titre}</div>
             </div>
             ${piece.surfacePlafond && piece.couleurPlafond ? `
             <div>
               <label>Plafond</label>
               <strong>${piece.surfacePlafond} m²</strong>
-              <div style="color: #666;">${piece.couleurPlafond.titre}</div>
+              <div style=\"color: #666;\">${piece.couleurPlafond.titre}</div>
             </div>
             ` : ''}
             ${piece.surfaceBoiseries && piece.couleurBoiseries ? `
             <div>
               <label>Boiseries</label>
               <strong>${piece.surfaceBoiseries} m²</strong>
-              <div style="color: #666;">${piece.couleurBoiseries.titre}</div>
+              <div style=\"color: #666;\">${piece.couleurBoiseries.titre}</div>
             </div>
             ` : ''}
           </div>
@@ -412,15 +412,15 @@ function generatePdfHtml(
     </div>
   </div>
 
-  <div class="section">
-    <h2 class="section-title">Produits sélectionnés</h2>
+  <div class=\"section\">
+    <h2 class=\"section-title\">Produits sélectionnés</h2>
     <table>
       <thead>
         <tr>
-          <th style="width: 40%">Produit</th>
-          <th style="width: 25%">Détail</th>
-          <th style="width: 15%; text-align: center;">Quantité</th>
-          <th style="width: 20%; text-align: right;">Prix</th>
+          <th style=\"width: 40%\">Produit</th>
+          <th style=\"width: 25%\">Détail</th>
+          <th style=\"width: 15%; text-align: center;\">Quantité</th>
+          <th style=\"width: 20%; text-align: right;\">Prix</th>
         </tr>
       </thead>
       <tbody>
@@ -429,15 +429,15 @@ function generatePdfHtml(
           return `
           <tr>
             <td>
-              <div class="product-name">${peinture.couleur.titre}</div>
-              <div class="product-desc">Peinture biosourcée - ${peinture.couleur.collection}</div>
+              <div class=\"product-name\">${peinture.couleur.titre}</div>
+              <div class=\"product-desc\">Peinture biosourcée - ${peinture.couleur.collection}</div>
             </td>
             <td>
               <div>${peinture.surfaceTotale.toFixed(1)} m²</div>
-              <div class="product-desc">${peinture.contenants.map(c => `${c.quantite}×${c.contenance}`).join(' + ')}</div>
+              <div class=\"product-desc\">${peinture.contenants.map(c => `${c.quantite}×${c.contenance}`).join(' + ')}</div>
             </td>
-            <td class="quantity">${peinture.litresCommandes}L</td>
-            <td class="price">${prix.toFixed(2)} €</td>
+            <td class=\"quantity\">${peinture.litresCommandes}L</td>
+            <td class=\"price\">${prix.toFixed(2)} €</td>
           </tr>
         `}).join('')}
         ${options.sousCouche ? resultat.sousCouches.map(sc => {
@@ -445,92 +445,92 @@ function generatePdfHtml(
           return `
           <tr>
             <td>
-              <div class="product-name">Sous-couche ${sc.type}</div>
-              <div class="product-desc">Peinture biosourcée murs et plafonds</div>
+              <div class=\"product-name\">Sous-couche ${sc.type}</div>
+              <div class=\"product-desc\">Peinture biosourcée murs et plafonds</div>
             </td>
             <td>
               <div>${sc.surfaceTotale.toFixed(1)} m²</div>
-              <div class="product-desc">${sc.contenants.map(c => `${c.quantite}×${c.contenance}`).join(' + ')}</div>
+              <div class=\"product-desc\">${sc.contenants.map(c => `${c.quantite}×${c.contenance}`).join(' + ')}</div>
             </td>
-            <td class="quantity">${sc.litresCommandes}L</td>
-            <td class="price">${prix.toFixed(2)} €</td>
+            <td class=\"quantity\">${sc.litresCommandes}L</td>
+            <td class=\"price\">${prix.toFixed(2)} €</td>
           </tr>
         `}).join('') : ''}
         ${options.kit ? `
           <tr>
             <td>
-              <div class="product-name">${resultat.kit.titre}</div>
-              <div class="product-desc">Matériel de peinture complet</div>
+              <div class=\"product-name\">${resultat.kit.titre}</div>
+              <div class=\"product-desc\">Matériel de peinture complet</div>
             </td>
             <td>
               <div>Surface ${resultat.kit.type === 'petite' ? '≤ 30' : '> 30'} m²</div>
             </td>
-            <td class="quantity">1</td>
-            <td class="price">${resultat.kit.prix.toFixed(2)} €</td>
+            <td class=\"quantity\">1</td>
+            <td class=\"price\">${resultat.kit.prix.toFixed(2)} €</td>
           </tr>
         ` : ''}
         ${options.renovation ? PRODUITS_RENOVATION.map(produit => `
           <tr>
             <td>
-              <div class="product-name">${produit.titre}</div>
-              <div class="product-desc">Préparation des surfaces</div>
+              <div class=\"product-name\">${produit.titre}</div>
+              <div class=\"product-desc\">Préparation des surfaces</div>
             </td>
             <td>
               <div>Rénovation</div>
             </td>
-            <td class="quantity">1</td>
-            <td class="price">${produit.prix.toFixed(2)} €</td>
+            <td class=\"quantity\">1</td>
+            <td class=\"price\">${produit.prix.toFixed(2)} €</td>
           </tr>
         `).join('') : ''}
       </tbody>
     </table>
 
-    <div class="total-box">
-      <span class="label">Total estimé</span>
-      <span class="amount">${totalCalcule.toFixed(2)} €</span>
+    <div class=\"total-box\">
+      <span class=\"label\">Total estimé</span>
+      <span class=\"amount\">${totalCalcule.toFixed(2)} €</span>
     </div>
-    <p class="disclaimer">* Prix indicatifs. Les prix définitifs seront confirmés lors de la commande sur notre boutique.</p>
+    <p class=\"disclaimer\">* Prix indicatifs. Les prix définitifs seront confirmés lors de la commande sur notre boutique.</p>
   </div>
 
-  <div class="section">
-    <h2 class="section-title">Récapitulatif des surfaces</h2>
-    <div class="summary-box">
-      <div class="summary-row">
+  <div class=\"section\">
+    <h2 class=\"section-title\">Récapitulatif des surfaces</h2>
+    <div class=\"summary-box\">
+      <div class=\"summary-row\">
         <span>Nombre de pièces</span>
         <span>${resultat.resume.nombrePieces}</span>
       </div>
-      <div class="summary-row">
+      <div class=\"summary-row\">
         <span>Nombre de couleurs</span>
         <span>${resultat.resume.nombreCouleurs}</span>
       </div>
-      <div class="summary-row">
+      <div class=\"summary-row\">
         <span>Surface murs</span>
         <span>${resultat.resume.surfaceMurs.toFixed(1)} m²</span>
       </div>
       ${resultat.resume.surfacePlafonds > 0 ? `
-      <div class="summary-row">
+      <div class=\"summary-row\">
         <span>Surface plafonds</span>
         <span>${resultat.resume.surfacePlafonds.toFixed(1)} m²</span>
       </div>
       ` : ''}
       ${resultat.resume.surfaceBoiseries > 0 ? `
-      <div class="summary-row">
+      <div class=\"summary-row\">
         <span>Surface boiseries</span>
         <span>${resultat.resume.surfaceBoiseries.toFixed(1)} m²</span>
       </div>
       ` : ''}
-      <div class="summary-row total">
+      <div class=\"summary-row total\">
         <span>Surface totale</span>
         <span>${resultat.surfaceTotale.toFixed(1)} m²</span>
       </div>
     </div>
   </div>
 
-  <div class="footer">
+  <div class=\"footer\">
     <p><strong>Colibri - Peintures biosourcées</strong></p>
     <p>Document généré automatiquement le ${date}</p>
     <p>Pour toute question, contactez-nous : contact@colibri-peintures.fr</p>
-    <p style="margin-top: 10px;">www.colibripeinture.fr</p>
+    <p style=\"margin-top: 10px;\">www.colibripeinture.fr</p>
   </div>
 </body>
 </html>
