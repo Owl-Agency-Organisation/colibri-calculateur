@@ -1,400 +1,519 @@
 /**
- * Algorithme de calcul des quantités de peinture
+ * Système de calcul de peinture Colibri - Version 2.0.0
  * 
- * Règles métier :
- * - Rendement peinture : 10 m²/L (2 couches incluses)
- * - Rendement sous-couche : 10 m²/L (1 couche)
- * - Contenants disponibles : 1L, 3L, 12L
- * - Sous-couche grise pour bases C et BLC (couleurs foncées/vives)
- * - Sous-couche blanche pour bases Blanc et B
- * - Kit petite surface (≤30m²) : 29,90€
- * - Kit moyenne/grande surface (>30m²) : 40,90€
+ * @module lib/calcul
+ * @author Owl Agency
+ * @version 2.0.0
+ * @description
+ * Système complet de calcul de quantités de peinture pour le projet Colibri Assurances.
+ * 
+ * Fonctionnalités :
+ * - Calcul précis des litres nécessaires (rendement 10 m²/L/couche)
+ * - Marge de sécurité de 5%
+ * - Arrondi intelligent selon règle x,5
+ * - Optimisation des contenants (12L > 3L > 1L)
+ * - Interrogation dynamique des variants Shopify
+ * - Calcul des prix par produit et total
+ * 
+ * @see README.md pour la documentation complète
  */
 
-import type { Piece, Couleur } from '@/lib/types';
+import {
+  Piece,
+  Surface,
+  ResultatCalcul,
+  CalculPeinture,
+  CalculContenant,
+  ContenantsDisponibles,
+  ShopifyVariant,
+  Gamme,
+  Finition,
+  Contenance,
+  TypePeinture,
+} from './types';
 
-// ==================== CONSTANTES ====================
+import {
+  RENDEMENT_PEINTURE,
+  NOMBRE_COUCHES_SOUS_COUCHE,
+  NOMBRE_COUCHES_FINITION,
+  MARGE_SECURITE,
+  CONTENANCES_DISPONIBLES,
+  SEUIL_ARRONDI,
+  SOUS_COUCHE_BLANCHE_HANDLE,
+  SOUS_COUCHE_GRISE_HANDLE,
+  COULEURS_SCHMIDT_SOUS_COUCHE_GRISE,
+} from './constants';
 
-const RENDEMENT_PEINTURE = 10; // m²/L (2 couches)
-const RENDEMENT_SOUS_COUCHE = 10; // m²/L (1 couche)
+// ==============================================================================
+// FONCTIONS UTILITAIRES
+// ==============================================================================
 
-// Contenants disponibles (du plus grand au plus petit pour l'optimisation)
-const CONTENANTS_DISPONIBLES = [
-  { contenance: '12L' as const, litres: 12 },
-  { contenance: '3L' as const, litres: 3 },
-  { contenance: '1L' as const, litres: 1 },
-];
-
-// Seuil de surface pour le kit
-const SEUIL_SURFACE_KIT = 30; // m²
-
-// Handles des kits matériels sur Shopify
-export const KIT_HANDLES = {
-  petiteSurface: 'kit-materiel-de-peinture-petite-surface',
-  grandeSurface: 'kit-materiel-de-peinture-moyenne-et-grande-surface',
-};
-
-// Handles des sous-couches sur Shopify
-export const SOUS_COUCHE_HANDLES = {
-  blanche: 'sous-couche-blanche-peinture-biosourcee-murs-et-plafonds',
-  grise: 'sous-couche-grise-peinture-biosourcee-murs-et-plafonds',
-};
-
-// ==================== TYPES ====================
-
-export interface SurfaceParCouleur {
-  couleur: Couleur;
-  surfaceTotale: number;
-  details: {
-    pieceNom: string;
-    type: 'murs' | 'plafond' | 'boiseries';
-    surface: number;
-  }[];
+/**
+ * Extrait le code couleur Schmidt depuis le handle du produit
+ * 
+ * @param productHandle - Handle du produit Shopify (ex: "schmidt-navy-peinture-biosourcee")
+ * @returns Code Schmidt (ex: "S16") ou null si non Schmidt
+ * 
+ * @example
+ * extraireCodeSchmidt("schmidt-navy-peinture-biosourcee") // → "S16"
+ * extraireCodeSchmidt("blanc-vrai-peinture-biosourcee") // → null
+ */
+function extraireCodeSchmidt(productHandle: string): string | null {
+  const match = productHandle.match(/schmidt-([^-]+)/i);
+  if (!match) return null;
+  
+  // Chercher le code S + numéro dans la chaîne
+  const codeMatch = productHandle.match(/S\d+/i);
+  return codeMatch ? codeMatch[0].toUpperCase() : null;
 }
 
-export interface CalculContenant {
-  contenance: '1L' | '3L' | '12L';
-  quantite: number;
-  litres: number;
+/**
+ * Détermine si une couleur Schmidt nécessite une sous-couche grise
+ * 
+ * @param productHandle - Handle du produit Shopify
+ * @returns true si sous-couche grise nécessaire, false sinon
+ * 
+ * @see COULEURS_SCHMIDT_SOUS_COUCHE_GRISE
+ */
+export function necessiteSousCoucheGrise(productHandle: string): boolean {
+  const codeSchmidt = extraireCodeSchmidt(productHandle);
+  if (!codeSchmidt) return false;
+  
+  return COULEURS_SCHMIDT_SOUS_COUCHE_GRISE.includes(codeSchmidt);
 }
 
-export interface CalculPeinture {
-  couleur: Couleur;
-  surfaceTotale: number;
-  litresNecessaires: number;
-  litresCommandes: number;
-  contenants: CalculContenant[];
-  prixEstime?: number;
+// ==============================================================================
+// INTERROGATION SHOPIFY
+// ==============================================================================
+
+/**
+ * Récupère les variants disponibles pour un produit depuis Shopify
+ * 
+ * @param productHandle - Handle du produit Shopify
+ * @returns Liste des variants du produit
+ * @throws Error si le produit n'existe pas ou si l'API Shopify échoue
+ * 
+ * @remarks
+ * Cette fonction fait un appel à l'API Shopify Storefront.
+ * En production, ajouter un système de cache pour limiter les appels API.
+ */
+async function getVariantsShopify(productHandle: string): Promise<ShopifyVariant[]> {
+  try {
+    // TODO: Remplacer par l'appel réel à votre API Shopify
+    const response = await fetch(`/api/shopify/products/${productHandle}/variants`);
+    
+    if (!response.ok) {
+      throw new Error(`Erreur Shopify API : ${response.status} - ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    return data.variants || [];
+  } catch (error) {
+    console.error(`[Calcul] Erreur récupération variants pour ${productHandle}:`, error);
+    throw new Error(`Impossible de récupérer les variants du produit ${productHandle}`);
+  }
 }
 
-export interface CalculSousCouche {
-  type: 'blanche' | 'grise';
-  handle: string;
-  surfaceTotale: number;
-  litresNecessaires: number;
-  litresCommandes: number;
-  contenants: CalculContenant[];
-  prixEstime?: number;
-}
-
-export interface CalculKit {
-  type: 'petite' | 'grande';
-  handle: string;
-  titre: string;
-  prix: number;
-}
-
-export interface ResultatCalcul {
-  peintures: CalculPeinture[];
-  sousCouches: CalculSousCouche[];
-  kit: CalculKit;
-  surfaceTotale: number;
-  resume: {
-    nombrePieces: number;
-    nombreCouleurs: number;
-    surfaceMurs: number;
-    surfacePlafonds: number;
-    surfaceBoiseries: number;
+/**
+ * Extrait les contenants disponibles depuis les variants Shopify
+ * 
+ * @param productHandle - Handle du produit Shopify
+ * @param gamme - Gamme souhaitée ("Biosourcée" ou "Biosourcée et dépolluante")
+ * @param finition - Finition souhaitée ("Mat", "Velours", "Satin") - optionnel pour sous-couche
+ * @returns Contenants disponibles triés par taille décroissante
+ * 
+ * @example
+ * const contenants = await getContenantsDisponibles(
+ *   "blanc-vrai-peinture-biosourcee",
+ *   "Biosourcée",
+ *   "Mat"
+ * );
+ * // → [{ contenance: "12L", litres: 12, variantId: "...", price: 199.9, ... }, ...]
+ */
+export async function getContenantsDisponibles(
+  productHandle: string,
+  gamme: Gamme,
+  finition?: Finition
+): Promise<ContenantsDisponibles> {
+  const variants = await getVariantsShopify(productHandle);
+  
+  const contenances = CONTENANCES_DISPONIBLES
+    .map(({ contenance, litres }) => {
+      // Filtrer les variants correspondant à la gamme, finition et contenance
+      const variant = variants.find((v) => {
+        const gammeMatch = v.selectedOptions.find(
+          (opt) => opt.name === 'Gamme' && opt.value === gamme
+        );
+        
+        const finitionMatch = finition
+          ? v.selectedOptions.find(
+              (opt) => opt.name === 'Finition' && opt.value === finition
+            )
+          : true; // Pour sous-couche, pas de finition
+        
+        const contenanceMatch = v.selectedOptions.find(
+          (opt) => opt.name === 'Contenance' && opt.value === contenance
+        );
+        
+        return gammeMatch && finitionMatch && contenanceMatch;
+      });
+      
+      if (!variant) return null;
+      
+      return {
+        contenance,
+        litres,
+        variantId: variant.id,
+        price: parseFloat(variant.price.amount),
+        availableForSale: variant.availableForSale,
+      };
+    })
+    .filter((c): c is NonNullable<typeof c> => c !== null)
+    .filter((c) => c.availableForSale); // Filtrer les variants disponibles uniquement
+  
+  return {
+    productHandle,
+    contenances,
   };
 }
 
-// ==================== FONCTIONS UTILITAIRES ====================
+// ==============================================================================
+// CALCUL DES QUANTITÉS
+// ==============================================================================
 
 /**
- * Détermine le type de sous-couche recommandé selon la base de la couleur
+ * Calcule les litres de peinture nécessaires pour une surface donnée
+ * 
+ * @param surface - Surface à peindre (en m²)
+ * @param nombreCouches - Nombre de couches à appliquer
+ * @returns Litres nécessaires arrondis selon règle x,5
+ * 
+ * @description
+ * Algorithme de calcul :
+ * 1. Calcul brut : (surface / rendement) × nombreCouches
+ * 2. Marge de sécurité : litresBruts × (1 + 5%)
+ * 3. Arrondi selon règle x,5 :
+ *    - Si décimale < 0,5 → arrondir au litre inférieur
+ *    - Si décimale >= 0,5 → arrondir au litre supérieur
+ * 
+ * @example
+ * // Calcul pour 55 m² avec 2 couches
+ * calculerLitresNecessaires(55, 2);
+ * // → Brut : (55 / 10) × 2 = 11 L
+ * // → Marge : 11 × 1,05 = 11,55 L
+ * // → Arrondi : 12 L (0,55 >= 0,5)
+ * 
+ * @example
+ * // Calcul pour 54 m² avec 2 couches
+ * calculerLitresNecessaires(54, 2);
+ * // → Brut : (54 / 10) × 2 = 10,8 L
+ * // → Marge : 10,8 × 1,05 = 11,34 L
+ * // → Arrondi : 11 L (0,34 < 0,5)
  */
-export function determinerTypeSousCouche(base: string): 'blanche' | 'grise' {
-  // Bases nécessitant une sous-couche grise (couleurs foncées/vives)
-  const basesGrises = ['C', 'BLC'];
-  return basesGrises.includes(base) ? 'grise' : 'blanche';
+export function calculerLitresNecessaires(
+  surface: number,
+  nombreCouches: number
+): {
+  litresBruts: number;
+  litresAvecMarge: number;
+  litresArrondis: number;
+} {
+  // Étape 1 : Calcul brut
+  // Formule : (surface en m² / rendement en m²/L/couche) × nombre de couches
+  const litresBruts = (surface / RENDEMENT_PEINTURE) * nombreCouches;
+  
+  // Étape 2 : Application marge de sécurité 5%
+  const litresAvecMarge = litresBruts * (1 + MARGE_SECURITE);
+  
+  // Étape 3 : Arrondi selon règle x,5
+  const partieEntiere = Math.floor(litresAvecMarge);
+  const decimale = litresAvecMarge - partieEntiere;
+  
+  const litresArrondis =
+    decimale < SEUIL_ARRONDI
+      ? partieEntiere // Arrondir au litre inférieur
+      : partieEntiere + 1; // Arrondir au litre supérieur
+  
+  return {
+    litresBruts: Math.round(litresBruts * 100) / 100, // 2 décimales
+    litresAvecMarge: Math.round(litresAvecMarge * 100) / 100, // 2 décimales
+    litresArrondis,
+  };
 }
 
 /**
- * Calcule les litres nécessaires pour une surface donnée
+ * Optimise la répartition des contenants selon l'algorithme glouton
+ * 
+ * @param litresNecessaires - Litres de peinture nécessaires (déjà arrondis)
+ * @param contenantsDisponibles - Contenants disponibles pour ce produit
+ * @returns Liste des contenants optimisés avec quantités et prix
+ * 
+ * @description
+ * Algorithme glouton (greedy algorithm) :
+ * 1. Remplir avec le plus grand contenant tant que possible (12L)
+ * 2. Remplir avec le contenant moyen tant que possible (3L)
+ * 3. Compléter avec le plus petit contenant (1L)
+ * 
+ * @remarks
+ * L'algorithme glouton ne donne pas toujours le coût optimal, mais il minimise
+ * le nombre de pots, ce qui est plus pratique pour l'utilisateur.
+ * 
+ * @example
+ * // Pour 11 L
+ * optimiserContenants(11, contenants);
+ * // → 3×3L (9L) + 2×1L (2L) = 11L avec 5 pots
+ * 
+ * // Pour 12 L
+ * optimiserContenants(12, contenants);
+ * // → 1×12L = 12L avec 1 pot (optimal)
  */
-export function calculerLitresNecessaires(surface: number, rendement: number): number {
-  return Math.ceil((surface / rendement) * 10) / 10; // Arrondi au dixième supérieur
-}
-
-/**
- * Optimise la sélection des contenants pour minimiser le gaspillage
- * Utilise un algorithme glouton du plus grand au plus petit
- */
-export function optimiserContenants(litresNecessaires: number): CalculContenant[] {
+export function optimiserContenants(
+  litresNecessaires: number,
+  contenantsDisponibles: ContenantsDisponibles
+): CalculContenant[] {
   const contenants: CalculContenant[] = [];
   let litresRestants = litresNecessaires;
-
-  for (const { contenance, litres } of CONTENANTS_DISPONIBLES) {
+  
+  // Algorithme glouton : du plus grand au plus petit
+  for (const contenant of contenantsDisponibles.contenances) {
     if (litresRestants <= 0) break;
-
-    // Calculer combien de ce contenant on peut utiliser
-    const quantite = Math.floor(litresRestants / litres);
+    
+    const quantite = Math.floor(litresRestants / contenant.litres);
     
     if (quantite > 0) {
       contenants.push({
-        contenance,
+        contenance: contenant.contenance,
         quantite,
-        litres: quantite * litres,
+        litres: quantite * contenant.litres,
+        variantId: contenant.variantId,
+        prixUnitaire: contenant.price,
+        prixTotal: quantite * contenant.price,
       });
-      litresRestants -= quantite * litres;
+      
+      litresRestants -= quantite * contenant.litres;
     }
   }
-
-  // S'il reste des litres, ajouter le plus petit contenant nécessaire
+  
+  // S'il reste des litres (< 1L), ajouter 1 pot de 1L
   if (litresRestants > 0) {
-    // Trouver le plus petit contenant qui couvre les litres restants
-    for (let i = CONTENANTS_DISPONIBLES.length - 1; i >= 0; i--) {
-      const { contenance, litres } = CONTENANTS_DISPONIBLES[i];
-      if (litres >= litresRestants) {
-        // Vérifier si on a déjà ce contenant
-        const existant = contenants.find(c => c.contenance === contenance);
-        if (existant) {
-          existant.quantite += 1;
-          existant.litres += litres;
-        } else {
-          contenants.push({
-            contenance,
-            quantite: 1,
-            litres,
-          });
-        }
-        break;
+    const pot1L = contenantsDisponibles.contenances.find(
+      (c) => c.contenance === '1L'
+    );
+    
+    if (pot1L) {
+      const existant1L = contenants.find((c) => c.contenance === '1L');
+      
+      if (existant1L) {
+        existant1L.quantite += 1;
+        existant1L.litres += 1;
+        existant1L.prixTotal += pot1L.price;
+      } else {
+        contenants.push({
+          contenance: '1L',
+          quantite: 1,
+          litres: 1,
+          variantId: pot1L.variantId,
+          prixUnitaire: pot1L.price,
+          prixTotal: pot1L.price,
+        });
       }
     }
   }
-
-  // Trier par taille décroissante pour l'affichage
+  
+  // Trier par taille décroissante pour l'affichage (12L > 3L > 1L)
   return contenants.sort((a, b) => {
     const ordre = { '12L': 0, '3L': 1, '1L': 2 };
     return ordre[a.contenance] - ordre[b.contenance];
   });
 }
 
-/**
- * Calcule le total de litres commandés
- */
-export function calculerLitresCommandes(contenants: CalculContenant[]): number {
-  return contenants.reduce((total, c) => total + c.litres, 0);
-}
-
-// ==================== FONCTION PRINCIPALE ====================
+// ==============================================================================
+// CALCUL PRINCIPAL
+// ==============================================================================
 
 /**
- * Calcule les quantités de peinture et sous-couche pour toutes les pièces
+ * Calcule les quantités de peinture pour toutes les pièces
+ * 
+ * @param pieces - Liste des pièces avec leurs surfaces
+ * @returns Résultat complet du calcul (sous-couches, finitions, prix total)
+ * 
+ * @description
+ * Processus de calcul :
+ * 1. Agréger les surfaces par couleur (productHandle + gamme + finition)
+ * 2. Déterminer le type de sous-couche nécessaire (blanche ou grise Schmidt)
+ * 3. Calculer les litres nécessaires pour chaque couleur
+ * 4. Récupérer les variants disponibles depuis Shopify
+ * 5. Optimiser les contenants
+ * 6. Calculer les prix totaux
+ * 
+ * @example
+ * const pieces = [
+ *   {
+ *     type: 'chambre',
+ *     nom: 'Chambre parentale',
+ *     surfaces: [
+ *       { type: 'plafond', surface: 20, productHandle: 'blanc-vrai-...', ... },
+ *       { type: 'mur', surface: 45, productHandle: 'schmidt-navy-...', ... },
+ *     ],
+ *   },
+ * ];
+ * 
+ * const resultat = await calculerQuantitesPeinture(pieces);
+ * // → { sousCouches: [...], finitions: [...], prixTotal: 450.80, ... }
  */
-export function calculerQuantites(pieces: Piece[]): ResultatCalcul {
-  // 1. Agréger les surfaces par couleur
-  const surfacesParCouleur = agregerSurfacesParCouleur(pieces);
-
-  // 2. Calculer les peintures
-  const peintures = calculerPeintures(surfacesParCouleur);
-
-  // 3. Calculer les sous-couches
-  const sousCouches = calculerSousCouches(surfacesParCouleur);
-
-  // 4. Calculer la surface totale et déterminer le kit
-  const surfaceTotale = calculerSurfaceTotale(pieces);
-  const kit = determinerKit(surfaceTotale);
-
-  // 5. Calculer le résumé
-  const resume = calculerResume(pieces);
-
-  return {
-    peintures,
-    sousCouches,
-    kit,
-    surfaceTotale,
-    resume,
-  };
-}
-
-/**
- * Agrège les surfaces par couleur (même couleur = même calcul)
- */
-function agregerSurfacesParCouleur(pieces: Piece[]): SurfaceParCouleur[] {
-  const map = new Map<string, SurfaceParCouleur>();
-
+export async function calculerQuantitesPeinture(
+  pieces: Piece[]
+): Promise<ResultatCalcul> {
+  // ===========================================================================
+  // ÉTAPE 1 : AGRÉGER LES SURFACES PAR COULEUR
+  // ===========================================================================
+  
+  const surfacesParCouleur = new Map<string, Surface[]>();
+  
   for (const piece of pieces) {
-    // Murs
-    const keyMurs = piece.couleurMurs.productHandle;
-    if (!map.has(keyMurs)) {
-      map.set(keyMurs, {
-        couleur: piece.couleurMurs,
-        surfaceTotale: 0,
-        details: [],
-      });
-    }
-    const entryMurs = map.get(keyMurs)!;
-    entryMurs.surfaceTotale += piece.surfaceMurs;
-    entryMurs.details.push({
-      pieceNom: piece.nom,
-      type: 'murs',
-      surface: piece.surfaceMurs,
-    });
-
-    // Plafond
-    if (piece.surfacePlafond && piece.couleurPlafond) {
-      const keyPlafond = piece.couleurPlafond.productHandle;
-      if (!map.has(keyPlafond)) {
-        map.set(keyPlafond, {
-          couleur: piece.couleurPlafond,
-          surfaceTotale: 0,
-          details: [],
-        });
+    for (const surface of piece.surfaces) {
+      // Clé unique : productHandle + gamme + finition
+      const cle = `${surface.productHandle}|${surface.gamme}|${surface.finition}`;
+      
+      if (!surfacesParCouleur.has(cle)) {
+        surfacesParCouleur.set(cle, []);
       }
-      const entryPlafond = map.get(keyPlafond)!;
-      entryPlafond.surfaceTotale += piece.surfacePlafond;
-      entryPlafond.details.push({
-        pieceNom: piece.nom,
-        type: 'plafond',
-        surface: piece.surfacePlafond,
-      });
-    }
-
-    // Boiseries
-    if (piece.surfaceBoiseries && piece.couleurBoiseries) {
-      const keyBoiseries = piece.couleurBoiseries.productHandle;
-      if (!map.has(keyBoiseries)) {
-        map.set(keyBoiseries, {
-          couleur: piece.couleurBoiseries,
-          surfaceTotale: 0,
-          details: [],
-        });
-      }
-      const entryBoiseries = map.get(keyBoiseries)!;
-      entryBoiseries.surfaceTotale += piece.surfaceBoiseries;
-      entryBoiseries.details.push({
-        pieceNom: piece.nom,
-        type: 'boiseries',
-        surface: piece.surfaceBoiseries,
-      });
+      
+      surfacesParCouleur.get(cle)!.push(surface);
     }
   }
-
-  return Array.from(map.values());
-}
-
-/**
- * Calcule les quantités de peinture pour chaque couleur
- */
-function calculerPeintures(surfacesParCouleur: SurfaceParCouleur[]): CalculPeinture[] {
-  return surfacesParCouleur.map(({ couleur, surfaceTotale, details }) => {
-    const litresNecessaires = calculerLitresNecessaires(surfaceTotale, RENDEMENT_PEINTURE);
-    const contenants = optimiserContenants(litresNecessaires);
-    const litresCommandes = calculerLitresCommandes(contenants);
-
-    return {
-      couleur,
+  
+  // ===========================================================================
+  // ÉTAPE 2 : DÉTERMINER LES SOUS-COUCHES NÉCESSAIRES
+  // ===========================================================================
+  
+  const sousCouchesNecessaires = new Map<string, number>(); // handle → surface totale
+  
+  for (const [cle, surfaces] of surfacesParCouleur.entries()) {
+    const [productHandle] = cle.split('|');
+    const surfaceTotale = surfaces.reduce((sum, s) => sum + s.surface, 0);
+    
+    // Déterminer le type de sous-couche
+    const sousCoucheHandle = necessiteSousCoucheGrise(productHandle)
+      ? SOUS_COUCHE_GRISE_HANDLE
+      : SOUS_COUCHE_BLANCHE_HANDLE;
+    
+    // Ajouter ou cumuler la surface pour cette sous-couche
+    const surfaceActuelle = sousCouchesNecessaires.get(sousCoucheHandle) || 0;
+    sousCouchesNecessaires.set(sousCoucheHandle, surfaceActuelle + surfaceTotale);
+  }
+  
+  // ===========================================================================
+  // ÉTAPE 3 : CALCULER LES SOUS-COUCHES
+  // ===========================================================================
+  
+  const calculsSousCouches: CalculPeinture[] = [];
+  
+  for (const [sousCoucheHandle, surfaceTotale] of sousCouchesNecessaires.entries()) {
+    const { litresBruts, litresAvecMarge, litresArrondis } =
+      calculerLitresNecessaires(surfaceTotale, NOMBRE_COUCHES_SOUS_COUCHE);
+    
+    // Récupérer les contenants disponibles (pas de gamme/finition pour sous-couche)
+    const contenantsDisponibles = await getContenantsDisponibles(
+      sousCoucheHandle,
+      'Biosourcée' // Sous-couches uniquement en Biosourcée
+    );
+    
+    const contenants = optimiserContenants(litresArrondis, contenantsDisponibles);
+    
+    const prixTotal = contenants.reduce((sum, c) => sum + c.prixTotal, 0);
+    
+    calculsSousCouches.push({
+      productHandle: sousCoucheHandle,
+      couleurTitre: sousCoucheHandle.includes('grise') ? 'Sous-couche grise' : 'Sous-couche blanche',
+      gamme: 'Biosourcée',
+      finition: 'Mat', // Les sous-couches sont toujours mates
+      typePeinture: 'sous-couche',
       surfaceTotale,
-      litresNecessaires,
-      litresCommandes,
+      nombreCouches: NOMBRE_COUCHES_SOUS_COUCHE,
+      litresBruts,
+      litresAvecMarge,
+      litresArrondis,
       contenants,
-    };
-  });
-}
-
-/**
- * Calcule les quantités de sous-couche par type (blanche/grise)
- */
-function calculerSousCouches(surfacesParCouleur: SurfaceParCouleur[]): CalculSousCouche[] {
-  // Agréger les surfaces par type de sous-couche
-  const surfaceBlanche = surfacesParCouleur
-    .filter(s => determinerTypeSousCouche(s.couleur.base) === 'blanche')
-    .reduce((sum, s) => sum + s.surfaceTotale, 0);
-
-  const surfaceGrise = surfacesParCouleur
-    .filter(s => determinerTypeSousCouche(s.couleur.base) === 'grise')
-    .reduce((sum, s) => sum + s.surfaceTotale, 0);
-
-  const sousCouches: CalculSousCouche[] = [];
-
-  if (surfaceBlanche > 0) {
-    const litresNecessaires = calculerLitresNecessaires(surfaceBlanche, RENDEMENT_SOUS_COUCHE);
-    const contenants = optimiserContenants(litresNecessaires);
-    const litresCommandes = calculerLitresCommandes(contenants);
-
-    sousCouches.push({
-      type: 'blanche',
-      handle: SOUS_COUCHE_HANDLES.blanche,
-      surfaceTotale: surfaceBlanche,
-      litresNecessaires,
-      litresCommandes,
-      contenants,
+      prixTotal,
     });
   }
-
-  if (surfaceGrise > 0) {
-    const litresNecessaires = calculerLitresNecessaires(surfaceGrise, RENDEMENT_SOUS_COUCHE);
-    const contenants = optimiserContenants(litresNecessaires);
-    const litresCommandes = calculerLitresCommandes(contenants);
-
-    sousCouches.push({
-      type: 'grise',
-      handle: SOUS_COUCHE_HANDLES.grise,
-      surfaceTotale: surfaceGrise,
-      litresNecessaires,
-      litresCommandes,
+  
+  // ===========================================================================
+  // ÉTAPE 4 : CALCULER LES PEINTURES DE FINITION
+  // ===========================================================================
+  
+  const calculsFinitions: CalculPeinture[] = [];
+  
+  for (const [cle, surfaces] of surfacesParCouleur.entries()) {
+    const [productHandle, gamme, finition] = cle.split('|') as [string, Gamme, Finition];
+    
+    const surfaceTotale = surfaces.reduce((sum, s) => sum + s.surface, 0);
+    const couleurTitre = surfaces[0].couleurTitre;
+    
+    const { litresBruts, litresAvecMarge, litresArrondis } =
+      calculerLitresNecessaires(surfaceTotale, NOMBRE_COUCHES_FINITION);
+    
+    // Récupérer les contenants disponibles avec gamme et finition
+    const contenantsDisponibles = await getContenantsDisponibles(
+      productHandle,
+      gamme,
+      finition
+    );
+    
+    const contenants = optimiserContenants(litresArrondis, contenantsDisponibles);
+    
+    const prixTotal = contenants.reduce((sum, c) => sum + c.prixTotal, 0);
+    
+    calculsFinitions.push({
+      productHandle,
+      couleurTitre,
+      gamme,
+      finition,
+      typePeinture: 'finition',
+      surfaceTotale,
+      nombreCouches: NOMBRE_COUCHES_FINITION,
+      litresBruts,
+      litresAvecMarge,
+      litresArrondis,
       contenants,
+      prixTotal,
     });
   }
-
-  return sousCouches;
-}
-
-/**
- * Calcule la surface totale de toutes les pièces
- */
-function calculerSurfaceTotale(pieces: Piece[]): number {
-  return pieces.reduce((total, piece) => {
-    let surface = piece.surfaceMurs;
-    if (piece.surfacePlafond) surface += piece.surfacePlafond;
-    if (piece.surfaceBoiseries) surface += piece.surfaceBoiseries;
-    return total + surface;
-  }, 0);
-}
-
-/**
- * Détermine le kit matériel selon la surface totale
- */
-function determinerKit(surfaceTotale: number): CalculKit {
-  if (surfaceTotale <= SEUIL_SURFACE_KIT) {
-    return {
-      type: 'petite',
-      handle: KIT_HANDLES.petiteSurface,
-      titre: 'Kit matériel de peinture - Petite surface',
-      prix: 29.90,
-    };
-  } else {
-    return {
-      type: 'grande',
-      handle: KIT_HANDLES.grandeSurface,
-      titre: 'Kit matériel de peinture - Moyenne et grande surface',
-      prix: 40.90,
-    };
-  }
-}
-
-/**
- * Calcule le résumé des surfaces
- */
-function calculerResume(pieces: Piece[]) {
-  const surfaceMurs = pieces.reduce((sum, p) => sum + p.surfaceMurs, 0);
-  const surfacePlafonds = pieces.reduce((sum, p) => sum + (p.surfacePlafond || 0), 0);
-  const surfaceBoiseries = pieces.reduce((sum, p) => sum + (p.surfaceBoiseries || 0), 0);
-
-  // Compter les couleurs uniques
-  const couleursUniques = new Set<string>();
-  pieces.forEach(p => {
-    couleursUniques.add(p.couleurMurs.productHandle);
-    if (p.couleurPlafond) couleursUniques.add(p.couleurPlafond.productHandle);
-    if (p.couleurBoiseries) couleursUniques.add(p.couleurBoiseries.productHandle);
-  });
-
+  
+  // ===========================================================================
+  // ÉTAPE 5 : CALCULER LES TOTAUX
+  // ===========================================================================
+  
+  const surfaceTotaleGlobale = pieces.reduce(
+    (sum, piece) =>
+      sum + piece.surfaces.reduce((s, surface) => s + surface.surface, 0),
+    0
+  );
+  
+  const litresTotaux =
+    calculsSousCouches.reduce((sum, c) => sum + c.litresArrondis, 0) +
+    calculsFinitions.reduce((sum, c) => sum + c.litresArrondis, 0);
+  
+  const prixTotal =
+    calculsSousCouches.reduce((sum, c) => sum + c.prixTotal, 0) +
+    calculsFinitions.reduce((sum, c) => sum + c.prixTotal, 0);
+  
+  const detailsPieces = pieces.map((piece) => ({
+    piece,
+    surfaceTotale: piece.surfaces.reduce((sum, s) => sum + s.surface, 0),
+  }));
+  
+  // ===========================================================================
+  // RÉSULTAT FINAL
+  // ===========================================================================
+  
   return {
-    nombrePieces: pieces.length,
-    nombreCouleurs: couleursUniques.size,
-    surfaceMurs,
-    surfacePlafonds,
-    surfaceBoiseries,
+    sousCouches: calculsSousCouches,
+    finitions: calculsFinitions,
+    surfaceTotaleGlobale,
+    litresTotaux,
+    prixTotal: Math.round(prixTotal * 100) / 100, // Arrondir à 2 décimales
+    detailsPieces,
   };
 }
