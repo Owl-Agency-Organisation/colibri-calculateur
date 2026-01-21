@@ -100,11 +100,17 @@ export default function SelectionPiecePage() {
             className="group relative bg-white rounded-2xl border-2 border-gray-100 overflow-hidden hover:border-primary-500 hover:shadow-xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
           >
             {/* Image Container */}
-            <div className="aspect-square overflow-hidden bg-gray-100">
+            <div className="aspect-square overflow-hidden bg-gray-100 relative">
               <img 
                 src={piece.image} 
                 alt={piece.label}
+                loading="eager"
+                referrerPolicy="no-referrer"
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = `https://placehold.co/400x400?text=${encodeURIComponent(piece.label)}`;
+                }}
               />
               {/* Overlay on hover */}
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
