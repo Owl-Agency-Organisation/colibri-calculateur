@@ -9,9 +9,11 @@ export default function Home() {
         <div className="text-center">
           {/* Logo */}
           <div className="flex justify-center mb-8">
-            <div className="w-20 h-20 bg-primary-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-4xl">C</span>
-            </div>
+            <img 
+              src="https://cdn.shopify.com/s/files/1/0971/0436/3865/files/logo-colibri-lettre-ligne-gris.png?v=1761219657" 
+              alt="Colibri Logo" 
+              className="h-24 w-auto object-contain"
+            />
           </div>
 
           {/* Title */}
