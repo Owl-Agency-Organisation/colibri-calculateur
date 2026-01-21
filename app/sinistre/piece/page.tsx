@@ -13,37 +13,37 @@ const TYPES_PIECES: { value: TypePiece; label: string; image: string }[] = [
   { 
     value: 'piece-de-vie', 
     label: 'Pièce de vie', 
-    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAsurances_P01_vie.png?v=1769010405' 
+    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAssurances_P01_vie.png?v=1769015678' 
   },
   { 
     value: 'chambre', 
     label: 'Chambre', 
-    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAsurances_P02_chambre.png?v=1769010404' 
+    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAssurances_P02_chambre.png?v=1769015679' 
   },
   { 
     value: 'cuisine', 
     label: 'Cuisine', 
-    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAsurances_P03_cuisine.png?v=1769010405' 
+    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAssurances_P03_cuisine.png?v=1769015679' 
   },
   { 
     value: 'salle-de-bain', 
     label: 'Salle de bain', 
-    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAsurances_P04_salledebain.png?v=1769010405' 
+    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAssurances_P04_salledebain.png?v=1769015678' 
   },
   { 
     value: 'toilettes', 
     label: 'Toilettes', 
-    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAsurances_P05_toilettes.png?v=1769010405' 
+    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAssurances_P05_toilettes.png?v=1769015679' 
   },
   { 
     value: 'entree', 
     label: 'Entrée', 
-    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAsurances_P06_entree.png?v=1769010406' 
+    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAssurances_P06_entree.png?v=1769015680' 
   },
   { 
     value: 'couloir', 
     label: 'Couloir', 
-    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAsurances_P07_couloir.png?v=1769010405' 
+    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAssurances_P07_couloir.png?v=1769015679' 
   },
 ];
 
