@@ -12,13 +12,13 @@ export default function Home() {
             <img 
               src="https://cdn.shopify.com/s/files/1/0971/0436/3865/files/logo-colibri-lettre-ligne-gris.png?v=1761219657" 
               alt="Colibri Logo" 
-              className="h-24 w-auto object-contain"
+              className="h-12 w-auto object-contain"
             />
           </div>
 
           {/* Title */}
           <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
-            Colibri Assurances
+            Assurances
           </h1>
           <p className="text-xl text-gray-600 mb-2">
             Partenaire de votre assureur
