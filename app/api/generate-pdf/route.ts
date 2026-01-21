@@ -387,11 +387,13 @@ function generatePdfHtml(
         <div class="piece-item">
           <h4>${piece.nom} <span class="badge badge-green">${piece.typePiece}</span></h4>
           <div class="piece-details">
+            ${piece.murs.map((mur, index) => `
             <div>
-              <label>Murs</label>
-              <strong>${piece.surfaceMurs} m²</strong>
-              <div style="color: #666;">${piece.couleurMurs.titre}</div>
+              <label>Mur ${index + 1}</label>
+              <strong>${mur.surface} m²</strong>
+              <div style="color: #666;">${mur.couleur.titre}</div>
             </div>
+            `).join('')}
             ${piece.surfacePlafond && piece.couleurPlafond ? `
             <div>
               <label>Plafond</label>
