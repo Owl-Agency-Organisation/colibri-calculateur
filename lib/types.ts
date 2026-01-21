@@ -50,6 +50,17 @@ export interface Surface {
 }
 
 // ========== COULEUR ==========
+export interface ShopifyVariant {
+  id: string;
+  title: string;
+  sku: string;
+  price: {
+    amount: string;
+    currencyCode: string;
+  };
+  availableForSale: boolean;
+}
+
 export interface Couleur {
   productId: string;
   productHandle: string;
@@ -59,6 +70,7 @@ export interface Couleur {
   sousCouche: 'grise' | 'blanche';
   codeHex: string;
   imageUrl: string;
+  variants?: ShopifyVariant[];
 }
 
 // ========== CALCUL ==========

@@ -95,11 +95,15 @@ export async function GET(
       }
     }
 
+    // Formater les variants pour le frontend
+    const variants = product.variants?.edges?.map((edge: any) => edge.node) || [];
+
     return NextResponse.json({
       ...product,
       base,
       sousCouche,
       codeHex: metafields.code_hexadecimal || '#FFFFFF',
+      variants,
     });
   } catch (error) {
     console.error('Error fetching product:', error);
