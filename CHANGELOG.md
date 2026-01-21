@@ -5,6 +5,18 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [1.3.1] - 2026-01-21
+
+### Corrigé
+- **Intégration Shopify** : Simplification de l'API route `/api/shopify/products/variants` pour utiliser `lib/shopify.ts` (GraphQL Storefront API) au lieu de `execSync` avec le MCP CLI.
+- **Performance** : Amélioration de la rapidité et de la fiabilité des appels API Shopify.
+- **Cache** : Intégration du cache Next.js (1 heure) pour réduire la latence et les appels API.
+
+### Technique
+- Remplacement de `execSync` par `getProduct()` de `lib/shopify.ts` dans l'API route.
+- Suppression du parsing de texte + JSON pour un mapping TypeScript propre.
+- Meilleure gestion d'erreur avec retour 404 si produit introuvable.
+
 ## [1.2.0] - 2026-01-21
 
 ### Ajouté

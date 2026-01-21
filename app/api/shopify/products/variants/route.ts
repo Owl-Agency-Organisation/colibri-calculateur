@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { execSync } from 'child_process';
+import { getProduct } from '@/lib/shopify';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -10,25 +10,37 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Appel au MCP Shopify via la CLI Manus
-    const command = `manus-mcp-cli tool call shopify_get_product --server shopify-mcp-server-colibri --input '{"handle": "${handle}"}'`;
-    const output = execSync(command, { encoding: 'utf-8' });
+    const { product } = await getProduct(handle);
     
-    // Le MCP retourne souvent du texte avant le JSON, on essaie de parser le JSON
-    const jsonMatch = output.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('Invalid MCP output');
+    if (!product) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
     
-    const productData = JSON.parse(jsonMatch[0]);
+    // Mapper les variants au format attendu par l'algorithme de calcul
+    const variants = product.variants.edges.map((edge: any) => ({
+      id: edge.node.id,
+      title: edge.node.title,
+      sku: edge.node.sku,
+      price: {
+        amount: edge.node.price.amount,
+        currencyCode: edge.node.price.currencyCode,
+      },
+      availableForSale: edge.node.availableForSale,
+      selectedOptions: edge.node.selectedOptions,
+    }));
     
-    // On retourne les variants avec les infos essentielles (ID, prix, stock, contenance)
     return NextResponse.json({ 
-      variants: productData.variants || [],
-      metafields: productData.metafields || []
+      variants,
+      metafields: {
+        base: product.metafield_base?.value,
+        hex: product.metafield_hex?.value,
+      }
     });
   } catch (error) {
     console.error('Shopify API Error:', error);
-    return NextResponse.json({ error: 'Failed to fetch Shopify data' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch Shopify data' },
+      { status: 500 }
+    );
   }
 }
