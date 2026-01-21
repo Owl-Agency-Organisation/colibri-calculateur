@@ -8,15 +8,43 @@ import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
 import { getStoredPieces } from '@/lib/store/sinistreStore';
 import type { TypePiece } from '@/lib/types';
 
-// Types de pièces disponibles avec leurs icônes
-const TYPES_PIECES: { value: TypePiece; label: string; icon: string }[] = [
-  { value: 'piece-de-vie', label: 'Pièce de vie', icon: '🛋️' },
-  { value: 'chambre', label: 'Chambre', icon: '🛏️' },
-  { value: 'cuisine', label: 'Cuisine', icon: '🍳' },
-  { value: 'salle-de-bain', label: 'Salle de bain', icon: '🚿' },
-  { value: 'toilettes', label: 'Toilettes', icon: '🚽' },
-  { value: 'entree', label: 'Entrée', icon: '🚪' },
-  { value: 'couloir', label: 'Couloir', icon: '↔️' },
+// Types de pièces disponibles avec leurs images
+const TYPES_PIECES: { value: TypePiece; label: string; image: string }[] = [
+  { 
+    value: 'piece-de-vie', 
+    label: 'Pièce de vie', 
+    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAssurances_P01_vie.png?v=1769015678' 
+  },
+  { 
+    value: 'chambre', 
+    label: 'Chambre', 
+    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAssurances_P02_chambre.png?v=1769015679' 
+  },
+  { 
+    value: 'cuisine', 
+    label: 'Cuisine', 
+    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAssurances_P03_cuisine.png?v=1769015679' 
+  },
+  { 
+    value: 'salle-de-bain', 
+    label: 'Salle de bain', 
+    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAssurances_P04_salledebain.png?v=1769015678' 
+  },
+  { 
+    value: 'toilettes', 
+    label: 'Toilettes', 
+    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAssurances_P05_toilettes.png?v=1769015679' 
+  },
+  { 
+    value: 'entree', 
+    label: 'Entrée', 
+    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAssurances_P06_entree.png?v=1769015680' 
+  },
+  { 
+    value: 'couloir', 
+    label: 'Couloir', 
+    image: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/ColibriAssurances_P07_couloir.png?v=1769015679' 
+  },
 ];
 
 export default function SelectionPiecePage() {
@@ -64,27 +92,35 @@ export default function SelectionPiecePage() {
       </div>
 
       {/* Grid of room types */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
         {TYPES_PIECES.map((piece) => (
           <button
             key={piece.value}
             onClick={() => handleSelectPiece(piece.value)}
-            className="group relative bg-white rounded-xl border-2 border-gray-200 p-6 hover:border-primary-500 hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+            className="group relative bg-white rounded-2xl border-2 border-gray-100 overflow-hidden hover:border-primary-500 hover:shadow-xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
           >
-            {/* Icon */}
-            <div className="text-5xl mb-3 group-hover:scale-110 transition-transform duration-200">
-              {piece.icon}
+            {/* Image Container */}
+            <div className="aspect-square overflow-hidden bg-gray-100">
+              <img 
+                src={piece.image} 
+                alt={piece.label}
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+              />
+              {/* Overlay on hover */}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
             </div>
             
-            {/* Label */}
-            <p className="text-sm font-medium text-gray-900 group-hover:text-primary-600">
-              {piece.label}
-            </p>
+            {/* Label Container */}
+            <div className="p-4 bg-white border-t border-gray-50">
+              <p className="text-base font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
+                {piece.label}
+              </p>
+            </div>
 
-            {/* Hover indicator */}
-            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <svg className="w-5 h-5 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
+            {/* Selection Indicator (Checkmark) */}
+            <div className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+              <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
               </svg>
             </div>
           </button>
