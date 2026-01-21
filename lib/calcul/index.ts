@@ -28,6 +28,9 @@ export const SOUS_COUCHE_HANDLES = {
   grise: 'sous-couche-grise-peinture-biosourcee-murs-et-plafonds',
 };
 
+// Contenances standards disponibles (fallback si pas de variants Shopify)
+const CONTENANTS_DISPONIBLES: ('12L' | '3L' | '1L')[] = ['12L', '3L', '1L'];
+
 // ==================== TYPES ====================
 export interface SurfaceParCouleur {
   couleur: Couleur;
