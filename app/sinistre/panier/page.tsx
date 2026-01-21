@@ -17,19 +17,8 @@ const PRODUITS_RENOVATION = [
   { handle: 'cale-a-poncer-auto-agrippante', titre: 'Cale à poncer', prix: 6.40 },
 ];
 
-// Prix estimés par litre (à ajuster selon les vrais prix Shopify)
-const PRIX_PAR_LITRE = {
-  peinture: {
-    '1L': 24.90,
-    '3L': 59.90,
-    '12L': 199.90,
-  },
-  sousCouche: {
-    '1L': 19.90,
-    '3L': 49.90,
-    '12L': 159.90,
-  },
-};
+// Les prix sont désormais calculés dynamiquement via l'API Shopify
+// et injectés dans le résultat du calcul.
 
 interface LignePanier {
   id: string;
@@ -77,22 +66,6 @@ export default function PanierPage() {
     setIsLoaded(true);
   }, [router]);
 
-  // Calculer le prix d'une peinture
-  const calculerPrixPeinture = (peinture: CalculPeinture): number => {
-    return peinture.contenants.reduce((total, c) => {
-      const prixContenant = PRIX_PAR_LITRE.peinture[c.contenance] || 0;
-      return total + (prixContenant * c.quantite);
-    }, 0);
-  };
-
-  // Calculer le prix d'une sous-couche
-  const calculerPrixSousCouche = (sousCouche: CalculSousCouche): number => {
-    return sousCouche.contenants.reduce((total, c) => {
-      const prixContenant = PRIX_PAR_LITRE.sousCouche[c.contenance] || 0;
-      return total + (prixContenant * c.quantite);
-    }, 0);
-  };
-
   // Construire les lignes du panier
   useEffect(() => {
     if (!resultat) return;
@@ -104,7 +77,7 @@ export default function PanierPage() {
       const contenantsStr = peinture.contenants
         .map(c => `${c.quantite}×${c.contenance}`)
         .join(' + ');
-      const prix = calculerPrixPeinture(peinture);
+      const prix = peinture.prixTotal;
 
       lignes.push({
         id: `peinture-${index}`,
@@ -113,7 +86,7 @@ export default function PanierPage() {
         description: `${peinture.surfaceTotale.toFixed(1)} m² - ${contenantsStr}`,
         quantite: peinture.litresCommandes,
         unite: 'L',
-        prixUnitaire: prix / peinture.litresCommandes,
+        prixUnitaire: peinture.litresCommandes > 0 ? prix / peinture.litresCommandes : 0,
         prixTotal: prix,
         imageUrl: peinture.couleur.imageUrl,
         editable: false,
@@ -126,7 +99,7 @@ export default function PanierPage() {
         const contenantsStr = sousCouche.contenants
           .map(c => `${c.quantite}×${c.contenance}`)
           .join(' + ');
-        const prix = calculerPrixSousCouche(sousCouche);
+        const prix = sousCouche.prixTotal;
 
         lignes.push({
           id: `sous-couche-${index}`,
@@ -135,7 +108,7 @@ export default function PanierPage() {
           description: `${sousCouche.surfaceTotale.toFixed(1)} m² - ${contenantsStr}`,
           quantite: sousCouche.litresCommandes,
           unite: 'L',
-          prixUnitaire: prix / sousCouche.litresCommandes,
+          prixUnitaire: sousCouche.litresCommandes > 0 ? prix / sousCouche.litresCommandes : 0,
           prixTotal: prix,
           editable: false,
         });

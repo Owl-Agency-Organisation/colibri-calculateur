@@ -22,36 +22,70 @@ export default function OptionsPage() {
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [resultat, setResultat] = useState<ResultatCalcul | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoadingShopify, setIsLoadingShopify] = useState(false);
   const [optionSousCouche, setOptionSousCouche] = useState(true);
   const [optionKit, setOptionKit] = useState(true);
   const [optionRenovation, setOptionRenovation] = useState(false);
   const [isPeintureExpanded, setIsPeintureExpanded] = useState(false);
 
   useEffect(() => {
-    const stored = getStoredPieces();
-    if (stored.length === 0) {
-      router.push('/sinistre/piece');
-      return;
-    }
-    setPieces(stored);
+    const init = async () => {
+      const stored = getStoredPieces();
+      if (stored.length === 0) {
+        router.push('/sinistre/piece');
+        return;
+      }
+      setPieces(stored);
 
-    // Calculer les quantités
-    const calcul = calculerQuantites(stored);
-    setResultat(calcul);
+      // 1. Identifier tous les handles de produits nécessaires
+      const handles = new Set<string>();
+      stored.forEach(p => {
+        p.murs.forEach(m => handles.add(m.couleur.productHandle));
+        if (p.couleurPlafond) handles.add(p.couleurPlafond.productHandle);
+        if (p.couleurBoiseries) handles.add(p.couleurBoiseries.productHandle);
+      });
+      
+      // Ajouter les sous-couches
+      handles.add('sous-couche-blanche-peinture-biosourcee-murs-et-plafonds');
+      handles.add('sous-couche-grise-peinture-biosourcee-murs-et-plafonds');
 
-    // Charger les options sauvegardées
-    const savedOptions = localStorage.getItem(STORAGE_KEYS.OPTIONS);
-    if (savedOptions) {
-      const parsed = JSON.parse(savedOptions);
-      setOptionSousCouche(parsed.sousCouche ?? true);
-      setOptionKit(parsed.kit ?? true);
-      setOptionRenovation(parsed.renovation ?? false);
-    }
+      // 2. Charger les données Shopify en parallèle
+      setIsLoadingShopify(true);
+      const shopifyData: Record<string, any> = {};
+      
+      try {
+        await Promise.all(Array.from(handles).map(async (handle) => {
+          const res = await fetch(`/api/shopify/products/variants?handle=${handle}`);
+          if (res.ok) {
+            const data = await res.json();
+            shopifyData[handle] = data;
+          }
+        }));
+      } catch (error) {
+        console.error('Error loading Shopify data:', error);
+      } finally {
+        setIsLoadingShopify(false);
+      }
 
-    // Sauvegarder le calcul dans localStorage
-    localStorage.setItem(STORAGE_KEYS.CALCUL, JSON.stringify(calcul));
+      // 3. Calculer les quantités avec les données réelles
+      const calcul = calculerQuantites(stored, shopifyData);
+      setResultat(calcul);
 
-    setIsLoaded(true);
+      // 4. Charger les options sauvegardées
+      const savedOptions = localStorage.getItem(STORAGE_KEYS.OPTIONS);
+      if (savedOptions) {
+        const parsed = JSON.parse(savedOptions);
+        setOptionSousCouche(parsed.sousCouche ?? true);
+        setOptionKit(parsed.kit ?? true);
+        setOptionRenovation(parsed.renovation ?? false);
+      }
+
+      // 5. Sauvegarder le calcul dans localStorage
+      localStorage.setItem(STORAGE_KEYS.CALCUL, JSON.stringify(calcul));
+      setIsLoaded(true);
+    };
+
+    init();
   }, [router]);
 
   const saveOptions = (sousCouche: boolean, kit: boolean, renovation: boolean) => {
@@ -87,6 +121,14 @@ export default function OptionsPage() {
   const calculerCoutTotal = (): number => {
     if (!resultat) return 0;
     let total = 0;
+    
+    // Peintures
+    total += resultat.peintures.reduce((sum, p) => sum + p.prixTotal, 0);
+    
+    // Sous-couches
+    if (optionSousCouche) {
+      total += resultat.sousCouches.reduce((sum, s) => sum + s.prixTotal, 0);
+    }
     
     // Kit
     if (optionKit) {
@@ -197,6 +239,7 @@ export default function OptionsPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-bold text-primary-600">{peinture.litresCommandes}L</p>
+                      <p className="text-sm font-semibold text-gray-900">{peinture.prixTotal.toFixed(2)}€</p>
                       <div className="text-xs font-medium text-gray-400 mt-1">
                         {peinture.contenants.map((c, i) => (
                           <span key={i}>
@@ -249,6 +292,7 @@ export default function OptionsPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-gray-900">{sousCouche.litresCommandes}L</p>
+                      <p className="text-sm font-medium text-primary-600">{sousCouche.prixTotal.toFixed(2)}€</p>
                       <div className="text-xs text-gray-500 mt-1">
                         {sousCouche.contenants.map((c, i) => (
                           <span key={i}>

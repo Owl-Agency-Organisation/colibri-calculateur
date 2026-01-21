@@ -54,7 +54,7 @@ export interface CalculPeinture {
   litresNecessaires: number;
   litresCommandes: number;
   contenants: CalculContenant[];
-  prixEstime?: number;
+  prixTotal: number;
 }
 
 export interface CalculSousCouche {
@@ -64,7 +64,7 @@ export interface CalculSousCouche {
   litresNecessaires: number;
   litresCommandes: number;
   contenants: CalculContenant[];
-  prixEstime?: number;
+  prixTotal: number;
 }
 
 export interface CalculKit {
@@ -197,20 +197,32 @@ export function determinerTypeSousCouche(base: string): 'blanche' | 'grise' {
 // ==================== FONCTION PRINCIPALE ====================
 
 /**
+ * Calcule le prix total pour un ensemble de contenants basés sur les variants Shopify
+ */
+export function calculerPrixTotal(contenants: CalculContenant[], variants: any[]): number {
+  if (!variants || variants.length === 0) return 0;
+  
+  return contenants.reduce((total, c) => {
+    const variant = variants.find(v => v.title.includes(c.contenance));
+    const prix = variant ? parseFloat(variant.price.amount || variant.price) : 0;
+    return total + (prix * c.quantite);
+  }, 0);
+}
+
+/**
  * Calcule les quantités de peinture et sous-couche pour toutes les pièces
  * Utilise les variants réels de Shopify pour l'optimisation des contenants
  */
-export function calculerQuantites(pieces: Piece[]): ResultatCalcul {
+export function calculerQuantites(pieces: Piece[], shopifyData?: Record<string, any>): ResultatCalcul {
   const surfacesParCouleur = agregerSurfacesParCouleur(pieces);
 
   // 1. Calcul des peintures (2 couches)
   const peintures = surfacesParCouleur.map(s => {
     const litresNecessaires = calculerLitresNecessaires(s.surfaceTotale, 2);
     
-    // Extraire les contenances disponibles depuis les variants Shopify
-    const contenancesDisponibles = s.couleur.variants && s.couleur.variants.length > 0
-      ? extraireContenancesDisponibles(s.couleur.variants)
-      : CONTENANTS_DISPONIBLES; // Fallback vers les contenances standards
+    // Utiliser les variants dynamiques si disponibles, sinon fallback
+    const variants = shopifyData?.[s.couleur.productHandle]?.variants || s.couleur.variants || [];
+    const contenancesDisponibles = extraireContenancesDisponibles(variants);
     
     const contenants = optimiserContenants(litresNecessaires, contenancesDisponibles);
     return {
@@ -219,6 +231,7 @@ export function calculerQuantites(pieces: Piece[]): ResultatCalcul {
       litresNecessaires,
       litresCommandes: calculerLitresCommandes(contenants),
       contenants,
+      prixTotal: calculerPrixTotal(contenants, variants)
     };
   });
 
@@ -231,15 +244,21 @@ export function calculerQuantites(pieces: Piece[]): ResultatCalcul {
 
   const sousCouches: CalculSousCouche[] = [];
   surfacesSousCouche.forEach((surface, type) => {
+    const handle = type === 'blanche' ? SOUS_COUCHE_HANDLES.blanche : SOUS_COUCHE_HANDLES.grise;
     const litresNecessaires = calculerLitresNecessaires(surface, 1);
-    const contenants = optimiserContenants(litresNecessaires);
+    
+    const variants = shopifyData?.[handle]?.variants || [];
+    const contenancesDisponibles = extraireContenancesDisponibles(variants);
+    
+    const contenants = optimiserContenants(litresNecessaires, contenancesDisponibles);
     sousCouches.push({
       type,
-      handle: type === 'blanche' ? SOUS_COUCHE_HANDLES.blanche : SOUS_COUCHE_HANDLES.grise,
+      handle,
       surfaceTotale: surface,
       litresNecessaires,
       litresCommandes: calculerLitresCommandes(contenants),
       contenants,
+      prixTotal: calculerPrixTotal(contenants, variants)
     });
   });
 
