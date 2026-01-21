@@ -22,7 +22,7 @@ export default function SinistreLayout({
               </div>
               <div>
                 <h1 className="text-lg font-semibold text-gray-900">Colibri</h1>
-                <p className="text-xs text-gray-500">Partenaire de votre assureur</p>},{find:
+                <p className="text-xs text-gray-500">Partenaire de votre assureur</p>
               </div>
             </div>
             <div className="text-right">
