@@ -16,11 +16,13 @@ export default function SinistreLayout({
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">C</span>
-              </div>
-              <div>
+            <div className="flex items-center gap-4">
+              <img 
+                src="https://cdn.shopify.com/s/files/1/0971/0436/3865/files/logo-colibri-lettre-ligne-gris.png?v=1761219657" 
+                alt="Colibri Logo" 
+                className="h-12 w-auto object-contain"
+              />
+              <div className="border-l border-gray-200 pl-4">
                 <h1 className="text-lg font-semibold text-gray-900">Colibri</h1>
                 <p className="text-xs text-gray-500">Partenaire de votre assureur</p>
               </div>
