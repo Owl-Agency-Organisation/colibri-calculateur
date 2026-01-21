@@ -158,20 +158,7 @@ export default function ConfirmationPage() {
         </Button>
       </div>
 
-      {/* Lien vers la boutique */}
-      <div className="text-center pt-4">
-        <a
-          href="https://colibripeinture.fr"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary-600 hover:text-primary-700 font-medium inline-flex items-center gap-1"
-        >
-          Visiter notre boutique
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-          </svg>
-        </a>
-      </div>
+
 
       {/* Contact */}
       <div className="text-center text-sm text-gray-500 pt-2">

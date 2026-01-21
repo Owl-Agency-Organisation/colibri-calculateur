@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Colibri Assurances - Calcul de peinture sinistre',
-  description: 'Application de calcul automatique de peinture pour sinistres - Colibri x Covea',
+  description: 'Application de calcul automatique de peinture pour sinistres - Colibri',
 };
 
 export default function RootLayout({

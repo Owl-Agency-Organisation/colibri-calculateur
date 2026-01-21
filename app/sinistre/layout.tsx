@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Calcul de peinture sinistre | Colibri x Covea',
+  title: 'Calcul de peinture sinistre | Colibri',
   description: 'Calculez automatiquement vos besoins en peinture pour votre sinistre',
 };
 
@@ -22,7 +22,7 @@ export default function SinistreLayout({
               </div>
               <div>
                 <h1 className="text-lg font-semibold text-gray-900">Colibri</h1>
-                <p className="text-xs text-gray-500">Partenaire Covea</p>
+                <p className="text-xs text-gray-500">Partenaire de votre assureur</p>
               </div>
             </div>
             <div className="text-right">
@@ -44,7 +44,7 @@ export default function SinistreLayout({
       <footer className="bg-white border-t border-gray-200 mt-auto">
         <div className="max-w-4xl mx-auto px-4 py-6">
           <p className="text-center text-sm text-gray-500">
-            © 2026 Colibri Peinture - Application réservée aux assurés Covea
+            © 2026 Colibri Peinture
           </p>
         </div>
       </footer>

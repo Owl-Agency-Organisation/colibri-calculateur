@@ -19,7 +19,7 @@ export default function Home() {
             Colibri Assurances
           </h1>
           <p className="text-xl text-gray-600 mb-2">
-            Partenaire Covea
+            Partenaire de votre assureur
           </p>
           <p className="text-lg text-gray-500 mb-8 max-w-2xl mx-auto">
             Calculez automatiquement vos besoins en peinture biosourcée 
@@ -78,7 +78,7 @@ export default function Home() {
       <footer className="border-t border-gray-200 py-8 mt-16">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <p className="text-sm text-gray-500">
-            © 2026 Colibri Peinture - Application réservée aux assurés Covea
+            © 2026 Colibri Peinture
           </p>
         </div>
       </footer>
