@@ -387,50 +387,71 @@ export default function PanierPage() {
       </Card>
 
       {/* Actions */}
-      <div className="flex flex-col sm:flex-row justify-between gap-4 pt-4">
-        <Button
-          variant="outline"
-          onClick={handleBack}
-        >
-          ← Modifier les options
-        </Button>
-        <Button
-          size="lg"
-          onClick={handleGeneratePdf}
-          disabled={isGeneratingPdf}
-          className="flex items-center gap-2"
-        >
-          {isGeneratingPdf ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              Génération en cours...
-            </>
-          ) : (
-            <>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      <div className="space-y-6 pt-4">
+        <div className="flex flex-col gap-4 max-w-2xl mx-auto">
+          {/* CTA Principal : Commande */}
+          <div className="text-center space-y-2">
+            <Button
+              size="lg"
+              className="w-full py-8 text-xl font-bold bg-primary-600 hover:bg-primary-700 shadow-lg flex items-center justify-center gap-3"
+              onClick={() => window.open('https://colibripeinture.fr', '_blank')}
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              Télécharger le PDF de commande
-            </>
-          )}
-        </Button>
-      </div>
-
-      {/* Info box */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-        <div className="flex gap-3">
-          <div className="flex-shrink-0">
-            <svg className="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <div>
-            <h4 className="text-sm font-medium text-green-800">Prêt à commander</h4>
-            <p className="text-sm text-green-700 mt-1">
-              Le PDF sera téléchargé directement sur votre appareil. 
-              Vous pourrez le transmettre à votre assureur ou le conserver pour vos archives.
+              Commander et recevoir sous 72h
+            </Button>
+            <p className="text-sm text-gray-500 font-medium">
+              ⚡ Livraison prioritaire à domicile pour votre sinistre
             </p>
           </div>
+
+          <div className="relative py-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-200"></span>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-gray-50 text-gray-500 font-medium uppercase tracking-wider">ou</span>
+            </div>
+          </div>
+
+          {/* CTA Secondaire : Sauvegarde */}
+          <div className="text-center space-y-2">
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full py-6 text-lg border-2 border-primary-200 text-primary-700 hover:bg-primary-50 flex items-center justify-center gap-3"
+              onClick={handleGeneratePdf}
+              disabled={isGeneratingPdf}
+            >
+              {isGeneratingPdf ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-600"></div>
+                  Génération en cours...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Sauvegarder mon estimation (PDF)
+                </>
+              )}
+            </Button>
+            <p className="text-sm text-gray-500">
+              ⏳ J'attends mon indemnisation de la part de mon assureur
+            </p>
+          </div>
+        </div>
+
+        <div className="flex justify-center pt-4">
+          <Button
+            variant="ghost"
+            onClick={handleBack}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            ← Modifier les options
+          </Button>
         </div>
       </div>
     </div>
