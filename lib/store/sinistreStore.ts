@@ -43,11 +43,69 @@ export function setStoredAssure(assure: Assure): void {
   }
 }
 
+// Type pour l'ancien format de Piece (avant multi-murs)
+interface OldPiece {
+  id: string;
+  typePiece: string;
+  nom: string;
+  surfaceMurs?: number;
+  couleurMurs?: any;
+  murs?: any[];
+  surfacePlafond?: number;
+  surfaceBoiseries?: number;
+  couleurPlafond?: any;
+  couleurBoiseries?: any;
+}
+
+/**
+ * Migre une pièce de l'ancien format vers le nouveau format multi-murs
+ */
+function migratePieceToNewFormat(oldPiece: OldPiece): Piece {
+  // Si la pièce a déjà le nouveau format (avec murs array), la retourner telle quelle
+  if (oldPiece.murs && Array.isArray(oldPiece.murs)) {
+    return oldPiece as Piece;
+  }
+
+  // Sinon, convertir l'ancien format (surfaceMurs + couleurMurs) vers le nouveau
+  const murs = [];
+  if (oldPiece.surfaceMurs && oldPiece.couleurMurs) {
+    murs.push({
+      id: '1',
+      surface: oldPiece.surfaceMurs,
+      couleur: oldPiece.couleurMurs,
+    });
+  }
+
+  return {
+    id: oldPiece.id,
+    typePiece: oldPiece.typePiece as any,
+    nom: oldPiece.nom,
+    murs,
+    surfacePlafond: oldPiece.surfacePlafond,
+    surfaceBoiseries: oldPiece.surfaceBoiseries,
+    couleurPlafond: oldPiece.couleurPlafond,
+    couleurBoiseries: oldPiece.couleurBoiseries,
+  };
+}
+
 export function getStoredPieces(): Piece[] {
   if (typeof window === 'undefined') return [];
   try {
     const stored = localStorage.getItem(STORAGE_KEYS.PIECES);
-    return stored ? JSON.parse(stored) : [];
+    if (!stored) return [];
+    
+    const pieces: OldPiece[] = JSON.parse(stored);
+    
+    // Migrer automatiquement les pièces vers le nouveau format
+    const migratedPieces = pieces.map(migratePieceToNewFormat);
+    
+    // Sauvegarder les pièces migrées pour éviter de refaire la migration à chaque fois
+    const needsMigration = pieces.some(p => p.surfaceMurs !== undefined && !p.murs);
+    if (needsMigration) {
+      setStoredPieces(migratedPieces);
+    }
+    
+    return migratedPieces;
   } catch {
     return [];
   }

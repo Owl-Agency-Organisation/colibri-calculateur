@@ -244,9 +244,10 @@ export function calculerQuantites(pieces: Piece[]): ResultatCalcul {
   });
 
   // 3. Calcul de la surface totale et du kit
-  const surfaceTotale = pieces.reduce((sum, p) => 
-    sum + p.surfaceMurs + (p.surfacePlafond || 0) + (p.surfaceBoiseries || 0), 0
-  );
+  const surfaceTotale = pieces.reduce((sum, p) => {
+    const surfaceMurs = p.murs.reduce((total, mur) => total + mur.surface, 0);
+    return sum + surfaceMurs + (p.surfacePlafond || 0) + (p.surfaceBoiseries || 0);
+  }, 0);
 
   const kit: CalculKit = {
     type: surfaceTotale <= SEUIL_SURFACE_KIT ? 'petite' : 'grande',
@@ -259,7 +260,9 @@ export function calculerQuantites(pieces: Piece[]): ResultatCalcul {
   const resume = {
     nombrePieces: pieces.length,
     nombreCouleurs: surfacesParCouleur.length,
-    surfaceMurs: pieces.reduce((sum, p) => sum + p.surfaceMurs, 0),
+    surfaceMurs: pieces.reduce((sum, p) => {
+      return sum + p.murs.reduce((total, mur) => total + mur.surface, 0);
+    }, 0),
     surfacePlafonds: pieces.reduce((sum, p) => sum + (p.surfacePlafond || 0), 0),
     surfaceBoiseries: pieces.reduce((sum, p) => sum + (p.surfaceBoiseries || 0), 0),
   };
@@ -275,31 +278,56 @@ export function calculerQuantites(pieces: Piece[]): ResultatCalcul {
 
 /**
  * Agrège les surfaces par couleur unique
+ * Supporte le nouveau modèle multi-murs avec agrégation automatique
  */
 function agregerSurfacesParCouleur(pieces: Piece[]): SurfaceParCouleur[] {
   const map = new Map<string, SurfaceParCouleur>();
 
   for (const piece of pieces) {
-    const types: ('murs' | 'plafond' | 'boiseries')[] = ['murs', 'plafond', 'boiseries'];
-    
-    types.forEach(type => {
-      const surface = type === 'murs' ? piece.surfaceMurs : 
-                      type === 'plafond' ? piece.surfacePlafond : 
-                      piece.surfaceBoiseries;
-      const couleur = type === 'murs' ? piece.couleurMurs : 
-                      type === 'plafond' ? piece.couleurPlafond : 
-                      piece.couleurBoiseries;
-
-      if (surface && couleur) {
-        const key = couleur.productHandle;
-        if (!map.has(key)) {
-          map.set(key, { couleur, surfaceTotale: 0, details: [] });
-        }
-        const entry = map.get(key)!;
-        entry.surfaceTotale += surface;
-        entry.details.push({ pieceNom: piece.nom, type, surface });
+    // Traiter chaque mur individuellement
+    piece.murs.forEach((mur, index) => {
+      const key = mur.couleur.productHandle;
+      if (!map.has(key)) {
+        map.set(key, { couleur: mur.couleur, surfaceTotale: 0, details: [] });
       }
+      const entry = map.get(key)!;
+      entry.surfaceTotale += mur.surface;
+      entry.details.push({ 
+        pieceNom: piece.nom, 
+        type: 'murs', 
+        surface: mur.surface 
+      });
     });
+    
+    // Traiter le plafond (optionnel)
+    if (piece.surfacePlafond && piece.couleurPlafond) {
+      const key = piece.couleurPlafond.productHandle;
+      if (!map.has(key)) {
+        map.set(key, { couleur: piece.couleurPlafond, surfaceTotale: 0, details: [] });
+      }
+      const entry = map.get(key)!;
+      entry.surfaceTotale += piece.surfacePlafond;
+      entry.details.push({ 
+        pieceNom: piece.nom, 
+        type: 'plafond', 
+        surface: piece.surfacePlafond 
+      });
+    }
+    
+    // Traiter les boiseries (optionnel)
+    if (piece.surfaceBoiseries && piece.couleurBoiseries) {
+      const key = piece.couleurBoiseries.productHandle;
+      if (!map.has(key)) {
+        map.set(key, { couleur: piece.couleurBoiseries, surfaceTotale: 0, details: [] });
+      }
+      const entry = map.get(key)!;
+      entry.surfaceTotale += piece.surfaceBoiseries;
+      entry.details.push({ 
+        pieceNom: piece.nom, 
+        type: 'boiseries', 
+        surface: piece.surfaceBoiseries 
+      });
+    }
   }
 
   return Array.from(map.values());

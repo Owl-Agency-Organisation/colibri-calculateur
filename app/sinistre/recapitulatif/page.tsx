@@ -82,7 +82,8 @@ export default function RecapitulatifPage() {
   };
 
   const calculateTotalSurface = (piece: Piece): number => {
-    let total = piece.surfaceMurs;
+    const surfaceMurs = piece.murs.reduce((total, mur) => total + mur.surface, 0);
+    let total = surfaceMurs;
     if (piece.surfacePlafond) total += piece.surfacePlafond;
     if (piece.surfaceBoiseries) total += piece.surfaceBoiseries;
     return total;
@@ -136,25 +137,27 @@ export default function RecapitulatifPage() {
                   {/* Surfaces */}
                   <div className="space-y-2 mb-4">
                     {/* Murs */}
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2 flex-1">
-                        {piece.couleurMurs.imageUrl && (
-                          <img
-                            src={piece.couleurMurs.imageUrl}
-                            alt={piece.couleurMurs.titre}
-                            className="w-10 h-10 object-cover rounded"
-                          />
-                        )}
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            Murs : {piece.surfaceMurs} m²
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {piece.couleurMurs.titre}
-                          </p>
+                    {piece.murs.map((mur, index) => (
+                      <div key={mur.id} className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 flex-1">
+                          {mur.couleur.imageUrl && (
+                            <img
+                              src={mur.couleur.imageUrl}
+                              alt={mur.couleur.titre}
+                              className="w-10 h-10 object-cover rounded"
+                            />
+                          )}
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              Mur {index + 1} : {mur.surface} m²
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {mur.couleur.titre}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    ))}
 
                     {/* Plafond */}
                     {piece.surfacePlafond && piece.couleurPlafond && (
