@@ -100,6 +100,7 @@ export function CouleurModal({ isOpen, onClose, onSelect }: CouleurModalProps) {
         sousCouche: data.sousCouche || 'blanche',
         codeHex: data.codeHex || '#FFFFFF',
         imageUrl: product.images.edges[0]?.node.url || '',
+        variants: data.variants || [],
       };
       
       onSelect(couleur);

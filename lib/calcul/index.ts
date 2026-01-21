@@ -203,9 +203,13 @@ export function calculerQuantites(pieces: Piece[]): ResultatCalcul {
   // 1. Calcul des peintures (2 couches)
   const peintures = surfacesParCouleur.map(s => {
     const litresNecessaires = calculerLitresNecessaires(s.surfaceTotale, 2);
-    // TODO: Récupérer les variants réels depuis Shopify via l'API
-    // Pour le moment, utiliser les contenances standards
-    const contenants = optimiserContenants(litresNecessaires);
+    
+    // Extraire les contenances disponibles depuis les variants Shopify
+    const contenancesDisponibles = s.couleur.variants && s.couleur.variants.length > 0
+      ? extraireContenancesDisponibles(s.couleur.variants)
+      : CONTENANTS_DISPONIBLES; // Fallback vers les contenances standards
+    
+    const contenants = optimiserContenants(litresNecessaires, contenancesDisponibles);
     return {
       couleur: s.couleur,
       surfaceTotale: s.surfaceTotale,
