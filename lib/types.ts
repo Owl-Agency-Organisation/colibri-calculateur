@@ -24,14 +24,19 @@ export type TypePiece =
   | 'entree'
   | 'couloir';
 
+export interface Mur {
+  id: string;
+  surface: number;
+  couleur: Couleur;
+}
+
 export interface Piece {
   id: string;
   typePiece: TypePiece;
   nom: string;
-  surfaceMurs: number;
+  murs: Mur[];
   surfacePlafond?: number;
   surfaceBoiseries?: number;
-  couleurMurs: Couleur;
   couleurPlafond?: Couleur;
   couleurBoiseries?: Couleur;
 }
