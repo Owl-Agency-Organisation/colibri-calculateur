@@ -16,6 +16,9 @@ interface Product {
   title: string;
   handle: string;
   images: { edges: { node: { url: string } }[] };
+  variants?: {
+    selectedOptions: { name: string; value: string }[];
+  }[];
 }
 
 interface CouleurModalProps {
@@ -73,15 +76,35 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition 
       if (!response.ok) throw new Error('Erreur lors du chargement des produits');
       const data = await response.json();
       
-      // Filtrer les produits par finition si spécifié
-      let filteredProducts = data.products;
+      let allProducts = data.products;
+      let filtered = allProducts;
+
       if (targetFinition) {
-        filteredProducts = data.products.filter((p: Product) => 
-          p.title.toLowerCase().includes(targetFinition.toLowerCase())
-        );
+        // Normalisation de la finition (ex: 'Mate' -> 'mat')
+        const target = targetFinition.toLowerCase() === 'mate' ? 'mat' : targetFinition.toLowerCase();
+        
+        filtered = allProducts.filter((p: Product) => {
+          // 1. Vérifier dans le titre
+          const titleMatch = p.title.toLowerCase().includes(target);
+          
+          // 2. Vérifier dans les variants (si disponibles)
+          const variantMatch = p.variants?.some(v => 
+            v.selectedOptions?.some(opt => 
+              opt.name.toLowerCase() === 'finition' && opt.value.toLowerCase().includes(target)
+            )
+          );
+          
+          return titleMatch || variantMatch;
+        });
+
+        // Fallback : si le filtrage est trop strict (0 résultats), on garde tout
+        if (filtered.length === 0) {
+          console.warn(`Aucun produit trouvé pour la finition ${target}, affichage de tous les produits.`);
+          filtered = allProducts;
+        }
       }
       
-      setProducts(filteredProducts);
+      setProducts(filtered);
     } catch (err) {
       setError('Impossible de charger les produits');
       console.error(err);
