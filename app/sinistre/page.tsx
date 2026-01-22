@@ -30,12 +30,13 @@ export default function SinistreSasPage() {
 
       <div className="grid grid-cols-1 gap-6">
         {/* Option 1: Nouveau projet */}
-        <Card 
-          className="hover:border-primary-500 transition-colors cursor-pointer group"
+        <div 
+          className="cursor-pointer group"
           onClick={handleNewProject}
         >
-          <div className="block p-2">
-            <CardContent className="p-6 flex items-center gap-6">
+          <Card className="hover:border-primary-500 transition-colors">
+            <div className="block p-2">
+              <CardContent className="p-6 flex items-center gap-6">
               <div className="w-16 h-16 bg-primary-50 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-primary-100 transition-colors">
                 <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -47,14 +48,15 @@ export default function SinistreSasPage() {
                   Calculez vos besoins et choisissez vos couleurs en quelques minutes.
                 </p>
               </div>
-              <div className="text-primary-600">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </CardContent>
-          </div>
-        </Card>
+                <div className="text-primary-600">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </CardContent>
+            </div>
+          </Card>
+        </div>
 
         {/* Option 2: Reprendre un devis */}
         <Card className="hover:border-primary-500 transition-colors cursor-pointer group opacity-75 hover:opacity-100">
