@@ -82,7 +82,7 @@ export default function PanierPage() {
       lignes.push({
         id: `peinture-${index}`,
         type: 'peinture',
-        titre: peinture.couleur.titre,
+        titre: `${peinture.couleur.titre} - ${peinture.couleur.finition}`,
         description: `${peinture.surfaceTotale.toFixed(1)} m² - ${contenantsStr}`,
         quantite: peinture.litresCommandes,
         unite: 'L',
