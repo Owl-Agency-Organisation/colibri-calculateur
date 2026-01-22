@@ -137,18 +137,23 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition 
       if (!finition && data.variants && data.variants.length > 0) {
         // Chercher dans les options du premier variant disponible
         const variantWithFinition = data.variants.find((v: any) => 
-          v.selectedOptions?.some((opt: any) => opt.name === 'Finition')
+          v.selectedOptions?.some((opt: any) => opt.name.toLowerCase() === 'finition')
         );
         if (variantWithFinition) {
-          finition = variantWithFinition.selectedOptions.find((opt: any) => opt.name === 'Finition')?.value;
+          finition = variantWithFinition.selectedOptions.find((opt: any) => opt.name.toLowerCase() === 'finition')?.value;
         }
+      }
+
+      // Fallback ultime : utiliser la finition recommandée pour la pièce
+      if (!finition && targetFinition) {
+        finition = targetFinition;
       }
 
       console.log('DEBUG: Sélection couleur', {
         handle: product.handle,
         finitionMeta: data.finition,
         productFinition: product.finition,
-        variantFinition: finition,
+        targetFinition: targetFinition,
         finalFinition: finition
       });
 
