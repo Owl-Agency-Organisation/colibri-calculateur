@@ -99,12 +99,23 @@ export async function GET(
     // Formater les variants pour le frontend
     const variants = product.variants?.edges?.map((edge: any) => edge.node) || [];
 
+    // Extraire la finition de l'option de variante
+    let finition = metafields.finition || null;
+    if (!finition && variants.length > 0) {
+      const finitionOption = variants[0].selectedOptions?.find(
+        (opt: any) => opt.name.toLowerCase() === 'finition'
+      );
+      if (finitionOption) {
+        finition = finitionOption.value;
+      }
+    }
+
     return NextResponse.json({
       ...product,
       base,
       sousCouche,
       codeHex: metafields.code_hexadecimal || '#FFFFFF',
-      finition: metafields.finition || null,
+      finition,
       variants,
     });
   } catch (error) {

@@ -131,10 +131,10 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition 
       if (!response.ok) throw new Error('Erreur lors du chargement du produit');
       const data = await response.json();
       
-      // Extraire la finition prioritairement du metafield, sinon des variants
-      let finition = data.finition || product.finition;
+      // Source de vérité unique : l'option "Finition" des variantes Shopify
+      let finition = undefined;
       
-      if (!finition && data.variants && data.variants.length > 0) {
+      if (data.variants && data.variants.length > 0) {
         // Chercher dans les options du premier variant disponible
         const variantWithFinition = data.variants.find((v: any) => 
           v.selectedOptions?.some((opt: any) => opt.name.toLowerCase() === 'finition')
@@ -144,16 +144,15 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition 
         }
       }
 
-      // Fallback ultime : utiliser la finition recommandée pour la pièce
-      if (!finition && targetFinition) {
-        finition = targetFinition;
+      // Si non trouvé dans les variants, on peut tenter le titre par sécurité mais la priorité reste les variants
+      if (!finition) {
+        if (product.title.toLowerCase().includes('mat')) finition = 'Mat';
+        else if (product.title.toLowerCase().includes('velours')) finition = 'Velours';
+        else if (product.title.toLowerCase().includes('satin')) finition = 'Satin';
       }
 
-      console.log('DEBUG: Sélection couleur', {
+      console.log('DEBUG: Sélection couleur (Source: Variants)', {
         handle: product.handle,
-        finitionMeta: data.finition,
-        productFinition: product.finition,
-        targetFinition: targetFinition,
         finalFinition: finition
       });
 

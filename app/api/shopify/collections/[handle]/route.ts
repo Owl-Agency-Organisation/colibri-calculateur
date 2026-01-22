@@ -28,11 +28,15 @@ const COLLECTION_PRODUCTS_QUERY = `
                 }
               }
             }
-            metafields(identifiers: [
-              { namespace: "custom", key: "finition" }
-            ]) {
-              key
-              value
+            variants(first: 1) {
+              edges {
+                node {
+                  selectedOptions {
+                    name
+                    value
+                  }
+                }
+              }
             }
           }
         }
@@ -64,11 +68,20 @@ export async function GET(
 
     const products = data.collection.products.edges.map((edge: any) => {
       const node = edge.node;
-      const finitionMeta = node.metafields?.find((mf: any) => mf?.key === 'finition');
       
-      let finition = finitionMeta ? finitionMeta.value : null;
+      // Extraire la finition de l'option de variante
+      let finition = null;
+      const firstVariant = node.variants?.edges?.[0]?.node;
+      if (firstVariant) {
+        const finitionOption = firstVariant.selectedOptions?.find(
+          (opt: any) => opt.name.toLowerCase() === 'finition'
+        );
+        if (finitionOption) {
+          finition = finitionOption.value;
+        }
+      }
       
-      // Fallback sur le titre ou les variants si possible (simplifié ici car on n'a pas tous les variants dans cette query)
+      // Fallback sur le titre si l'option n'est pas trouvée
       if (!finition) {
         if (node.title.toLowerCase().includes('mat')) finition = 'Mat';
         else if (node.title.toLowerCase().includes('velours')) finition = 'Velours';
