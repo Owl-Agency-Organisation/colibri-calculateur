@@ -11,14 +11,15 @@ export default function LandingPage() {
         /* ----------- GLOBAL ----------- */
         .landing-page {
           margin: 0;
-          font-family: 'Inter', sans-serif;
+          font-family: 'Raleway', sans-serif;
           background-color: #f9f9f9;
           color: #1a1a1a;
+          padding: 40px 20px;
           text-align: center;
         }
 
         .logo {
-          padding: 40px 20px 30px;
+          margin-bottom: 30px;
         }
 
         .logo img {
@@ -129,6 +130,7 @@ export default function LandingPage() {
         }
 
         .step-number {
+          font-family: Host Grotesk, sans-serif;
           font-size: 60px;
           font-weight: 700;
           color: #007c7a;
