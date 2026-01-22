@@ -5,6 +5,24 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [1.4.0] - 2026-01-22
+
+### Ajouté
+- **Identité Visuelle Premium** : Application complète de la charte graphique de la nouvelle landing page à l'ensemble du tunnel d'assurance.
+- **Typographie** : Intégration de **Playfair Display** (Serif) pour les titres et **Inter** (Sans-serif) pour le corps de texte via Google Fonts.
+- **Palette de Couleurs** : Adoption du **Vert Foncé Premium (`#1e3a34`)** et du fond **Blanc Cassé (`#f9fbfb`)**.
+
+### Modifié
+- **Interface (UI)** : Refonte des composants `Card`, `Button` et `StepIndicator` pour un aspect plus haut de gamme et épuré.
+- **Header & Footer** : Mise en place d'un header "sticky" avec effet de flou (`backdrop-blur`) et d'un footer institutionnel avec logo en filigrane.
+- **Accueil** : Transformation de la Hero section avec une typographie Serif imposante et un branding plus sobre ("Assurances").
+- **Expérience (UX)** : Harmonisation des info-boxes et des états de sélection avec la nouvelle palette de couleurs.
+
+### Technique
+- Mise à jour de `tailwind.config.ts` avec les nouvelles variables de thème.
+- Injection des polices Google Fonts dans `app/layout.tsx` avec support des variables CSS.
+- Optimisation des transitions et des ombres portées sur l'ensemble des composants UI.
+
 ## [1.3.1] - 2026-01-21
 
 ### Corrigé
