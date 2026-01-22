@@ -2,9 +2,21 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/Card';
+import { clearAllData } from '@/lib/store/sinistreStore';
 
 export default function SinistreSasPage() {
+  const router = useRouter();
+
+  const handleNewProject = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // Réinitialisation complète des données stockées
+    clearAllData();
+    // Redirection vers l'identification
+    router.push('/sinistre/identification');
+  };
+
   return (
     <div className="max-w-2xl mx-auto py-12 px-4">
       <div className="text-center mb-12">
@@ -18,8 +30,11 @@ export default function SinistreSasPage() {
 
       <div className="grid grid-cols-1 gap-6">
         {/* Option 1: Nouveau projet */}
-        <Card className="hover:border-primary-500 transition-colors cursor-pointer group">
-          <Link href="/sinistre/identification" className="block p-2">
+        <Card 
+          className="hover:border-primary-500 transition-colors cursor-pointer group"
+          onClick={handleNewProject}
+        >
+          <div className="block p-2">
             <CardContent className="p-6 flex items-center gap-6">
               <div className="w-16 h-16 bg-primary-50 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-primary-100 transition-colors">
                 <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -38,7 +53,7 @@ export default function SinistreSasPage() {
                 </svg>
               </div>
             </CardContent>
-          </Link>
+          </div>
         </Card>
 
         {/* Option 2: Reprendre un devis */}
