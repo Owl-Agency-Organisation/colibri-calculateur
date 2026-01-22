@@ -333,7 +333,7 @@ export default function SaisieSurfacesPage() {
                         >
                           {mur.couleur ? (
                             <>
-                              <div className="w-6 h-6 rounded-full border border-gray-200 shadow-sm" style={{ backgroundColor: mur.couleur.hex || '#fff' }}>
+                              <div className="w-6 h-6 rounded-full border border-gray-200 shadow-sm" style={{ backgroundColor: mur.couleur.codeHex || '#fff' }}>
                                 {mur.couleur.imageUrl && (
                                   <img src={mur.couleur.imageUrl} alt="" className="w-full h-full rounded-full object-cover" />
                                 )}
@@ -398,7 +398,7 @@ export default function SaisieSurfacesPage() {
                   >
                     {couleurPlafond ? (
                       <>
-                        <div className="w-6 h-6 rounded-full border border-gray-200 shadow-sm" style={{ backgroundColor: couleurPlafond.hex || '#fff' }}>
+                        <div className="w-6 h-6 rounded-full border border-gray-200 shadow-sm" style={{ backgroundColor: couleurPlafond.codeHex || '#fff' }}>
                           {couleurPlafond.imageUrl && (
                             <img src={couleurPlafond.imageUrl} alt="" className="w-full h-full rounded-full object-cover" />
                           )}
@@ -442,7 +442,7 @@ export default function SaisieSurfacesPage() {
                   >
                     {couleurBoiseries ? (
                       <>
-                        <div className="w-6 h-6 rounded-full border border-gray-200 shadow-sm" style={{ backgroundColor: couleurBoiseries.hex || '#fff' }}>
+                        <div className="w-6 h-6 rounded-full border border-gray-200 shadow-sm" style={{ backgroundColor: couleurBoiseries.codeHex || '#fff' }}>
                           {couleurBoiseries.imageUrl && (
                             <img src={couleurBoiseries.imageUrl} alt="" className="w-full h-full rounded-full object-cover" />
                           )}
