@@ -131,6 +131,15 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition 
       if (!response.ok) throw new Error('Erreur lors du chargement du produit');
       const data = await response.json();
       
+      const finition = data.finition || product.finition || undefined;
+      
+      console.log('DEBUG: Sélection couleur', {
+        handle: product.handle,
+        finitionMeta: data.finition,
+        productFinition: product.finition,
+        finalFinition: finition
+      });
+
       const couleur: Couleur = {
         productId: product.id,
         productHandle: product.handle,
@@ -139,7 +148,7 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition 
         base: data.base || 'Blanc',
         sousCouche: data.sousCouche || 'blanche',
         codeHex: data.codeHex || '#FFFFFF',
-        finition: data.finition || product.finition || undefined,
+        finition: finition,
         imageUrl: product.images.edges[0]?.node.url || '',
         variants: data.variants || [],
       };

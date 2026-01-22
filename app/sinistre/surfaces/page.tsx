@@ -220,6 +220,12 @@ export default function SaisieSurfacesPage() {
       couleurBoiseries: couleurBoiseries || undefined,
     };
 
+    console.log('DEBUG: Sauvegarde pièce', {
+      nom: pieceData.nom,
+      murs: pieceData.murs.map(m => ({ id: m.id, finition: m.couleur.finition })),
+      plafondFinition: pieceData.couleurPlafond?.finition
+    });
+
     if (editPieceId) {
       // Mode édition : mettre à jour la pièce existante
       const pieceIndex = pieces.findIndex(p => p.id === editPieceId);
