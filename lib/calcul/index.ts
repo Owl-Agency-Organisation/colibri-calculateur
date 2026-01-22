@@ -316,8 +316,10 @@ function agregerSurfacesParCouleur(pieces: Piece[]): SurfaceParCouleur[] {
   for (const piece of pieces) {
     // Traiter chaque mur individuellement
     piece.murs.forEach((mur) => {
+      // Normalisation de la finition pour la clé
+      const finitionKey = (mur.couleur.finition || 'default').toLowerCase().trim();
       // La clé inclut le productHandle ET la finition pour garantir la séparation
-      const key = `${mur.couleur.productHandle}-${mur.couleur.finition || 'default'}`;
+      const key = `${mur.couleur.productHandle}-${finitionKey}`;
       if (!map.has(key)) {
         map.set(key, { couleur: mur.couleur, surfaceTotale: 0, details: [] });
       }
@@ -332,7 +334,8 @@ function agregerSurfacesParCouleur(pieces: Piece[]): SurfaceParCouleur[] {
     
     // Traiter le plafond (optionnel)
     if (piece.surfacePlafond && piece.couleurPlafond) {
-      const key = `${piece.couleurPlafond.productHandle}-${piece.couleurPlafond.finition || 'default'}`;
+      const finitionKey = (piece.couleurPlafond.finition || 'default').toLowerCase().trim();
+      const key = `${piece.couleurPlafond.productHandle}-${finitionKey}`;
       if (!map.has(key)) {
         map.set(key, { couleur: piece.couleurPlafond, surfaceTotale: 0, details: [] });
       }
@@ -347,7 +350,8 @@ function agregerSurfacesParCouleur(pieces: Piece[]): SurfaceParCouleur[] {
     
     // Traiter les boiseries (optionnel)
     if (piece.surfaceBoiseries && piece.couleurBoiseries) {
-      const key = `${piece.couleurBoiseries.productHandle}-${piece.couleurBoiseries.finition || 'default'}`;
+      const finitionKey = (piece.couleurBoiseries.finition || 'default').toLowerCase().trim();
+      const key = `${piece.couleurBoiseries.productHandle}-${finitionKey}`;
       if (!map.has(key)) {
         map.set(key, { couleur: piece.couleurBoiseries, surfaceTotale: 0, details: [] });
       }
