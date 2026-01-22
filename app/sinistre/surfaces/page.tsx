@@ -278,204 +278,198 @@ export default function SaisieSurfacesPage() {
             />
 
             {/* Murs (obligatoire) - Nouveau design multi-murs */}
-            <div className="border border-primary-100 bg-primary-50/30 rounded-xl p-6 space-y-4">
+            <div className="border border-primary-100 bg-primary-50/30 rounded-xl p-6 space-y-6">
               <div className="flex items-center justify-between">
                 <h3 className="font-serif font-bold text-primary-600">Murs *</h3>
-                {murs.length < MAX_MURS && (
-                  <Button type="button" variant="secondary" size="sm" onClick={handleAddMur} className="rounded-full">
-                    + Ajouter un mur
-                  </Button>
-                )}
+                <span className="text-[10px] uppercase tracking-widest text-primary-400 font-bold">
+                  {murs.length} / {MAX_MURS} MURS
+                </span>
               </div>
 
-              {murs.map((mur, index) => (
-                <div key={mur.id} className="border border-gray-100 rounded-lg p-4 space-y-3 bg-white">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-gray-700">Mur {index + 1}</h4>
-                    {murs.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMur(mur.id)}
-                        className="text-red-500 hover:text-red-700 text-sm"
-                      >
-                        🗑️ Supprimer
-                      </button>
-                    )}
-                  </div>
-
-                  <Input
-                    label={`Surface du mur ${index + 1} (m²)`}
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={mur.surface}
-                    onChange={(e) => handleMurSurfaceChange(mur.id, e.target.value)}
-                    error={errors[`mur_${mur.id}_surface`]}
-                    placeholder="Ex: 25.0"
-                  />
-
-                  {mur.couleur ? (
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                      {mur.couleur.imageUrl && (
-                        <img
-                          src={mur.couleur.imageUrl}
-                          alt={mur.couleur.titre}
-                          className="w-16 h-16 object-cover rounded"
-                        />
-                      )}
-                      <div className="flex-1">
-                        <p className="font-medium text-sm text-gray-900">{mur.couleur.titre}</p>
-                        <p className="text-xs text-gray-500">{mur.couleur.collection}</p>
+              <div className="space-y-4">
+                {murs.map((mur, index) => (
+                  <div key={mur.id} className="relative border border-gray-100 rounded-xl p-5 space-y-4 bg-white shadow-sm transition-all hover:shadow-md">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary-600 text-white text-[10px] font-bold">
+                          {index + 1}
+                        </span>
+                        <h4 className="text-sm font-serif font-bold text-primary-700">Mur {index + 1}</h4>
                       </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOpenCouleurModal('mur', mur.id)}
-                      >
-                        Modifier
-                      </Button>
+                      {murs.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMur(mur.id)}
+                          className="text-red-400 hover:text-red-600 transition-colors p-1"
+                          title="Supprimer ce mur"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => handleOpenCouleurModal('mur', mur.id)}
-                      className="w-full"
-                    >
-                      Choisir une couleur
-                    </Button>
-                  )}
-                  {errors[`mur_${mur.id}_couleur`] && (
-                    <p className="text-sm text-red-500">{errors[`mur_${mur.id}_couleur`]}</p>
-                  )}
-                </div>
-              ))}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <Input
+                        label="Surface (m²)"
+                        type="number"
+                        step="0.01"
+                        required
+                        value={mur.surface}
+                        onChange={(e) => handleMurSurfaceChange(mur.id, e.target.value)}
+                        error={errors[`mur_${mur.id}_surface`]}
+                        placeholder="0.00"
+                      />
+                      
+                      <div className="space-y-1.5">
+                        <label className="block text-sm font-medium text-gray-700">Couleur</label>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCouleurModal('mur', mur.id)}
+                          className={`w-full flex items-center gap-3 px-3 py-2 border rounded-md text-left transition-all ${
+                            errors[`mur_${mur.id}_couleur`] ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-primary-500'
+                          }`}
+                        >
+                          {mur.couleur ? (
+                            <>
+                              <div className="w-6 h-6 rounded-full border border-gray-200 shadow-sm" style={{ backgroundColor: mur.couleur.hex || '#fff' }}>
+                                {mur.couleur.imageUrl && (
+                                  <img src={mur.couleur.imageUrl} alt="" className="w-full h-full rounded-full object-cover" />
+                                )}
+                              </div>
+                              <span className="text-sm text-gray-900 truncate">{mur.couleur.titre}</span>
+                            </>
+                          ) : (
+                            <span className="text-sm text-gray-400 italic">Choisir une couleur</span>
+                          )}
+                        </button>
+                        {errors[`mur_${mur.id}_couleur`] && (
+                          <p className="text-xs text-red-500">{errors[`mur_${mur.id}_couleur`]}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Bouton Ajouter un mur - Design Add-at-Bottom */}
+                {murs.length < MAX_MURS && (
+                  <button
+                    type="button"
+                    onClick={handleAddMur}
+                    className="w-full py-4 border-2 border-dashed border-primary-200 rounded-xl bg-primary-50/50 text-primary-600 hover:bg-primary-50 hover:border-primary-300 transition-all group flex flex-col items-center justify-center gap-1"
+                  >
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      <span className="font-serif font-bold">Ajouter un mur</span>
+                    </div>
+                    <span className="text-[10px] uppercase tracking-widest opacity-60">
+                      {MAX_MURS - murs.length} emplacement{MAX_MURS - murs.length > 1 ? 's' : ''} disponible{MAX_MURS - murs.length > 1 ? 's' : ''}
+                    </span>
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Plafond (optionnel) */}
-            <div className="border border-gray-200 rounded-lg p-4 space-y-4">
-              <h3 className="font-medium text-gray-900">Plafond (optionnel)</h3>
-              
-              <Input
-                label="Surface du plafond (m²)"
-                type="number"
-                step="0.01"
-                min="0"
-                value={surfaces.plafond}
-                onChange={(e) => setSurfaces({ ...surfaces, plafond: e.target.value })}
-                error={errors.plafond}
-                placeholder="Ex: 20.0"
-              />
-
-              {surfaces.plafond && parseFloat(surfaces.plafond) > 0 && (
-                <>
-                  {couleurPlafond ? (
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                      {couleurPlafond.imageUrl && (
-                        <img
-                          src={couleurPlafond.imageUrl}
-                          alt={couleurPlafond.titre}
-                          className="w-16 h-16 object-cover rounded"
-                        />
-                      )}
-                      <div className="flex-1">
-                        <p className="font-medium text-sm text-gray-900">{couleurPlafond.titre}</p>
-                        <p className="text-xs text-gray-500">{couleurPlafond.collection}</p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOpenCouleurModal('plafond')}
-                      >
-                        Modifier
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => handleOpenCouleurModal('plafond')}
-                      className="w-full"
-                    >
-                      Choisir une couleur
-                    </Button>
-                  )}
+            <div className="border border-gray-100 rounded-xl p-6 space-y-4 bg-gray-50/30">
+              <h3 className="font-serif font-bold text-gray-700">Plafond (optionnel)</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Surface (m²)"
+                  type="number"
+                  step="0.01"
+                  value={surfaces.plafond}
+                  onChange={(e) => setSurfaces({ ...surfaces, plafond: e.target.value })}
+                  error={errors.plafond}
+                  placeholder="0.00"
+                />
+                
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-gray-700">Couleur</label>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenCouleurModal('plafond')}
+                    className={`w-full flex items-center gap-3 px-3 py-2 border rounded-md text-left transition-all ${
+                      errors.couleurPlafond ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-primary-500'
+                    }`}
+                  >
+                    {couleurPlafond ? (
+                      <>
+                        <div className="w-6 h-6 rounded-full border border-gray-200 shadow-sm" style={{ backgroundColor: couleurPlafond.hex || '#fff' }}>
+                          {couleurPlafond.imageUrl && (
+                            <img src={couleurPlafond.imageUrl} alt="" className="w-full h-full rounded-full object-cover" />
+                          )}
+                        </div>
+                        <span className="text-sm text-gray-900 truncate">{couleurPlafond.titre}</span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-gray-400 italic">Choisir une couleur</span>
+                    )}
+                  </button>
                   {errors.couleurPlafond && (
-                    <p className="text-sm text-red-500">{errors.couleurPlafond}</p>
+                    <p className="text-xs text-red-500">{errors.couleurPlafond}</p>
                   )}
-                </>
-              )}
+                </div>
+              </div>
             </div>
 
             {/* Boiseries (optionnel) */}
-            <div className="border border-gray-200 rounded-lg p-4 space-y-4">
-              <h3 className="font-medium text-gray-900">Boiseries (optionnel)</h3>
-              
-              <Input
-                label="Surface des boiseries (m²)"
-                type="number"
-                step="0.01"
-                min="0"
-                value={surfaces.boiseries}
-                onChange={(e) => setSurfaces({ ...surfaces, boiseries: e.target.value })}
-                error={errors.boiseries}
-                placeholder="Ex: 5.0"
-              />
-
-              {surfaces.boiseries && parseFloat(surfaces.boiseries) > 0 && (
-                <>
-                  {couleurBoiseries ? (
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                      {couleurBoiseries.imageUrl && (
-                        <img
-                          src={couleurBoiseries.imageUrl}
-                          alt={couleurBoiseries.titre}
-                          className="w-16 h-16 object-cover rounded"
-                        />
-                      )}
-                      <div className="flex-1">
-                        <p className="font-medium text-sm text-gray-900">{couleurBoiseries.titre}</p>
-                        <p className="text-xs text-gray-500">{couleurBoiseries.collection}</p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOpenCouleurModal('boiseries')}
-                      >
-                        Modifier
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => handleOpenCouleurModal('boiseries')}
-                      className="w-full"
-                    >
-                      Choisir une couleur
-                    </Button>
-                  )}
+            <div className="border border-gray-100 rounded-xl p-6 space-y-4 bg-gray-50/30">
+              <h3 className="font-serif font-bold text-gray-700">Boiseries (optionnel)</h3>
+              <p className="text-xs text-gray-500 -mt-2 italic">Portes, fenêtres, plinthes...</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Surface (m²)"
+                  type="number"
+                  step="0.01"
+                  value={surfaces.boiseries}
+                  onChange={(e) => setSurfaces({ ...surfaces, boiseries: e.target.value })}
+                  error={errors.boiseries}
+                  placeholder="0.00"
+                />
+                
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-gray-700">Couleur</label>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenCouleurModal('boiseries')}
+                    className={`w-full flex items-center gap-3 px-3 py-2 border rounded-md text-left transition-all ${
+                      errors.couleurBoiseries ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-primary-500'
+                    }`}
+                  >
+                    {couleurBoiseries ? (
+                      <>
+                        <div className="w-6 h-6 rounded-full border border-gray-200 shadow-sm" style={{ backgroundColor: couleurBoiseries.hex || '#fff' }}>
+                          {couleurBoiseries.imageUrl && (
+                            <img src={couleurBoiseries.imageUrl} alt="" className="w-full h-full rounded-full object-cover" />
+                          )}
+                        </div>
+                        <span className="text-sm text-gray-900 truncate">{couleurBoiseries.titre}</span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-gray-400 italic">Choisir une couleur</span>
+                    )}
+                  </button>
                   {errors.couleurBoiseries && (
-                    <p className="text-sm text-red-500">{errors.couleurBoiseries}</p>
+                    <p className="text-xs text-red-500">{errors.couleurBoiseries}</p>
                   )}
-                </>
-              )}
+                </div>
+              </div>
             </div>
 
             {/* Navigation buttons */}
-            <div className="flex justify-between pt-4">
+            <div className="flex justify-between pt-6 border-t border-gray-100">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleBack}
               >
-                ← Précédent
+                ← Retour
               </Button>
               <div className="flex gap-3">
-                {/* Bouton pour aller au récapitulatif si des pièces existent et qu'on n'est pas en mode édition */}
                 {hasPieces && !isEditMode && (
                   <Button
                     type="button"
@@ -485,8 +479,11 @@ export default function SaisieSurfacesPage() {
                     Voir le récapitulatif
                   </Button>
                 )}
-                <Button type="submit" size="lg">
-                  {isEditMode ? 'Enregistrer' : 'Suivant'} →
+                <Button
+                  type="submit"
+                  size="lg"
+                >
+                  {isEditMode ? 'Enregistrer les modifications' : 'Valider cette pièce →'}
                 </Button>
               </div>
             </div>
@@ -497,11 +494,15 @@ export default function SaisieSurfacesPage() {
       {/* Couleur Modal */}
       <CouleurModal
         isOpen={showCouleurModal}
-        onClose={() => {
-          setShowCouleurModal(false);
-          setCurrentSelection(null);
-        }}
+        onClose={() => setShowCouleurModal(false)}
         onSelect={handleSelectCouleur}
+        title={
+          currentSelection?.type === 'mur' 
+            ? 'Choisir une couleur pour le mur' 
+            : currentSelection?.type === 'plafond'
+            ? 'Choisir une couleur pour le plafond'
+            : 'Choisir une couleur pour les boiseries'
+        }
       />
     </div>
   );
