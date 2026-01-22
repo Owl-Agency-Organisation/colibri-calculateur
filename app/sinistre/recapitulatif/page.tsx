@@ -8,6 +8,7 @@ import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { getStoredPieces, setStoredPieces } from '@/lib/store/sinistreStore';
 import type { Piece, TypePiece } from '@/lib/types';
+import { REGLES_FINITION } from '@/lib/calcul';
 
 const TYPE_PIECE_LABELS: Record<TypePiece, string> = {
   'piece-de-vie': 'Pièce de vie',
@@ -152,7 +153,7 @@ export default function RecapitulatifPage() {
                               Mur {index + 1} : {mur.surface} m²
                             </p>
                             <p className="text-xs text-gray-500">
-                              {mur.couleur.titre}
+                              {mur.couleur.titre} • <span className="uppercase">{REGLES_FINITION[piece.typePiece]?.murs}</span>
                             </p>
                           </div>
                         </div>
@@ -175,7 +176,7 @@ export default function RecapitulatifPage() {
                               Plafond : {piece.surfacePlafond} m²
                             </p>
                             <p className="text-xs text-gray-500">
-                              {piece.couleurPlafond.titre}
+                              {piece.couleurPlafond.titre} • <span className="uppercase">{REGLES_FINITION[piece.typePiece]?.plafond}</span>
                             </p>
                           </div>
                         </div>

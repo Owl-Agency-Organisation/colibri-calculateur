@@ -167,9 +167,16 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition 
         <div className="relative bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
           {/* Header */}
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {title || 'Choisir une couleur'}
-            </h2>
+            <div className="flex flex-col">
+              <h2 className="text-xl font-semibold text-gray-900">
+                {title || 'Choisir une couleur'}
+              </h2>
+              {targetFinition && (
+                <p className="text-xs text-primary-600 font-medium">
+                  Finition recommandée : <span className="font-bold uppercase">{targetFinition}</span>
+                </p>
+              )}
+            </div>
             <button
               onClick={handleClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"

@@ -306,6 +306,11 @@ export default function SaisieSurfacesPage() {
                           {index + 1}
                         </span>
                         <h4 className="text-sm font-serif font-bold text-primary-700">Mur {index + 1}</h4>
+                        {typePiece && REGLES_FINITION[typePiece] && (
+                          <span className="px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 text-[10px] font-bold uppercase tracking-wider">
+                            {REGLES_FINITION[typePiece].murs}
+                          </span>
+                        )}
                       </div>
                       {murs.length > 1 && (
                         <button
@@ -386,7 +391,14 @@ export default function SaisieSurfacesPage() {
 
             {/* Plafond (optionnel) */}
             <div className="border border-gray-100 rounded-xl p-6 space-y-4 bg-gray-50/30">
-              <h3 className="font-serif font-bold text-gray-700">Plafond (optionnel)</h3>
+              <div className="flex items-center gap-3">
+                <h3 className="font-serif font-bold text-gray-700">Plafond (optionnel)</h3>
+                {typePiece && REGLES_FINITION[typePiece] && (
+                  <span className="px-2 py-0.5 rounded-full bg-gray-200 text-gray-700 text-[10px] font-bold uppercase tracking-wider">
+                    {REGLES_FINITION[typePiece].plafond}
+                  </span>
+                )}
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label="Surface (m²)"
