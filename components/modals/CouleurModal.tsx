@@ -134,10 +134,34 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition 
       console.log('DEBUG: Réponse API brute', data);
 
       // Source de vérité unique : l'option "Finition" des variantes Shopify
-      let finition = data.finition || undefined;
+      // On cherche si une variante correspond à la finition attendue (targetFinition)
+      let finition = undefined;
+      
+      if (data.variants && data.variants.length > 0) {
+        // 1. Chercher une variante qui correspond exactement à la finition cible
+        const matchingVariant = data.variants.find((v: any) => 
+          v.selectedOptions?.some((opt: any) => 
+            opt.name.toLowerCase() === 'finition' && 
+            opt.value.toLowerCase() === targetFinition?.toLowerCase()
+          )
+        );
 
-      console.log('DEBUG: Sélection couleur (Source: Variants)', {
+        if (matchingVariant) {
+          finition = matchingVariant.selectedOptions.find((opt: any) => opt.name.toLowerCase() === 'finition')?.value;
+        } else {
+          // 2. Fallback : prendre la finition du premier variant si aucune correspondance exacte
+          const firstVariantWithFinition = data.variants.find((v: any) => 
+            v.selectedOptions?.some((opt: any) => opt.name.toLowerCase() === 'finition')
+          );
+          if (firstVariantWithFinition) {
+            finition = firstVariantWithFinition.selectedOptions.find((opt: any) => opt.name.toLowerCase() === 'finition')?.value;
+          }
+        }
+      }
+
+      console.log('DEBUG: Sélection couleur (Dynamique)', {
         handle: product.handle,
+        targetFinition,
         finalFinition: finition
       });
 
