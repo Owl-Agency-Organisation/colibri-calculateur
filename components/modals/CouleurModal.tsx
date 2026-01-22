@@ -23,9 +23,10 @@ interface CouleurModalProps {
   onClose: () => void;
   onSelect: (couleur: Couleur) => void;
   title?: string;
+  targetFinition?: string; // 'Mate', 'Velours', 'Satin'
 }
 
-export function CouleurModal({ isOpen, onClose, onSelect, title }: CouleurModalProps) {
+export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition }: CouleurModalProps) {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -71,7 +72,16 @@ export function CouleurModal({ isOpen, onClose, onSelect, title }: CouleurModalP
       const response = await fetch(`/api/shopify/collections/${collectionHandle}`);
       if (!response.ok) throw new Error('Erreur lors du chargement des produits');
       const data = await response.json();
-      setProducts(data.products);
+      
+      // Filtrer les produits par finition si spécifié
+      let filteredProducts = data.products;
+      if (targetFinition) {
+        filteredProducts = data.products.filter((p: Product) => 
+          p.title.toLowerCase().includes(targetFinition.toLowerCase())
+        );
+      }
+      
+      setProducts(filteredProducts);
     } catch (err) {
       setError('Impossible de charger les produits');
       console.error(err);

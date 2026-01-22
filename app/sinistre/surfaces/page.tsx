@@ -9,6 +9,7 @@ import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
 import { CouleurModal } from '@/components/modals/CouleurModal';
 import { getStoredPieces, setStoredPieces } from '@/lib/store/sinistreStore';
 import type { Piece, Couleur, TypePiece, Mur } from '@/lib/types';
+import { REGLES_FINITION } from '@/lib/calcul';
 
 const MAX_MURS = 4;
 
@@ -125,6 +126,16 @@ export default function SaisieSurfacesPage() {
   const handleOpenCouleurModal = (type: 'mur' | 'plafond' | 'boiseries', murId?: string) => {
     setCurrentSelection({ type, murId });
     setShowCouleurModal(true);
+  };
+
+  const getTargetFinition = () => {
+    if (!currentSelection || !typePiece) return undefined;
+    const regles = REGLES_FINITION[typePiece];
+    if (!regles) return undefined;
+
+    if (currentSelection.type === 'mur') return regles.murs;
+    if (currentSelection.type === 'plafond') return regles.plafond;
+    return undefined; // Boiseries (Laque) géré séparément ou pas de filtrage
   };
 
   const handleSelectCouleur = (couleur: Couleur) => {
@@ -503,6 +514,7 @@ export default function SaisieSurfacesPage() {
             ? 'Choisir une couleur pour le plafond'
             : 'Choisir une couleur pour les boiseries'
         }
+        targetFinition={getTargetFinition()}
       />
     </div>
   );
