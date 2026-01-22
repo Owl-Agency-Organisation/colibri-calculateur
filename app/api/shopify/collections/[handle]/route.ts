@@ -28,6 +28,12 @@ const COLLECTION_PRODUCTS_QUERY = `
                 }
               }
             }
+            metafields(identifiers: [
+              { namespace: "custom", key: "finition" }
+            ]) {
+              key
+              value
+            }
           }
         }
       }
@@ -56,7 +62,14 @@ export async function GET(
       );
     }
 
-    const products = data.collection.products.edges.map((edge: any) => edge.node);
+    const products = data.collection.products.edges.map((edge: any) => {
+      const node = edge.node;
+      const finitionMeta = node.metafields?.find((mf: any) => mf?.key === 'finition');
+      return {
+        ...node,
+        finition: finitionMeta ? finitionMeta.value : null
+      };
+    });
 
     return NextResponse.json({ 
       collection: data.collection.title,

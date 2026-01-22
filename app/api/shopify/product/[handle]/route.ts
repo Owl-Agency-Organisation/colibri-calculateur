@@ -40,7 +40,8 @@ const PRODUCT_QUERY = `
       metafields(identifiers: [
         { namespace: "custom", key: "base" },
         { namespace: "custom", key: "code_hexadecimal" },
-        { namespace: "custom", key: "sous_couche" }
+        { namespace: "custom", key: "sous_couche" },
+        { namespace: "custom", key: "finition" }
       ]) {
         namespace
         key
@@ -103,6 +104,7 @@ export async function GET(
       base,
       sousCouche,
       codeHex: metafields.code_hexadecimal || '#FFFFFF',
+      finition: metafields.finition || null,
       variants,
     });
   } catch (error) {

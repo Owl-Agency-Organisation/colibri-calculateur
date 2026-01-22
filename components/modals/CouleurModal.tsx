@@ -15,6 +15,7 @@ interface Product {
   id: string;
   title: string;
   handle: string;
+  finition?: string | null;
   images: { edges: { node: { url: string } }[] };
   variants?: {
     selectedOptions: { name: string; value: string }[];
@@ -84,10 +85,15 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition 
         const target = targetFinition.toLowerCase() === 'mate' ? 'mat' : targetFinition.toLowerCase();
         
         filtered = allProducts.filter((p: Product) => {
-          // 1. Vérifier dans le titre
+          // 1. Vérifier prioritairement le metafield 'finition'
+          if (p.finition) {
+            return p.finition.toLowerCase().includes(target);
+          }
+
+          // 2. Fallback sur le titre
           const titleMatch = p.title.toLowerCase().includes(target);
           
-          // 2. Vérifier dans les variants (si disponibles)
+          // 3. Fallback sur les variants
           const variantMatch = p.variants?.some(v => 
             v.selectedOptions?.some(opt => 
               opt.name.toLowerCase() === 'finition' && opt.value.toLowerCase().includes(target)
@@ -133,6 +139,7 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition 
         base: data.base || 'Blanc',
         sousCouche: data.sousCouche || 'blanche',
         codeHex: data.codeHex || '#FFFFFF',
+        finition: data.finition || product.finition || undefined,
         imageUrl: product.images.edges[0]?.node.url || '',
         variants: data.variants || [],
       };

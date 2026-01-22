@@ -306,9 +306,9 @@ export default function SaisieSurfacesPage() {
                           {index + 1}
                         </span>
                         <h4 className="text-sm font-serif font-bold text-primary-700">Mur {index + 1}</h4>
-                        {typePiece && REGLES_FINITION[typePiece] && (
+                        {typePiece && (
                           <span className="px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 text-[10px] font-bold uppercase tracking-wider">
-                            {REGLES_FINITION[typePiece].murs}
+                            {mur.couleur?.finition || REGLES_FINITION[typePiece]?.murs}
                           </span>
                         )}
                       </div>
@@ -393,9 +393,9 @@ export default function SaisieSurfacesPage() {
             <div className="border border-gray-100 rounded-xl p-6 space-y-4 bg-gray-50/30">
               <div className="flex items-center gap-3">
                 <h3 className="font-serif font-bold text-gray-700">Plafond (optionnel)</h3>
-                {typePiece && REGLES_FINITION[typePiece] && (
+                {typePiece && (
                   <span className="px-2 py-0.5 rounded-full bg-gray-200 text-gray-700 text-[10px] font-bold uppercase tracking-wider">
-                    {REGLES_FINITION[typePiece].plafond}
+                    {couleurPlafond?.finition || REGLES_FINITION[typePiece]?.plafond}
                   </span>
                 )}
               </div>

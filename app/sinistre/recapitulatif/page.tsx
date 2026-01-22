@@ -153,7 +153,7 @@ export default function RecapitulatifPage() {
                               Mur {index + 1} : {mur.surface} m²
                             </p>
                             <p className="text-xs text-gray-500">
-                              {mur.couleur.titre} • <span className="uppercase">{REGLES_FINITION[piece.typePiece]?.murs}</span>
+                              {mur.couleur.titre} • <span className="uppercase">{mur.couleur.finition || REGLES_FINITION[piece.typePiece]?.murs}</span>
                             </p>
                           </div>
                         </div>
@@ -176,7 +176,7 @@ export default function RecapitulatifPage() {
                               Plafond : {piece.surfacePlafond} m²
                             </p>
                             <p className="text-xs text-gray-500">
-                              {piece.couleurPlafond.titre} • <span className="uppercase">{REGLES_FINITION[piece.typePiece]?.plafond}</span>
+                              {piece.couleurPlafond.titre} • <span className="uppercase">{piece.couleurPlafond.finition || REGLES_FINITION[piece.typePiece]?.plafond}</span>
                             </p>
                           </div>
                         </div>
