@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
+import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { getStoredPieces, getStoredAssure, STORAGE_KEYS } from '@/lib/store/sinistreStore';
 import type { ResultatCalcul, CalculPeinture, CalculSousCouche } from '@/lib/calcul';
 import type { Piece, Assure } from '@/lib/types';
@@ -35,6 +36,7 @@ interface LignePanier {
 
 export default function PanierPage() {
   const router = useRouter();
+  const { handleStepClick, isStepDisabled } = useStepperNavigation();
   const [assure, setAssure] = useState<Assure | null>(null);
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [resultat, setResultat] = useState<ResultatCalcul | null>(null);
@@ -217,7 +219,12 @@ export default function PanierPage() {
   return (
     <div className="space-y-6">
       {/* Step indicator */}
-      <StepIndicator steps={SINISTRE_STEPS} currentStep={6} />
+      <StepIndicator 
+        steps={SINISTRE_STEPS} 
+        currentStep={6} 
+        onStepClick={handleStepClick}
+        isStepDisabled={isStepDisabled}
+      />
 
       {/* Title */}
       <div className="text-center">

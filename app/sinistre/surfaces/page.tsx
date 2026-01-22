@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
+import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { CouleurModal } from '@/components/modals/CouleurModal';
 import { getStoredPieces, setStoredPieces } from '@/lib/store/sinistreStore';
 import type { Piece, Couleur, TypePiece, Mur } from '@/lib/types';
@@ -15,6 +16,7 @@ const MAX_MURS = 4;
 
 export default function SaisieSurfacesPage() {
   const router = useRouter();
+  const { handleStepClick, isStepDisabled } = useStepperNavigation();
   const [typePiece, setTypePiece] = useState<TypePiece | null>(null);
   const [nomPiece, setNomPiece] = useState('');
   
@@ -271,7 +273,12 @@ export default function SaisieSurfacesPage() {
   return (
     <div className="space-y-6">
       {/* Step indicator */}
-      <StepIndicator steps={SINISTRE_STEPS} currentStep={3} />
+      <StepIndicator 
+        steps={SINISTRE_STEPS} 
+        currentStep={3} 
+        onStepClick={handleStepClick}
+        isStepDisabled={isStepDisabled}
+      />
 
       {/* Form card */}
       <Card>

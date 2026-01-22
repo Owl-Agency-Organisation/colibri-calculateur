@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
+import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { isValidEmail, isValidPhone } from '@/lib/utils';
 import { STORAGE_KEYS, initialAssure } from '@/lib/store/sinistreStore';
 import type { Assure } from '@/lib/types';
@@ -19,6 +20,7 @@ const CIVILITE_OPTIONS = [
 
 export default function IdentificationPage() {
   const router = useRouter();
+  const { handleStepClick, isStepDisabled } = useStepperNavigation();
   const [isLoaded, setIsLoaded] = useState(false);
   const [formData, setFormData] = useState<Assure>(initialAssure);
   const [errors, setErrors] = useState<Partial<Record<keyof Assure, string>>>({});
@@ -191,7 +193,12 @@ export default function IdentificationPage() {
   return (
     <div className="space-y-6">
       {/* Step indicator */}
-      <StepIndicator steps={SINISTRE_STEPS} currentStep={1} />
+      <StepIndicator 
+        steps={SINISTRE_STEPS} 
+        currentStep={1} 
+        onStepClick={handleStepClick}
+        isStepDisabled={isStepDisabled}
+      />
 
       {/* Form card */}
       <Card>

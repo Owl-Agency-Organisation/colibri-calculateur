@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
+import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { getStoredPieces } from '@/lib/store/sinistreStore';
 import type { TypePiece } from '@/lib/types';
 
@@ -49,6 +50,7 @@ const TYPES_PIECES: { value: TypePiece; label: string; image: string }[] = [
 
 export default function SelectionPiecePage() {
   const router = useRouter();
+  const { handleStepClick, isStepDisabled } = useStepperNavigation();
   const [hasPieces, setHasPieces] = useState(false);
 
   useEffect(() => {
@@ -76,7 +78,12 @@ export default function SelectionPiecePage() {
   return (
     <div className="space-y-6">
       {/* Step indicator */}
-      <StepIndicator steps={SINISTRE_STEPS} currentStep={2} />
+      <StepIndicator 
+        steps={SINISTRE_STEPS} 
+        currentStep={2} 
+        onStepClick={handleStepClick}
+        isStepDisabled={isStepDisabled}
+      />
 
       {/* Title */}
       <div className="text-center">

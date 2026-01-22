@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
+import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { getStoredAssure, clearAllData } from '@/lib/store/sinistreStore';
 import type { Assure } from '@/lib/types';
 
 export default function ConfirmationPage() {
   const router = useRouter();
+  const { handleStepClick, isStepDisabled } = useStepperNavigation();
   const [assure, setAssure] = useState<Assure | null>(null);
   const [numeroCommande, setNumeroCommande] = useState('');
 
@@ -46,7 +48,12 @@ export default function ConfirmationPage() {
   return (
     <div className="space-y-6">
       {/* Step indicator */}
-      <StepIndicator steps={SINISTRE_STEPS} currentStep={7} />
+      <StepIndicator 
+        steps={SINISTRE_STEPS} 
+        currentStep={7} 
+        onStepClick={handleStepClick}
+        isStepDisabled={isStepDisabled}
+      />
 
       {/* Success message */}
       <div className="text-center py-8">

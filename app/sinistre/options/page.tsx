@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
+import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { getStoredPieces, STORAGE_KEYS } from '@/lib/store/sinistreStore';
 import { calculerQuantites, type ResultatCalcul } from '@/lib/calcul';
 import type { Piece } from '@/lib/types';
@@ -19,6 +20,7 @@ const PRODUITS_RENOVATION = [
 
 export default function OptionsPage() {
   const router = useRouter();
+  const { handleStepClick, isStepDisabled } = useStepperNavigation();
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [resultat, setResultat] = useState<ResultatCalcul | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -154,7 +156,12 @@ export default function OptionsPage() {
   return (
     <div className="space-y-6">
       {/* Step indicator */}
-      <StepIndicator steps={SINISTRE_STEPS} currentStep={5} />
+      <StepIndicator 
+        steps={SINISTRE_STEPS} 
+        currentStep={5} 
+        onStepClick={handleStepClick}
+        isStepDisabled={isStepDisabled}
+      />
 
       {/* Title */}
       <div className="text-center">

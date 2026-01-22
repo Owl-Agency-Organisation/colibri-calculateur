@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
+import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { getStoredPieces, setStoredPieces } from '@/lib/store/sinistreStore';
 import type { Piece, TypePiece } from '@/lib/types';
@@ -22,6 +23,7 @@ const TYPE_PIECE_LABELS: Record<TypePiece, string> = {
 
 export default function RecapitulatifPage() {
   const router = useRouter();
+  const { handleStepClick, isStepDisabled } = useStepperNavigation();
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -106,7 +108,12 @@ export default function RecapitulatifPage() {
   return (
     <div className="space-y-6">
       {/* Step indicator */}
-      <StepIndicator steps={SINISTRE_STEPS} currentStep={4} />
+      <StepIndicator 
+        steps={SINISTRE_STEPS} 
+        currentStep={4} 
+        onStepClick={handleStepClick}
+        isStepDisabled={isStepDisabled}
+      />
 
       {/* Title */}
       <div className="text-center">
