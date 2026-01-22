@@ -84,23 +84,14 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition 
         // Normalisation de la finition (ex: 'Mate' -> 'mat')
         const target = targetFinition.toLowerCase() === 'mate' ? 'mat' : targetFinition.toLowerCase();
         
-        filtered = allProducts.filter((p: Product) => {
-          // 1. Vérifier prioritairement le metafield 'finition'
-          if (p.finition) {
-            return p.finition.toLowerCase().includes(target);
+        filtered = allProducts.filter((p: any) => {
+          // Utiliser le nouveau champ 'finitions' (tableau) renvoyé par l'API
+          if (p.finitions && p.finitions.length > 0) {
+            return p.finitions.some((f: string) => f.toLowerCase().includes(target));
           }
-
-          // 2. Fallback sur le titre
-          const titleMatch = p.title.toLowerCase().includes(target);
           
-          // 3. Fallback sur les variants
-          const variantMatch = p.variants?.some(v => 
-            v.selectedOptions?.some(opt => 
-              opt.name.toLowerCase() === 'finition' && opt.value.toLowerCase().includes(target)
-            )
-          );
-          
-          return titleMatch || variantMatch;
+          // Fallback de sécurité sur le titre si 'finitions' est absent
+          return p.title.toLowerCase().includes(target);
         });
 
         // Fallback : si le filtrage est trop strict (0 résultats), on garde tout

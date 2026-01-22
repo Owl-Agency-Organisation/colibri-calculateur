@@ -28,7 +28,7 @@ const COLLECTION_PRODUCTS_QUERY = `
                 }
               }
             }
-            variants(first: 1) {
+            variants(first: 20) {
               edges {
                 node {
                   selectedOptions {
@@ -69,28 +69,29 @@ export async function GET(
     const products = data.collection.products.edges.map((edge: any) => {
       const node = edge.node;
       
-      // Extraire la finition de l'option de variante
-      let finition = null;
-      const firstVariant = node.variants?.edges?.[0]?.node;
-      if (firstVariant) {
-        const finitionOption = firstVariant.selectedOptions?.find(
+      // Extraire toutes les finitions disponibles pour ce produit
+      const finitionsDisponibles = new Set<string>();
+      
+      node.variants?.edges?.forEach((vEdge: any) => {
+        const variant = vEdge.node;
+        const finitionOption = variant.selectedOptions?.find(
           (opt: any) => opt.name.toLowerCase() === 'finition'
         );
         if (finitionOption) {
-          finition = finitionOption.value;
+          finitionsDisponibles.add(finitionOption.value);
         }
-      }
+      });
       
-      // Fallback sur le titre si l'option n'est pas trouvée
-      if (!finition) {
-        if (node.title.toLowerCase().includes('mat')) finition = 'Mat';
-        else if (node.title.toLowerCase().includes('velours')) finition = 'Velours';
-        else if (node.title.toLowerCase().includes('satin')) finition = 'Satin';
+      // Fallback sur le titre si aucune option n'est trouvée
+      if (finitionsDisponibles.size === 0) {
+        if (node.title.toLowerCase().includes('mat')) finitionsDisponibles.add('Mat');
+        if (node.title.toLowerCase().includes('velours')) finitionsDisponibles.add('Velours');
+        if (node.title.toLowerCase().includes('satin')) finitionsDisponibles.add('Satin');
       }
 
       return {
         ...node,
-        finition
+        finitions: Array.from(finitionsDisponibles)
       };
     });
 
