@@ -270,7 +270,7 @@ export default function RecapitulatifPage() {
           size="lg"
           onClick={handleContinue}
         >
-          Calculer les quantités →
+          Choisir vos options →
         </Button>
       </div>
 
