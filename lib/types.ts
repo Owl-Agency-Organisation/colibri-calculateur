@@ -74,6 +74,7 @@ export interface Couleur {
   base: 'Blanc' | 'BLC' | 'B' | 'C';
   sousCouche: 'grise' | 'blanche';
   codeHex: string;
+  finition?: string;
   imageUrl: string;
   variants?: ShopifyVariant[];
 }

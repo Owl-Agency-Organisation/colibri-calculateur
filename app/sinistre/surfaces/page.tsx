@@ -9,6 +9,7 @@ import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
 import { CouleurModal } from '@/components/modals/CouleurModal';
 import { getStoredPieces, setStoredPieces } from '@/lib/store/sinistreStore';
 import type { Piece, Couleur, TypePiece, Mur } from '@/lib/types';
+import { REGLES_FINITION } from '@/lib/calcul';
 
 const MAX_MURS = 4;
 
@@ -127,6 +128,16 @@ export default function SaisieSurfacesPage() {
     setShowCouleurModal(true);
   };
 
+  const getTargetFinition = () => {
+    if (!currentSelection || !typePiece) return undefined;
+    const regles = REGLES_FINITION[typePiece];
+    if (!regles) return undefined;
+
+    if (currentSelection.type === 'mur') return regles.murs;
+    if (currentSelection.type === 'plafond') return regles.plafond;
+    return undefined; // Boiseries (Laque) géré séparément ou pas de filtrage
+  };
+
   const handleSelectCouleur = (couleur: Couleur) => {
     if (!currentSelection) return;
 
@@ -208,6 +219,12 @@ export default function SaisieSurfacesPage() {
       couleurPlafond: couleurPlafond || undefined,
       couleurBoiseries: couleurBoiseries || undefined,
     };
+
+    console.log('DEBUG: Sauvegarde pièce', {
+      nom: pieceData.nom,
+      murs: pieceData.murs.map(m => ({ id: m.id, finition: m.couleur.finition })),
+      plafondFinition: pieceData.couleurPlafond?.finition
+    });
 
     if (editPieceId) {
       // Mode édition : mettre à jour la pièce existante
@@ -295,6 +312,11 @@ export default function SaisieSurfacesPage() {
                           {index + 1}
                         </span>
                         <h4 className="text-sm font-serif font-bold text-primary-700">Mur {index + 1}</h4>
+                        {typePiece && (
+                          <span className="px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 text-[10px] font-bold uppercase tracking-wider">
+                            {mur.couleur?.finition || REGLES_FINITION[typePiece]?.murs}
+                          </span>
+                        )}
                       </div>
                       {murs.length > 1 && (
                         <button
@@ -375,7 +397,14 @@ export default function SaisieSurfacesPage() {
 
             {/* Plafond (optionnel) */}
             <div className="border border-gray-100 rounded-xl p-6 space-y-4 bg-gray-50/30">
-              <h3 className="font-serif font-bold text-gray-700">Plafond (optionnel)</h3>
+              <div className="flex items-center gap-3">
+                <h3 className="font-serif font-bold text-gray-700">Plafond (optionnel)</h3>
+                {typePiece && (
+                  <span className="px-2 py-0.5 rounded-full bg-gray-200 text-gray-700 text-[10px] font-bold uppercase tracking-wider">
+                    {couleurPlafond?.finition || REGLES_FINITION[typePiece]?.plafond}
+                  </span>
+                )}
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label="Surface (m²)"
@@ -503,6 +532,7 @@ export default function SaisieSurfacesPage() {
             ? 'Choisir une couleur pour le plafond'
             : 'Choisir une couleur pour les boiseries'
         }
+        targetFinition={getTargetFinition()}
       />
     </div>
   );

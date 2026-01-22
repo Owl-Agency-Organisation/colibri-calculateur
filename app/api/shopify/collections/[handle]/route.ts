@@ -28,6 +28,16 @@ const COLLECTION_PRODUCTS_QUERY = `
                 }
               }
             }
+            variants(first: 20) {
+              edges {
+                node {
+                  selectedOptions {
+                    name
+                    value
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -56,7 +66,34 @@ export async function GET(
       );
     }
 
-    const products = data.collection.products.edges.map((edge: any) => edge.node);
+    const products = data.collection.products.edges.map((edge: any) => {
+      const node = edge.node;
+      
+      // Extraire toutes les finitions disponibles pour ce produit
+      const finitionsDisponibles = new Set<string>();
+      
+      node.variants?.edges?.forEach((vEdge: any) => {
+        const variant = vEdge.node;
+        const finitionOption = variant.selectedOptions?.find(
+          (opt: any) => opt.name.toLowerCase() === 'finition'
+        );
+        if (finitionOption) {
+          finitionsDisponibles.add(finitionOption.value);
+        }
+      });
+      
+      // Fallback sur le titre si aucune option n'est trouvée
+      if (finitionsDisponibles.size === 0) {
+        if (node.title.toLowerCase().includes('mat')) finitionsDisponibles.add('Mat');
+        if (node.title.toLowerCase().includes('velours')) finitionsDisponibles.add('Velours');
+        if (node.title.toLowerCase().includes('satin')) finitionsDisponibles.add('Satin');
+      }
+
+      return {
+        ...node,
+        finitions: Array.from(finitionsDisponibles)
+      };
+    });
 
     return NextResponse.json({ 
       collection: data.collection.title,

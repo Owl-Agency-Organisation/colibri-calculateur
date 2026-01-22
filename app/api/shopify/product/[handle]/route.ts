@@ -34,13 +34,18 @@ const PRODUCT_QUERY = `
               currencyCode
             }
             availableForSale
+            selectedOptions {
+              name
+              value
+            }
           }
         }
       }
       metafields(identifiers: [
         { namespace: "custom", key: "base" },
         { namespace: "custom", key: "code_hexadecimal" },
-        { namespace: "custom", key: "sous_couche" }
+        { namespace: "custom", key: "sous_couche" },
+        { namespace: "custom", key: "finition" }
       ]) {
         namespace
         key
@@ -98,11 +103,23 @@ export async function GET(
     // Formater les variants pour le frontend
     const variants = product.variants?.edges?.map((edge: any) => edge.node) || [];
 
+    // Extraire la finition de l'option de variante (Source de vérité unique)
+    let finition = null;
+    if (variants.length > 0) {
+      const finitionOption = variants[0].selectedOptions?.find(
+        (opt: any) => opt.name.toLowerCase() === 'finition'
+      );
+      if (finitionOption) {
+        finition = finitionOption.value;
+      }
+    }
+
     return NextResponse.json({
       ...product,
       base,
       sousCouche,
       codeHex: metafields.code_hexadecimal || '#FFFFFF',
+      finition, // Sera null si non trouvé dans les variants
       variants,
     });
   } catch (error) {

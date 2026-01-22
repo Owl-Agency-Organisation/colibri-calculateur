@@ -15,7 +15,11 @@ interface Product {
   id: string;
   title: string;
   handle: string;
+  finition?: string | null;
   images: { edges: { node: { url: string } }[] };
+  variants?: {
+    selectedOptions: { name: string; value: string }[];
+  }[];
 }
 
 interface CouleurModalProps {
@@ -23,9 +27,10 @@ interface CouleurModalProps {
   onClose: () => void;
   onSelect: (couleur: Couleur) => void;
   title?: string;
+  targetFinition?: string; // 'Mate', 'Velours', 'Satin'
 }
 
-export function CouleurModal({ isOpen, onClose, onSelect, title }: CouleurModalProps) {
+export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition }: CouleurModalProps) {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -71,7 +76,32 @@ export function CouleurModal({ isOpen, onClose, onSelect, title }: CouleurModalP
       const response = await fetch(`/api/shopify/collections/${collectionHandle}`);
       if (!response.ok) throw new Error('Erreur lors du chargement des produits');
       const data = await response.json();
-      setProducts(data.products);
+      
+      let allProducts = data.products;
+      let filtered = allProducts;
+
+      if (targetFinition) {
+        // Normalisation de la finition (ex: 'Mate' -> 'mat')
+        const target = targetFinition.toLowerCase() === 'mate' ? 'mat' : targetFinition.toLowerCase();
+        
+        filtered = allProducts.filter((p: any) => {
+          // Utiliser le nouveau champ 'finitions' (tableau) renvoyé par l'API
+          if (p.finitions && p.finitions.length > 0) {
+            return p.finitions.some((f: string) => f.toLowerCase().includes(target));
+          }
+          
+          // Fallback de sécurité sur le titre si 'finitions' est absent
+          return p.title.toLowerCase().includes(target);
+        });
+
+        // Fallback : si le filtrage est trop strict (0 résultats), on garde tout
+        if (filtered.length === 0) {
+          console.warn(`Aucun produit trouvé pour la finition ${target}, affichage de tous les produits.`);
+          filtered = allProducts;
+        }
+      }
+      
+      setProducts(filtered);
     } catch (err) {
       setError('Impossible de charger les produits');
       console.error(err);
@@ -92,6 +122,40 @@ export function CouleurModal({ isOpen, onClose, onSelect, title }: CouleurModalP
       if (!response.ok) throw new Error('Erreur lors du chargement du produit');
       const data = await response.json();
       
+      console.log('DEBUG: Réponse API brute', data);
+
+      // Source de vérité unique : l'option "Finition" des variantes Shopify
+      // On cherche si une variante correspond à la finition attendue (targetFinition)
+      let finition = undefined;
+      
+      if (data.variants && data.variants.length > 0) {
+        // 1. Chercher une variante qui correspond exactement à la finition cible
+        const matchingVariant = data.variants.find((v: any) => 
+          v.selectedOptions?.some((opt: any) => 
+            opt.name.toLowerCase() === 'finition' && 
+            opt.value.toLowerCase() === targetFinition?.toLowerCase()
+          )
+        );
+
+        if (matchingVariant) {
+          finition = matchingVariant.selectedOptions.find((opt: any) => opt.name.toLowerCase() === 'finition')?.value;
+        } else {
+          // 2. Fallback : prendre la finition du premier variant si aucune correspondance exacte
+          const firstVariantWithFinition = data.variants.find((v: any) => 
+            v.selectedOptions?.some((opt: any) => opt.name.toLowerCase() === 'finition')
+          );
+          if (firstVariantWithFinition) {
+            finition = firstVariantWithFinition.selectedOptions.find((opt: any) => opt.name.toLowerCase() === 'finition')?.value;
+          }
+        }
+      }
+
+      console.log('DEBUG: Sélection couleur (Dynamique)', {
+        handle: product.handle,
+        targetFinition,
+        finalFinition: finition
+      });
+
       const couleur: Couleur = {
         productId: product.id,
         productHandle: product.handle,
@@ -100,6 +164,7 @@ export function CouleurModal({ isOpen, onClose, onSelect, title }: CouleurModalP
         base: data.base || 'Blanc',
         sousCouche: data.sousCouche || 'blanche',
         codeHex: data.codeHex || '#FFFFFF',
+        finition: finition,
         imageUrl: product.images.edges[0]?.node.url || '',
         variants: data.variants || [],
       };
@@ -134,9 +199,16 @@ export function CouleurModal({ isOpen, onClose, onSelect, title }: CouleurModalP
         <div className="relative bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
           {/* Header */}
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {title || 'Choisir une couleur'}
-            </h2>
+            <div className="flex flex-col">
+              <h2 className="text-xl font-semibold text-gray-900">
+                {title || 'Choisir une couleur'}
+              </h2>
+              {targetFinition && (
+                <p className="text-xs text-primary-600 font-medium">
+                  Finition recommandée : <span className="font-bold uppercase">{targetFinition}</span>
+                </p>
+              )}
+            </div>
             <button
               onClick={handleClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"

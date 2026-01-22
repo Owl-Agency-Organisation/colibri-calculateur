@@ -13,6 +13,17 @@ import type { Piece, Couleur } from '@/lib/types';
 
 // ==================== CONSTANTES ====================
 const RENDEMENT_M2_PAR_LITRE = 10; // m²/L pour une couche
+
+// Règles de finition par type de pièce
+export const REGLES_FINITION: Record<string, { murs: string; plafond: string }> = {
+  'piece-de-vie': { murs: 'Velours', plafond: 'Mate' },
+  'chambre': { murs: 'Velours', plafond: 'Mate' },
+  'cuisine': { murs: 'Satin', plafond: 'Mate' },
+  'salle-de-bain': { murs: 'Satin', plafond: 'Satin' },
+  'toilettes': { murs: 'Satin', plafond: 'Mate' },
+  'entree': { murs: 'Velours', plafond: 'Mate' },
+  'couloir': { murs: 'Velours', plafond: 'Mate' },
+};
 const MARGE_SECURITE = 0.05; // +5%
 const SEUIL_SURFACE_KIT = 30; // m²
 
@@ -304,8 +315,11 @@ function agregerSurfacesParCouleur(pieces: Piece[]): SurfaceParCouleur[] {
 
   for (const piece of pieces) {
     // Traiter chaque mur individuellement
-    piece.murs.forEach((mur, index) => {
-      const key = mur.couleur.productHandle;
+    piece.murs.forEach((mur) => {
+      // Normalisation de la finition pour la clé
+      const finitionKey = (mur.couleur.finition || 'default').toLowerCase().trim();
+      // La clé inclut le productHandle ET la finition pour garantir la séparation
+      const key = `${mur.couleur.productHandle}-${finitionKey}`;
       if (!map.has(key)) {
         map.set(key, { couleur: mur.couleur, surfaceTotale: 0, details: [] });
       }
@@ -320,7 +334,8 @@ function agregerSurfacesParCouleur(pieces: Piece[]): SurfaceParCouleur[] {
     
     // Traiter le plafond (optionnel)
     if (piece.surfacePlafond && piece.couleurPlafond) {
-      const key = piece.couleurPlafond.productHandle;
+      const finitionKey = (piece.couleurPlafond.finition || 'default').toLowerCase().trim();
+      const key = `${piece.couleurPlafond.productHandle}-${finitionKey}`;
       if (!map.has(key)) {
         map.set(key, { couleur: piece.couleurPlafond, surfaceTotale: 0, details: [] });
       }
@@ -335,7 +350,8 @@ function agregerSurfacesParCouleur(pieces: Piece[]): SurfaceParCouleur[] {
     
     // Traiter les boiseries (optionnel)
     if (piece.surfaceBoiseries && piece.couleurBoiseries) {
-      const key = piece.couleurBoiseries.productHandle;
+      const finitionKey = (piece.couleurBoiseries.finition || 'default').toLowerCase().trim();
+      const key = `${piece.couleurBoiseries.productHandle}-${finitionKey}`;
       if (!map.has(key)) {
         map.set(key, { couleur: piece.couleurBoiseries, surfaceTotale: 0, details: [] });
       }
