@@ -55,7 +55,7 @@ export default function ConfirmationPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+        <h1 className="text-3xl sm:text-4xl font-serif font-bold text-primary-600 mb-2">
           PDF téléchargé avec succès !
         </h1>
         <p className="text-gray-600 max-w-md mx-auto">
@@ -68,12 +68,12 @@ export default function ConfirmationPage() {
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-sm text-gray-500">Référence</p>
-              <p className="text-lg font-bold text-primary-600">{numeroCommande}</p>
+              <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Référence</p>
+              <p className="text-lg font-serif font-bold text-primary-600">{numeroCommande}</p>
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-500">Date</p>
-              <p className="font-medium text-gray-900">
+              <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Date</p>
+              <p className="font-serif font-bold text-primary-600">
                 {new Date().toLocaleDateString('fr-FR', {
                   day: '2-digit',
                   month: 'long',

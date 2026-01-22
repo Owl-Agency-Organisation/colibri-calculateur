@@ -11,9 +11,9 @@ export default function SinistreLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex flex-col items-start">
@@ -22,7 +22,7 @@ export default function SinistreLayout({
                 alt="Colibri Logo" 
                 className="h-8 w-auto object-contain mb-1"
               />
-              <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">
+              <p className="text-[10px] uppercase tracking-widest text-primary-600 font-bold">
                 Partenaire de votre assureur
               </p>
             </div>
@@ -42,11 +42,18 @@ export default function SinistreLayout({
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-auto">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <p className="text-center text-sm text-gray-500">
-            © 2026 Colibri Peinture
-          </p>
+      <footer className="bg-white border-t border-gray-100 mt-auto">
+        <div className="max-w-4xl mx-auto px-4 py-12">
+          <div className="flex flex-col items-center space-y-4">
+            <img 
+              src="https://cdn.shopify.com/s/files/1/0971/0436/3865/files/logo-colibri-lettre-ligne-gris.png?v=1761219657" 
+              alt="Colibri Logo" 
+              className="h-6 w-auto opacity-50 grayscale"
+            />
+            <p className="text-center text-xs text-gray-400 tracking-wide">
+              © 2026 COLIBRI PEINTURE — TOUS DROITS RÉSERVÉS
+            </p>
+          </div>
         </div>
       </footer>
     </div>
