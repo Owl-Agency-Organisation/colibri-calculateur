@@ -79,10 +79,12 @@ export default function PanierPage() {
         .join(' + ');
       const prix = peinture.prixTotal;
 
+      const finitionAffichee = peinture.couleur.finition || (peinture.couleur.productHandle.includes('mat') ? 'Mat' : peinture.couleur.productHandle.includes('vel') ? 'Velours' : 'Satin');
+      
       lignes.push({
         id: `peinture-${index}`,
         type: 'peinture',
-        titre: `${peinture.couleur.titre} - ${peinture.couleur.finition}`,
+        titre: `${peinture.couleur.titre} - ${finitionAffichee}`,
         description: `${peinture.surfaceTotale.toFixed(1)} m² - ${contenantsStr}`,
         quantite: peinture.litresCommandes,
         unite: 'L',

@@ -235,7 +235,7 @@ export default function OptionsPage() {
                       <div className="flex items-center gap-2 mt-0.5">
                         <p className="text-xs text-gray-500 uppercase tracking-wider">{peinture.couleur.collection}</p>
                         <span className="px-1.5 py-0.5 rounded bg-primary-50 text-primary-700 text-[10px] font-bold uppercase tracking-wider">
-                          {peinture.couleur.finition}
+                          {peinture.couleur.finition || (peinture.couleur.productHandle.includes('mat') ? 'Mat' : peinture.couleur.productHandle.includes('vel') ? 'Velours' : 'Satin')}
                         </span>
                       </div>
                       <p className="text-sm text-gray-600 mt-2">

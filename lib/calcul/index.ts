@@ -316,8 +316,8 @@ function agregerSurfacesParCouleur(pieces: Piece[]): SurfaceParCouleur[] {
   for (const piece of pieces) {
     // Traiter chaque mur individuellement
     piece.murs.forEach((mur) => {
-      // La clé inclut le productHandle car chaque finition a son propre produit Shopify
-      const key = mur.couleur.productHandle;
+      // La clé inclut le productHandle ET la finition pour garantir la séparation
+      const key = `${mur.couleur.productHandle}-${mur.couleur.finition || 'default'}`;
       if (!map.has(key)) {
         map.set(key, { couleur: mur.couleur, surfaceTotale: 0, details: [] });
       }
@@ -332,7 +332,7 @@ function agregerSurfacesParCouleur(pieces: Piece[]): SurfaceParCouleur[] {
     
     // Traiter le plafond (optionnel)
     if (piece.surfacePlafond && piece.couleurPlafond) {
-      const key = piece.couleurPlafond.productHandle;
+      const key = `${piece.couleurPlafond.productHandle}-${piece.couleurPlafond.finition || 'default'}`;
       if (!map.has(key)) {
         map.set(key, { couleur: piece.couleurPlafond, surfaceTotale: 0, details: [] });
       }
@@ -347,7 +347,7 @@ function agregerSurfacesParCouleur(pieces: Piece[]): SurfaceParCouleur[] {
     
     // Traiter les boiseries (optionnel)
     if (piece.surfaceBoiseries && piece.couleurBoiseries) {
-      const key = piece.couleurBoiseries.productHandle;
+      const key = `${piece.couleurBoiseries.productHandle}-${piece.couleurBoiseries.finition || 'default'}`;
       if (!map.has(key)) {
         map.set(key, { couleur: piece.couleurBoiseries, surfaceTotale: 0, details: [] });
       }
