@@ -131,25 +131,10 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition 
       if (!response.ok) throw new Error('Erreur lors du chargement du produit');
       const data = await response.json();
       
-      // Source de vérité unique : l'option "Finition" des variantes Shopify
-      let finition = undefined;
-      
-      if (data.variants && data.variants.length > 0) {
-        // Chercher dans les options du premier variant disponible
-        const variantWithFinition = data.variants.find((v: any) => 
-          v.selectedOptions?.some((opt: any) => opt.name.toLowerCase() === 'finition')
-        );
-        if (variantWithFinition) {
-          finition = variantWithFinition.selectedOptions.find((opt: any) => opt.name.toLowerCase() === 'finition')?.value;
-        }
-      }
+      console.log('DEBUG: Réponse API brute', data);
 
-      // Si non trouvé dans les variants, on peut tenter le titre par sécurité mais la priorité reste les variants
-      if (!finition) {
-        if (product.title.toLowerCase().includes('mat')) finition = 'Mat';
-        else if (product.title.toLowerCase().includes('velours')) finition = 'Velours';
-        else if (product.title.toLowerCase().includes('satin')) finition = 'Satin';
-      }
+      // Source de vérité unique : l'option "Finition" des variantes Shopify
+      let finition = data.finition || undefined;
 
       console.log('DEBUG: Sélection couleur (Source: Variants)', {
         handle: product.handle,

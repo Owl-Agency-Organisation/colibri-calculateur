@@ -34,6 +34,10 @@ const PRODUCT_QUERY = `
               currencyCode
             }
             availableForSale
+            selectedOptions {
+              name
+              value
+            }
           }
         }
       }
@@ -99,9 +103,9 @@ export async function GET(
     // Formater les variants pour le frontend
     const variants = product.variants?.edges?.map((edge: any) => edge.node) || [];
 
-    // Extraire la finition de l'option de variante
-    let finition = metafields.finition || null;
-    if (!finition && variants.length > 0) {
+    // Extraire la finition de l'option de variante (Source de vérité unique)
+    let finition = null;
+    if (variants.length > 0) {
       const finitionOption = variants[0].selectedOptions?.find(
         (opt: any) => opt.name.toLowerCase() === 'finition'
       );
@@ -115,7 +119,7 @@ export async function GET(
       base,
       sousCouche,
       codeHex: metafields.code_hexadecimal || '#FFFFFF',
-      finition,
+      finition, // Sera null si non trouvé dans les variants
       variants,
     });
   } catch (error) {
