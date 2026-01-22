@@ -131,12 +131,24 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition 
       if (!response.ok) throw new Error('Erreur lors du chargement du produit');
       const data = await response.json();
       
-      const finition = data.finition || product.finition || undefined;
+      // Extraire la finition prioritairement du metafield, sinon des variants
+      let finition = data.finition || product.finition;
       
+      if (!finition && data.variants && data.variants.length > 0) {
+        // Chercher dans les options du premier variant disponible
+        const variantWithFinition = data.variants.find((v: any) => 
+          v.selectedOptions?.some((opt: any) => opt.name === 'Finition')
+        );
+        if (variantWithFinition) {
+          finition = variantWithFinition.selectedOptions.find((opt: any) => opt.name === 'Finition')?.value;
+        }
+      }
+
       console.log('DEBUG: Sélection couleur', {
         handle: product.handle,
         finitionMeta: data.finition,
         productFinition: product.finition,
+        variantFinition: finition,
         finalFinition: finition
       });
 

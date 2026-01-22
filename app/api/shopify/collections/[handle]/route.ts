@@ -65,9 +65,19 @@ export async function GET(
     const products = data.collection.products.edges.map((edge: any) => {
       const node = edge.node;
       const finitionMeta = node.metafields?.find((mf: any) => mf?.key === 'finition');
+      
+      let finition = finitionMeta ? finitionMeta.value : null;
+      
+      // Fallback sur le titre ou les variants si possible (simplifié ici car on n'a pas tous les variants dans cette query)
+      if (!finition) {
+        if (node.title.toLowerCase().includes('mat')) finition = 'Mat';
+        else if (node.title.toLowerCase().includes('velours')) finition = 'Velours';
+        else if (node.title.toLowerCase().includes('satin')) finition = 'Satin';
+      }
+
       return {
         ...node,
-        finition: finitionMeta ? finitionMeta.value : null
+        finition
       };
     });
 
