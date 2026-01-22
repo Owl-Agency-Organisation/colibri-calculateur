@@ -3,35 +3,35 @@ import { Button } from '@/components/ui/Button';
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+    <main className="min-h-screen bg-background">
       {/* Hero section */}
-      <div className="max-w-4xl mx-auto px-4 py-16 sm:py-24">
+      <div className="max-w-4xl mx-auto px-4 py-20 sm:py-32">
         <div className="text-center">
           {/* Logo */}
-          <div className="flex justify-center mb-8">
+          <div className="flex justify-center mb-12">
             <img 
               src="https://cdn.shopify.com/s/files/1/0971/0436/3865/files/logo-colibri-lettre-ligne-gris.png?v=1761219657" 
               alt="Colibri Logo" 
-              className="h-12 w-auto object-contain"
+              className="h-10 w-auto object-contain opacity-90"
             />
           </div>
 
           {/* Title */}
-          <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
+          <h1 className="text-5xl sm:text-7xl font-serif font-bold text-primary-600 mb-6 tracking-tight">
             Assurances
           </h1>
-          <p className="text-xl text-gray-600 mb-2">
+          <p className="text-xs uppercase tracking-[0.3em] text-primary-500 font-bold mb-8">
             Partenaire de votre assureur
           </p>
-          <p className="text-lg text-gray-500 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed">
             Calculez automatiquement vos besoins en peinture biosourcée 
             pour votre sinistre en quelques minutes.
           </p>
 
           {/* CTA Button */}
           <Link href="/sinistre">
-            <Button size="lg" className="text-lg px-8 py-4">
-              Commencer le calcul →
+            <Button size="lg" className="text-lg px-12 py-6 rounded-full shadow-xl hover:shadow-2xl transition-all">
+              Commencer le calcul
             </Button>
           </Link>
 
@@ -77,10 +77,10 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-gray-200 py-8 mt-16">
+      <footer className="border-t border-gray-100 py-12 mt-24">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <p className="text-sm text-gray-500">
-            © 2026 Colibri Peinture
+          <p className="text-xs text-gray-400 tracking-widest uppercase">
+            © 2026 COLIBRI PEINTURE — TOUS DROITS RÉSERVÉS
           </p>
         </div>
       </footer>

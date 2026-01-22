@@ -278,11 +278,11 @@ export default function SaisieSurfacesPage() {
             />
 
             {/* Murs (obligatoire) - Nouveau design multi-murs */}
-            <div className="border border-gray-200 rounded-lg p-4 space-y-4">
+            <div className="border border-primary-100 bg-primary-50/30 rounded-xl p-6 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-medium text-gray-900">Murs *</h3>
+                <h3 className="font-serif font-bold text-primary-600">Murs *</h3>
                 {murs.length < MAX_MURS && (
-                  <Button type="button" variant="outline" size="sm" onClick={handleAddMur}>
+                  <Button type="button" variant="secondary" size="sm" onClick={handleAddMur} className="rounded-full">
                     + Ajouter un mur
                   </Button>
                 )}

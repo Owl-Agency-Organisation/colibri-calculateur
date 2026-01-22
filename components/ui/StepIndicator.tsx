@@ -19,7 +19,7 @@ export function StepIndicator({ steps, currentStep, className }: StepIndicatorPr
         <span className="text-sm text-gray-500">
           Étape {currentStep} sur {steps.length}
         </span>
-        <p className="text-lg font-medium text-gray-900">
+        <p className="text-lg font-serif font-bold text-primary-600">
           {steps.find(s => s.id === currentStep)?.title}
         </p>
       </div>
@@ -36,8 +36,8 @@ export function StepIndicator({ steps, currentStep, className }: StepIndicatorPr
                   step.id < currentStep
                     ? 'bg-primary-600 text-white'
                     : step.id === currentStep
-                    ? 'bg-primary-600 text-white ring-4 ring-primary-100'
-                    : 'bg-gray-200 text-gray-500'
+                    ? 'bg-primary-600 text-white ring-4 ring-primary-200'
+                    : 'bg-gray-100 text-gray-400'
                 )}
               >
                 {step.id < currentStep ? (
@@ -54,8 +54,8 @@ export function StepIndicator({ steps, currentStep, className }: StepIndicatorPr
               </div>
               <span
                 className={cn(
-                  'mt-2 text-xs font-medium text-center max-w-[80px]',
-                  step.id <= currentStep ? 'text-primary-600' : 'text-gray-500'
+                  'mt-2 text-[10px] uppercase tracking-wider font-bold text-center max-w-[80px]',
+                  step.id <= currentStep ? 'text-primary-600' : 'text-gray-400'
                 )}
               >
                 {step.title}
