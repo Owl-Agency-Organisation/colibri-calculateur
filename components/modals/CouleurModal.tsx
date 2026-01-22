@@ -22,9 +22,10 @@ interface CouleurModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (couleur: Couleur) => void;
+  title?: string;
 }
 
-export function CouleurModal({ isOpen, onClose, onSelect }: CouleurModalProps) {
+export function CouleurModal({ isOpen, onClose, onSelect, title }: CouleurModalProps) {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -134,7 +135,7 @@ export function CouleurModal({ isOpen, onClose, onSelect }: CouleurModalProps) {
           {/* Header */}
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900">
-              Choisir une couleur
+              {title || 'Choisir une couleur'}
             </h2>
             <button
               onClick={handleClose}
