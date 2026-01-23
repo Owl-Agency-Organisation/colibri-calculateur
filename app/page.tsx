@@ -373,7 +373,7 @@ export default function LandingPage() {
             <p>Ici, <b>pas de calcul compliqué</b> ni de jargon technique. Vous indiquez vos pièces, vos surfaces, vos couleurs... Nous nous occupons du reste !</p>
 
             <Link href="/sinistre" className="cta-btn">
-              Commencer
+              Estimer mon projet
             </Link>
           </div>
           <div className="hero-image"></div>
@@ -499,6 +499,13 @@ export default function LandingPage() {
             <h3>SAV réactif</h3>
             <p>Une question ? Contactez-nous au 05&nbsp;62&nbsp;14&nbsp;16&nbsp;46.<br />Nous sommes joignables du lundi au vendredi, de 9&nbsp;h à 18&nbsp;h.</p>
           </div>
+        </div>
+        
+        {/* CTA secondaire en bas de page */}
+        <div style={{ textAlign: 'center', marginTop: '50px' }}>
+          <Link href="/sinistre" className="cta-btn">
+            Estimer mon projet
+          </Link>
         </div>
       </section>
 
