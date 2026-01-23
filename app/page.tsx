@@ -32,7 +32,7 @@ export default function LandingPage() {
       {/* SECTION 2 : Étapes */}
       <section className="steps-section">
         <h2>Comment ça marche ?</h2>
-        <p>En <b>seulement 4 étapes</b>, recevez tout ce dont vous avez besoin chez vous !</p>
+        <p>En <b>seulement 4 étapes</b>, vous recevez tout ce dont vous avez besoin !</p>
 
         <div className="steps-tabs">
           <input type="radio" name="step" id="step1" defaultChecked />
