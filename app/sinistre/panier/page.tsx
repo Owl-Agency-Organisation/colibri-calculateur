@@ -381,7 +381,7 @@ export default function PanierPage() {
 	              const surfaceOriginale = surfaceOriginaleAttr ? parseFloat(surfaceOriginaleAttr.value) : 0;
 	              const prixUnitaire = parseFloat(node.merchandise.price.amount);
 	              const lineType = getLineType(node.attributes);
-	              const lineTotal = parseFloat(node.merchandise.price.amount) * node.quantity;
+	              let lineTotal = parseFloat(node.merchandise.price.amount) * node.quantity;
 	              
 	              // Calcul du prix au m² (approximatif, basé sur le prix total de la ligne)
 	              // On suppose que le prix total de la ligne correspond au prix du contenant
@@ -403,8 +403,8 @@ export default function PanierPage() {
 // Prix au m² (avec remise)
 		                prixM2Remise = prixTotalLigneRemise / (surfaceOriginale * 2);
 		                
-		                // Le prix affiché dans la colonne Prix est le prix remisé
-		                lineTotal = prixTotalLigneRemise;
+// Le prix affiché dans la colonne Prix est le prix remisé
+			                lineTotal = prixTotalLigneRemise;
 	              }
 	              
 	              
