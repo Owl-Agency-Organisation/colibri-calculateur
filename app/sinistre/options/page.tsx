@@ -26,7 +26,7 @@ export default function OptionsPage() {
   const [resultat, setResultat] = useState<ResultatCalcul | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoadingShopify, setIsLoadingShopify] = useState(false);
-  const [optionSousCouche] = useState(true);
+  const optionSousCouche = true;
   const [optionKit, setOptionKit] = useState(true);
   const [optionRenovation, setOptionRenovation] = useState(false);
   const [isPeintureExpanded, setIsPeintureExpanded] = useState(false);
@@ -101,21 +101,21 @@ export default function OptionsPage() {
     init();
   }, [router]);
 
-  const saveOptions = (sousCouche: boolean, kit: boolean, renovation: boolean) => {
+  const saveOptions = (kit: boolean, renovation: boolean) => {
     localStorage.setItem(STORAGE_KEYS.OPTIONS, JSON.stringify({
-      sousCouche,
+      sousCouche: true, // Toujours true car obligatoire
       kit,
       renovation,
     }));
   };
 
-  const handleOptionChange = (option: 'sousCouche' | 'kit' | 'renovation', value: boolean) => {
+  const handleOptionChange = (option: 'kit' | 'renovation', value: boolean) => {
     if (option === 'kit') {
       setOptionKit(value);
-      saveOptions(optionSousCouche, value, optionRenovation);
+      saveOptions(value, optionRenovation);
     } else if (option === 'renovation') {
       setOptionRenovation(value);
-      saveOptions(optionSousCouche, optionKit, value);
+      saveOptions(optionKit, value);
     }
   };
 
