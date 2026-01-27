@@ -274,6 +274,8 @@ export default function PanierPage() {
 
   // Calculer le total depuis le panier Shopify
   const total = parseFloat(cart?.cost.totalAmount.amount || '0');
+  const DISCOUNT_FACTOR = 0.85;
+  const totalFull = total / DISCOUNT_FACTOR;
 
   return (
     <div className="space-y-6">
@@ -327,7 +329,8 @@ export default function PanierPage() {
               <p className="text-xs text-primary-800">Peinture</p>
             </div>
             <div className="text-center sm:border-l sm:border-primary-300 sm:pl-4">
-              <p className="text-2xl font-bold text-primary-700">{total.toFixed(2)} €</p>
+              <p className="text-xl font-bold text-gray-500 line-through">{totalFull.toFixed(2)} €</p>
+              <p className="text-2xl font-bold text-primary-600">{total.toFixed(2)} €</p>
               <p className="text-xs text-primary-800">Total</p>
             </div>
           </div>
@@ -460,8 +463,8 @@ export default function PanierPage() {
 
                   {/* Prix */}
 <div className="text-right min-w-[80px]">
-	                    <p className="font-semibold text-gray-900">{lineTotal.toFixed(2)} €</p>
-	                  </div>
+	                <p className="text-sm text-gray-500 line-through">{(lineTotal / DISCOUNT_FACTOR).toFixed(2)} €</p>
+                  <p className="text-lg font-semibold text-gray-900">{lineTotal.toFixed(2)} €</p>                </div>
 
                   {/* Bouton supprimer (si autorisé) */}
                   {canRemove && (
@@ -489,7 +492,10 @@ export default function PanierPage() {
           <div className="mt-4 pt-4 border-t-2 border-gray-200">
             <div className="flex justify-between items-center">
               <span className="text-lg font-semibold text-gray-900">Total</span>
-              <span className="text-2xl font-bold text-primary-600">{total.toFixed(2)} €</span>
+              <div className="flex flex-col items-end">
+                <span className="text-lg text-gray-500 line-through">{totalFull.toFixed(2)} €</span>
+                <span className="text-2xl font-bold text-primary-600">{total.toFixed(2)} €</span>
+              </div>
             </div>
           </div>
         </CardContent>
