@@ -29,8 +29,8 @@ const SEUIL_SURFACE_KIT = 30; // m²
 
 // Handles des kits matériels sur Shopify
 export const KIT_HANDLES = {
-  petiteSurface: 'kit-materiel-de-peinture-petite-surface',
-  grandeSurface: 'kit-materiel-de-peinture-moyenne-et-grande-surface',
+  petiteSurface: 'kit-peinture-petite-surface',
+  grandeSurface: 'kit-materiel-de-peinture-moyenne-et-grande-surface-1',
 };
 
 // Handles des sous-couches sur Shopify
