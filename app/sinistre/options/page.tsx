@@ -26,7 +26,7 @@ export default function OptionsPage() {
   const [resultat, setResultat] = useState<ResultatCalcul | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoadingShopify, setIsLoadingShopify] = useState(false);
-  const [optionSousCouche, setOptionSousCouche] = useState(true);
+  const [optionSousCouche] = useState(true);
   const [optionKit, setOptionKit] = useState(true);
   const [optionRenovation, setOptionRenovation] = useState(false);
   const [isPeintureExpanded, setIsPeintureExpanded] = useState(false);
@@ -86,7 +86,7 @@ export default function OptionsPage() {
       const savedOptions = localStorage.getItem(STORAGE_KEYS.OPTIONS);
       if (savedOptions) {
         const parsed = JSON.parse(savedOptions);
-        setOptionSousCouche(parsed.sousCouche ?? true);
+        
         setOptionKit(parsed.kit ?? true);
         setOptionRenovation(parsed.renovation ?? false);
       }
@@ -110,10 +110,7 @@ export default function OptionsPage() {
   };
 
   const handleOptionChange = (option: 'sousCouche' | 'kit' | 'renovation', value: boolean) => {
-    if (option === 'sousCouche') {
-      setOptionSousCouche(value);
-      saveOptions(value, optionKit, optionRenovation);
-    } else if (option === 'kit') {
+    if (option === 'kit') {
       setOptionKit(value);
       saveOptions(optionSousCouche, value, optionRenovation);
     } else if (option === 'renovation') {
@@ -293,18 +290,12 @@ export default function OptionsPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Sous-couche (1 couche)</CardTitle>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={optionSousCouche}
-                  onChange={(e) => handleOptionChange('sousCouche', e.target.checked)}
-                  className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                />
-                <span className="text-sm text-gray-600">Inclure</span>
-              </label>
+              <div className="flex items-center gap-2 px-3 py-1 bg-primary-50 text-primary-700 rounded-full">
+                <span className="text-sm font-semibold">Obligatoire</span>
+              </div>
             </div>
           </CardHeader>
-          <CardContent className={!optionSousCouche ? 'opacity-50' : ''}>
+          <CardContent>
             <div className="space-y-4">
               {resultat.sousCouches.map((sousCouche, index) => (
                 <div key={index} className="border border-gray-200 rounded-lg p-4">
