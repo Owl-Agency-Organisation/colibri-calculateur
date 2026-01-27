@@ -18,14 +18,15 @@
 	  { value: 'Mme', label: 'Madame' },
 	];
 
-	// Options d'assureur
-	const ASSUREUR_OPTIONS = [
-	  { value: 'MAAF', label: 'MAAF' },
-	  { value: 'MMA', label: 'MMA' },
-	  { value: 'GMF', label: 'GMF' },
-	  { value: 'BPCE', label: 'BPCE' },
-	  { value: 'Karma', label: 'Karma' },
-	];
+		// Options d'assureur
+		const ASSUREUR_OPTIONS = [
+		  { value: '', label: 'Sélectionner votre assureur' }, // Option vide pour l'affichage initial
+		  { value: 'MAAF', label: 'MAAF' },
+		  { value: 'MMA', label: 'MMA' },
+		  { value: 'GMF', label: 'GMF' },
+		  { value: 'BPCE', label: 'BPCE' },
+		  { value: 'Karma', label: 'Karma' },
+		];
 
 	export default function IdentificationPage() {
 	  const router = useRouter();
