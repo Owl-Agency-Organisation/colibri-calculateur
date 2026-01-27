@@ -1,0 +1,275 @@
+/**
+ * Cart Mapper - Conversion des résultats de calcul vers les lignes de panier Shopify
+ * 
+ * Ce module convertit le ResultatCalcul (logique métier) en CartLineInput[] (API Shopify)
+ * tout en préservant la logique de sélection des contenances et des finitions.
+ */
+
+import type { CartLineInput } from './shopify-cart';
+import type { ResultatCalcul, CalculPeinture, CalculSousCouche, CalculKit } from './calcul';
+
+/**
+ * Interface pour les options de panier
+ */
+export interface CartOptions {
+  sousCouche: boolean;
+  kit: boolean;
+  renovation: boolean;
+}
+
+/**
+ * Interface pour les données Shopify stockées
+ */
+export interface ShopifyProductData {
+  id: string;
+  handle: string;
+  title: string;
+  variants: Array<{
+    id: string;
+    title: string;
+    sku: string;
+    price: {
+      amount: string;
+      currencyCode: string;
+    };
+    availableForSale: boolean;
+  }>;
+  featuredImage?: {
+    url: string;
+    altText?: string;
+  };
+}
+
+/**
+ * Produits de rénovation disponibles
+ */
+export const PRODUITS_RENOVATION = [
+  { handle: 'pate-a-renover-multi-materiaux', titre: 'Pâte à rénover multi matériaux' },
+  { handle: 'couteau-de-peintre', titre: 'Couteau de peintre (spatule)' },
+  { handle: 'papier-a-poncer', titre: 'Papier à poncer grain 120' },
+  { handle: 'cale-a-poncer-auto-agrippante', titre: 'Cale à poncer' },
+];
+
+/**
+ * Trouve le variant Shopify correspondant à une contenance et une finition
+ */
+function findVariant(
+  variants: ShopifyProductData['variants'],
+  contenance: string,
+  finition?: string
+): ShopifyProductData['variants'][0] | undefined {
+  if (!variants || variants.length === 0) return undefined;
+
+  // Chercher avec contenance + finition
+  if (finition) {
+    const variant = variants.find(v => {
+      const title = (v.title || '').toLowerCase();
+      return title.includes(contenance.toLowerCase()) && title.includes(finition.toLowerCase());
+    });
+    if (variant) return variant;
+  }
+
+  // Fallback : chercher uniquement avec la contenance
+  return variants.find(v => (v.title || '').toLowerCase().includes(contenance.toLowerCase()));
+}
+
+/**
+ * Convertit les peintures calculées en lignes de panier Shopify
+ */
+function mapPeinturesToCartLines(
+  peintures: CalculPeinture[],
+  shopifyData: Record<string, ShopifyProductData>
+): CartLineInput[] {
+  const lines: CartLineInput[] = [];
+
+  peintures.forEach((peinture) => {
+    const productData = shopifyData[peinture.couleur.productHandle];
+    
+    if (!productData) {
+      console.error(`Produit peinture non trouvé: ${peinture.couleur.productHandle}`);
+      return;
+    }
+
+    // Pour chaque contenant calculé
+    peinture.contenants.forEach((contenant) => {
+      const variant = findVariant(
+        productData.variants,
+        contenant.contenance,
+        peinture.couleur.finition
+      );
+
+      if (!variant) {
+        console.error(
+          `Variant peinture non trouvé: ${peinture.couleur.productHandle} - ${contenant.contenance} - ${peinture.couleur.finition}`
+        );
+        return;
+      }
+
+      lines.push({
+        merchandiseId: variant.id,
+        quantity: contenant.quantite,
+        attributes: [
+          { key: 'type', value: 'peinture' },
+          { key: 'couleur', value: peinture.couleur.titre },
+          { key: 'finition', value: peinture.couleur.finition || '' },
+          { key: 'surface', value: `${peinture.surfaceTotale.toFixed(1)}m²` },
+          { key: 'contenance', value: contenant.contenance },
+        ],
+      });
+    });
+  });
+
+  return lines;
+}
+
+/**
+ * Convertit les sous-couches calculées en lignes de panier Shopify
+ */
+function mapSousCouchesToCartLines(
+  sousCouches: CalculSousCouche[],
+  shopifyData: Record<string, ShopifyProductData>
+): CartLineInput[] {
+  const lines: CartLineInput[] = [];
+
+  sousCouches.forEach((sousCouche) => {
+    const productData = shopifyData[sousCouche.handle];
+    
+    if (!productData) {
+      console.error(`Sous-couche non trouvée: ${sousCouche.handle}`);
+      return;
+    }
+
+    sousCouche.contenants.forEach((contenant) => {
+      const variant = findVariant(productData.variants, contenant.contenance);
+
+      if (!variant) {
+        console.error(`Variant sous-couche non trouvé: ${sousCouche.handle} - ${contenant.contenance}`);
+        return;
+      }
+
+      lines.push({
+        merchandiseId: variant.id,
+        quantity: contenant.quantite,
+        attributes: [
+          { key: 'type', value: 'sous-couche' },
+          { key: 'sous_couche_type', value: sousCouche.type },
+          { key: 'contenance', value: contenant.contenance },
+        ],
+      });
+    });
+  });
+
+  return lines;
+}
+
+/**
+ * Convertit le kit en ligne de panier Shopify
+ */
+function mapKitToCartLine(
+  kit: CalculKit,
+  shopifyData: Record<string, ShopifyProductData>
+): CartLineInput | null {
+  const productData = shopifyData[kit.handle];
+  
+  if (!productData || !productData.variants || productData.variants.length === 0) {
+    console.error(`Kit non trouvé: ${kit.handle}`);
+    return null;
+  }
+
+  // Le kit n'a généralement qu'un seul variant
+  const variant = productData.variants[0];
+
+  return {
+    merchandiseId: variant.id,
+    quantity: 1,
+    attributes: [
+      { key: 'type', value: 'kit' },
+      { key: 'kit_type', value: kit.type },
+    ],
+  };
+}
+
+/**
+ * Convertit les produits de rénovation en lignes de panier Shopify
+ */
+function mapRenovationToCartLines(
+  shopifyData: Record<string, ShopifyProductData>
+): CartLineInput[] {
+  const lines: CartLineInput[] = [];
+
+  PRODUITS_RENOVATION.forEach((produit) => {
+    const productData = shopifyData[produit.handle];
+    
+    if (!productData || !productData.variants || productData.variants.length === 0) {
+      console.error(`Produit rénovation non trouvé: ${produit.handle}`);
+      return;
+    }
+
+    const variant = productData.variants[0];
+
+    lines.push({
+      merchandiseId: variant.id,
+      quantity: 1,
+      attributes: [
+        { key: 'type', value: 'renovation' },
+        { key: 'produit', value: produit.titre },
+      ],
+    });
+  });
+
+  return lines;
+}
+
+/**
+ * Fonction principale : Convertit le résultat de calcul complet en lignes de panier Shopify
+ */
+export function mapCalculToCartLines(
+  resultat: ResultatCalcul,
+  shopifyData: Record<string, ShopifyProductData>,
+  options: CartOptions
+): CartLineInput[] {
+  const lines: CartLineInput[] = [];
+
+  // 1. Peintures (toujours incluses)
+  const peintureLines = mapPeinturesToCartLines(resultat.peintures, shopifyData);
+  lines.push(...peintureLines);
+
+  // 2. Sous-couches (si option activée)
+  if (options.sousCouche) {
+    const sousCoucheLines = mapSousCouchesToCartLines(resultat.sousCouches, shopifyData);
+    lines.push(...sousCoucheLines);
+  }
+
+  // 3. Kit matériel (si option activée)
+  if (options.kit) {
+    const kitLine = mapKitToCartLine(resultat.kit, shopifyData);
+    if (kitLine) {
+      lines.push(kitLine);
+    }
+  }
+
+  // 4. Produits de rénovation (si option activée)
+  if (options.renovation) {
+    const renovationLines = mapRenovationToCartLines(shopifyData);
+    lines.push(...renovationLines);
+  }
+
+  return lines;
+}
+
+/**
+ * Extrait le type de produit depuis les attributs d'une ligne de panier
+ */
+export function getLineType(attributes: Array<{ key: string; value: string }>): string {
+  const typeAttr = attributes.find(a => a.key === 'type');
+  return typeAttr?.value || 'unknown';
+}
+
+/**
+ * Vérifie si une ligne de panier peut être supprimée
+ * Les peintures et sous-couches ne peuvent pas être supprimées
+ */
+export function canRemoveLine(attributes: Array<{ key: string; value: string }>): boolean {
+  const type = getLineType(attributes);
+  return type !== 'peinture' && type !== 'sous-couche';
+}

@@ -1,54 +1,43 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
 import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { getStoredPieces, getStoredAssure, STORAGE_KEYS } from '@/lib/store/sinistreStore';
-import type { ResultatCalcul, CalculPeinture, CalculSousCouche } from '@/lib/calcul';
+import { createCart, removeCartLines, getCart, type ShopifyCart, type CartLineNode } from '@/lib/shopify-cart';
+import { mapCalculToCartLines, canRemoveLine, getLineType, PRODUITS_RENOVATION } from '@/lib/cart-mapper';
+import type { ResultatCalcul } from '@/lib/calcul';
 import type { Piece, Assure } from '@/lib/types';
 
-// Produits de rénovation
-// REMARQUE : Les prix sont récupérés dynamiquement depuis Shopify
-const PRODUITS_RENOVATION = [
-  { handle: 'pate-a-renover-multi-materiaux', titre: 'Pâte à rénover multi matériaux' },
-  { handle: 'couteau-de-peintre', titre: 'Couteau de peintre (spatule)' },
-  { handle: 'papier-a-poncer', titre: 'Papier à poncer grain 120' },
-  { handle: 'cale-a-poncer-auto-agrippante', titre: 'Cale à poncer' },
-];
-
-// Les prix sont désormais calculés dynamiquement via l'API Shopify
-// et injectés dans le résultat du calcul.
-
-interface LignePanier {
-  id: string;
-  type: 'peinture' | 'sous-couche' | 'kit' | 'renovation';
-  titre: string;
-  description: string;
-  quantite: number;
-  unite: string;
-  prixUnitaire: number;
-  prixTotal: number;
-  imageUrl?: string;
-  editable: boolean;
-}
+// Clé localStorage pour persister l'ID du panier Shopify
+const CART_ID_KEY = 'SHOPIFY_CART_ID';
 
 export default function PanierPage() {
   const router = useRouter();
   const { handleStepClick, isStepDisabled } = useStepperNavigation();
+  
+  // États pour les données du formulaire
   const [assure, setAssure] = useState<Assure | null>(null);
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [resultat, setResultat] = useState<ResultatCalcul | null>(null);
   const [options, setOptions] = useState({ sousCouche: true, kit: true, renovation: false });
-  const [lignesPanier, setLignesPanier] = useState<LignePanier[]>([]);
   const [shopifyData, setShopifyData] = useState<Record<string, any>>({});
-  const [isLoaded, setIsLoaded] = useState(false);
+  
+  // États pour le panier Shopify
+  const [cart, setCart] = useState<ShopifyCart | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCreatingCart, setIsCreatingCart] = useState(false);
+  const [isRemovingLine, setIsRemovingLine] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  
+  // États pour les actions
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
+  // Charger les données initiales
   useEffect(() => {
-    // Charger les données
     const storedAssure = getStoredAssure();
     const storedPieces = getStoredPieces();
     const storedCalcul = localStorage.getItem(STORAGE_KEYS.CALCUL);
@@ -71,107 +60,105 @@ export default function PanierPage() {
     if (storedShopifyData) {
       setShopifyData(JSON.parse(storedShopifyData));
     }
-
-    setIsLoaded(true);
   }, [router]);
 
-  // Construire les lignes du panier
-  useEffect(() => {
-    if (!resultat) return;
+  // Créer ou récupérer le panier Shopify
+  const initializeCart = useCallback(async () => {
+    if (!resultat || !shopifyData || Object.keys(shopifyData).length === 0) {
+      return;
+    }
 
-    const lignes: LignePanier[] = [];
+    setIsCreatingCart(true);
+    setError(null);
 
-    // Peintures
-    resultat.peintures.forEach((peinture, index) => {
-      const contenantsStr = peinture.contenants
-        .map(c => `${c.quantite}×${c.contenance}`)
-        .join(' + ');
-      const prix = peinture.prixTotal;
-
-      const finitionAffichee = peinture.couleur.finition || (peinture.couleur.productHandle.includes('mat') ? 'Mat' : peinture.couleur.productHandle.includes('vel') ? 'Velours' : 'Satin');
+    try {
+      // Vérifier si un panier existe déjà
+      const existingCartId = localStorage.getItem(CART_ID_KEY);
       
-      lignes.push({
-        id: `peinture-${index}`,
-        type: 'peinture',
-        titre: `${peinture.couleur.titre} - ${finitionAffichee}`,
-        description: `${peinture.surfaceTotale.toFixed(1)} m² - ${contenantsStr}`,
-        quantite: peinture.litresCommandes,
-        unite: 'L',
-        prixUnitaire: peinture.litresCommandes > 0 ? prix / peinture.litresCommandes : 0,
-        prixTotal: prix,
-        imageUrl: peinture.couleur.imageUrl,
-        editable: false,
-      });
-    });
+      if (existingCartId) {
+        try {
+          // Essayer de récupérer le panier existant
+          const existingCart = await getCart(existingCartId);
+          setCart(existingCart);
+          setIsLoading(false);
+          setIsCreatingCart(false);
+          return;
+        } catch {
+          // Le panier a expiré ou n'existe plus, on en crée un nouveau
+          localStorage.removeItem(CART_ID_KEY);
+        }
+      }
 
-    // Sous-couches (si option activée)
-    if (options.sousCouche) {
-      resultat.sousCouches.forEach((sousCouche, index) => {
-        const contenantsStr = sousCouche.contenants
-          .map(c => `${c.quantite}×${c.contenance}`)
-          .join(' + ');
-        const prix = sousCouche.prixTotal;
+      // Créer un nouveau panier
+      const cartLines = mapCalculToCartLines(resultat, shopifyData, options);
+      
+      if (cartLines.length === 0) {
+        setError('Aucun produit à ajouter au panier. Vérifiez que les produits sont disponibles sur Shopify.');
+        setIsLoading(false);
+        setIsCreatingCart(false);
+        return;
+      }
 
-        lignes.push({
-          id: `sous-couche-${index}`,
-          type: 'sous-couche',
-          titre: `Sous-couche ${sousCouche.type}`,
-          description: `${sousCouche.surfaceTotale.toFixed(1)} m² - ${contenantsStr}`,
-          quantite: sousCouche.litresCommandes,
-          unite: 'L',
-          prixUnitaire: sousCouche.litresCommandes > 0 ? prix / sousCouche.litresCommandes : 0,
-          prixTotal: prix,
-          editable: false,
-        });
-      });
+      const newCart = await createCart(cartLines, assure?.email);
+      
+      // Sauvegarder l'ID du panier
+      localStorage.setItem(CART_ID_KEY, newCart.id);
+      
+      setCart(newCart);
+    } catch (err) {
+      console.error('Erreur création panier:', err);
+      setError(err instanceof Error ? err.message : 'Erreur lors de la création du panier');
+    } finally {
+      setIsLoading(false);
+      setIsCreatingCart(false);
+    }
+  }, [resultat, shopifyData, options, assure?.email]);
+
+  // Initialiser le panier quand les données sont prêtes
+  useEffect(() => {
+    if (resultat && shopifyData && Object.keys(shopifyData).length > 0) {
+      initializeCart();
+    }
+  }, [resultat, shopifyData, initializeCart]);
+
+  // Supprimer une ligne du panier
+  const handleRemoveLine = async (lineId: string, attributes: Array<{ key: string; value: string }>) => {
+    if (!cart || !canRemoveLine(attributes)) {
+      return;
     }
 
-    // Kit (si option activée)
-    if (options.kit) {
-      lignes.push({
-        id: 'kit',
-        type: 'kit',
-        titre: resultat.kit.titre,
-        description: `Pour surfaces ${resultat.kit.type === 'petite' ? '≤ 30' : '> 30'} m²`,
-        quantite: 1,
-        unite: '',
-        prixUnitaire: resultat.kit.prix,
-        prixTotal: resultat.kit.prix,
-        editable: false,
-      });
+    setIsRemovingLine(lineId);
+    setError(null);
+
+    try {
+      const updatedCart = await removeCartLines(cart.id, [lineId]);
+      setCart(updatedCart);
+    } catch (err) {
+      console.error('Erreur suppression ligne:', err);
+      setError(err instanceof Error ? err.message : 'Erreur lors de la suppression');
+    } finally {
+      setIsRemovingLine(null);
     }
-
-    // Produits de rénovation (si option activée)
-    if (options.renovation) {
-      PRODUITS_RENOVATION.forEach((produit) => {
-        const variants = shopifyData[produit.handle]?.variants || [];
-        const prix = variants.length > 0 ? parseFloat(variants[0].price.amount || variants[0].price) : 0;
-        
-        lignes.push({
-          id: `renovation-${produit.handle}`,
-          type: 'renovation',
-          titre: produit.titre,
-          description: 'Préparation des surfaces',
-          quantite: 1,
-          unite: '',
-          prixUnitaire: prix,
-          prixTotal: prix,
-          editable: false,
-        });
-      });
-    }
-
-    setLignesPanier(lignes);
-  }, [resultat, options, shopifyData]);
-
-  // Calculer le total
-  const calculerTotal = (): number => {
-    return lignesPanier.reduce((total, ligne) => total + ligne.prixTotal, 0);
   };
 
+  // Générer le PDF
   const handleGeneratePdf = async () => {
     setIsGeneratingPdf(true);
     try {
+      // Construire les lignes du panier pour le PDF depuis le cart Shopify
+      const lignesPanier = cart?.lines.edges.map(({ node }) => ({
+        id: node.id,
+        type: getLineType(node.attributes),
+        titre: `${node.merchandise.product.title} - ${node.merchandise.title}`,
+        description: '',
+        quantite: node.quantity,
+        unite: '',
+        prixUnitaire: parseFloat(node.merchandise.price.amount),
+        prixTotal: parseFloat(node.merchandise.price.amount) * node.quantity,
+        imageUrl: node.merchandise.image?.url || node.merchandise.product.featuredImage?.url,
+        editable: false,
+      })) || [];
+
       const response = await fetch('/api/generate-pdf', {
         method: 'POST',
         headers: {
@@ -183,7 +170,7 @@ export default function PanierPage() {
           resultat,
           options,
           lignesPanier,
-          total: calculerTotal(),
+          total: parseFloat(cart?.cost.totalAmount.amount || '0'),
         }),
       });
 
@@ -191,7 +178,6 @@ export default function PanierPage() {
         throw new Error('Erreur lors de la génération du PDF');
       }
 
-      // Récupérer le blob PDF et le télécharger directement
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -202,7 +188,6 @@ export default function PanierPage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      // Naviguer vers la confirmation
       router.push('/sinistre/confirmation');
     } catch (error) {
       console.error('Erreur PDF:', error);
@@ -212,19 +197,53 @@ export default function PanierPage() {
     }
   };
 
+  // Procéder au checkout Shopify
+  const handleCheckout = () => {
+    if (cart?.checkoutUrl) {
+      window.location.href = cart.checkoutUrl;
+    }
+  };
+
   const handleBack = () => {
     router.push('/sinistre/options');
   };
 
-  if (!isLoaded || !resultat || !assure) {
+  // Affichage du loader
+  if (isLoading || isCreatingCart || !resultat || !assure) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+        <p className="text-gray-600">
+          {isCreatingCart ? 'Création du panier...' : 'Chargement...'}
+        </p>
       </div>
     );
   }
 
-  const total = calculerTotal();
+  // Affichage de l'erreur
+  if (error && !cart) {
+    return (
+      <div className="space-y-6">
+        <StepIndicator 
+          steps={SINISTRE_STEPS} 
+          currentStep={6} 
+          onStepClick={handleStepClick}
+          isStepDisabled={isStepDisabled}
+        />
+        <Card className="bg-red-50 border-red-200">
+          <CardContent className="py-6 text-center">
+            <p className="text-red-600 font-medium mb-4">{error}</p>
+            <Button onClick={() => initializeCart()} variant="outline">
+              Réessayer
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Calculer le total depuis le panier Shopify
+  const total = parseFloat(cart?.cost.totalAmount.amount || '0');
 
   return (
     <div className="space-y-6">
@@ -242,9 +261,18 @@ export default function PanierPage() {
           Récapitulatif de commande
         </h1>
         <p className="text-gray-600">
-          Vérifiez votre commande avant de générer le PDF
+          Vérifiez votre commande avant de procéder au paiement
         </p>
       </div>
+
+      {/* Erreur non bloquante */}
+      {error && (
+        <Card className="bg-yellow-50 border-yellow-200">
+          <CardContent className="py-3">
+            <p className="text-yellow-700 text-sm">{error}</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Résumé du projet + Coût total en haut */}
       <Card className="bg-primary-50 border-primary-200">
@@ -270,7 +298,7 @@ export default function PanierPage() {
             </div>
             <div className="text-center sm:border-l sm:border-primary-300 sm:pl-4">
               <p className="text-2xl font-bold text-primary-700">{total.toFixed(2)} €</p>
-              <p className="text-xs text-primary-800">Total estimé</p>
+              <p className="text-xs text-primary-800">Total</p>
             </div>
           </div>
         </CardContent>
@@ -311,69 +339,89 @@ export default function PanierPage() {
         </CardContent>
       </Card>
 
-      {/* Panier avec prix */}
+      {/* Panier avec prix - Design conservé */}
       <Card>
         <CardHeader>
           <CardTitle>Produits sélectionnés</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="divide-y divide-gray-200">
-            {lignesPanier.map((ligne) => (
-              <div key={ligne.id} className="py-4 flex items-center gap-4">
-                {/* Image */}
-                {ligne.imageUrl ? (
-                  <img
-                    src={ligne.imageUrl}
-                    alt={ligne.titre}
-                    className="w-16 h-16 object-cover rounded"
-                  />
-                ) : (
-                  <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center">
-                    {ligne.type === 'sous-couche' && (
-                      <span className="text-2xl">🪣</span>
-                    )}
-                    {ligne.type === 'kit' && (
-                      <span className="text-2xl">🧰</span>
-                    )}
-                    {ligne.type === 'renovation' && (
-                      <span className="text-2xl">🔧</span>
-                    )}
-                    {ligne.type === 'peinture' && !ligne.imageUrl && (
-                      <span className="text-2xl">🎨</span>
-                    )}
+            {cart?.lines.edges.map(({ node }) => {
+              const lineType = getLineType(node.attributes);
+              const canRemove = canRemoveLine(node.attributes);
+              const isRemoving = isRemovingLine === node.id;
+              const lineTotal = parseFloat(node.merchandise.price.amount) * node.quantity;
+              const imageUrl = node.merchandise.image?.url || node.merchandise.product.featuredImage?.url;
+
+              return (
+                <div key={node.id} className="py-4 flex items-center gap-4">
+                  {/* Image */}
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={node.merchandise.product.title}
+                      className="w-16 h-16 object-cover rounded"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center">
+                      {lineType === 'sous-couche' && <span className="text-2xl">🪣</span>}
+                      {lineType === 'kit' && <span className="text-2xl">🧰</span>}
+                      {lineType === 'renovation' && <span className="text-2xl">🔧</span>}
+                      {lineType === 'peinture' && <span className="text-2xl">🎨</span>}
+                      {lineType === 'unknown' && <span className="text-2xl">📦</span>}
+                    </div>
+                  )}
+
+                  {/* Info */}
+                  <div className="flex-1">
+                    <h4 className="font-medium text-gray-900">
+                      {node.merchandise.product.title}
+                    </h4>
+                    <p className="text-sm text-gray-500">
+                      {node.merchandise.title}
+                    </p>
                   </div>
-                )}
 
-                {/* Info */}
-                <div className="flex-1">
-                  <h4 className="font-medium text-gray-900">{ligne.titre}</h4>
-                  <p className="text-sm text-gray-500">{ligne.description}</p>
-                </div>
+                  {/* Quantité */}
+                  <div className="text-center min-w-[60px]">
+                    <p className="font-medium text-gray-900">
+                      ×{node.quantity}
+                    </p>
+                  </div>
 
-                {/* Quantité */}
-                <div className="text-center min-w-[60px]">
-                  <p className="font-medium text-gray-900">
-                    {ligne.quantite}{ligne.unite}
-                  </p>
-                </div>
+                  {/* Prix */}
+                  <div className="text-right min-w-[80px]">
+                    <p className="font-semibold text-gray-900">{lineTotal.toFixed(2)} €</p>
+                  </div>
 
-                {/* Prix */}
-                <div className="text-right min-w-[80px]">
-                  <p className="font-semibold text-gray-900">{ligne.prixTotal.toFixed(2)} €</p>
+                  {/* Bouton supprimer (si autorisé) */}
+                  {canRemove && (
+                    <button
+                      onClick={() => handleRemoveLine(node.id, node.attributes)}
+                      disabled={isRemoving}
+                      className="p-2 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                      title="Supprimer"
+                    >
+                      {isRemoving ? (
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500"></div>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      )}
+                    </button>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Total */}
           <div className="mt-4 pt-4 border-t-2 border-gray-200">
             <div className="flex justify-between items-center">
-              <span className="text-lg font-semibold text-gray-900">Total estimé</span>
+              <span className="text-lg font-semibold text-gray-900">Total</span>
               <span className="text-2xl font-bold text-primary-600">{total.toFixed(2)} €</span>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              * Prix indicatifs. Les prix définitifs seront confirmés lors de la commande.
-            </p>
           </div>
         </CardContent>
       </Card>
@@ -381,12 +429,13 @@ export default function PanierPage() {
       {/* Actions */}
       <div className="space-y-6 pt-4">
         <div className="flex flex-col gap-4 max-w-2xl mx-auto">
-          {/* CTA Principal : Commande */}
+          {/* CTA Principal : Checkout Shopify */}
           <div className="text-center space-y-2">
             <Button
               size="lg"
               className="w-full py-8 text-xl font-bold bg-primary-600 hover:bg-primary-700 shadow-lg flex items-center justify-center gap-3"
-              onClick={() => window.open('https://colibripeinture.fr', '_blank')}
+              onClick={handleCheckout}
+              disabled={!cart?.checkoutUrl}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -407,7 +456,7 @@ export default function PanierPage() {
             </div>
           </div>
 
-          {/* CTA Secondaire : Sauvegarde */}
+          {/* CTA Secondaire : Sauvegarde PDF */}
           <div className="text-center space-y-2">
             <Button
               variant="outline"
