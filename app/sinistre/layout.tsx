@@ -28,8 +28,8 @@ export default function SinistreLayout({
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-600">Besoin d'aide ?</p>
-              <a href="tel:+33123456789" className="text-sm font-medium text-primary-600 hover:text-primary-700">
-                01 23 45 67 89
+              <a href="tel:+33562141646" className="text-sm font-medium text-primary-600 hover:text-primary-700">
+                05 62 14 16 46
               </a>
             </div>
           </div>

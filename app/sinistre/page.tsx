@@ -85,7 +85,7 @@ export default function SinistreSasPage() {
 
       <div className="mt-12 text-center">
         <p className="text-sm text-gray-500">
-          Besoin d'assistance ? Notre équipe est là pour vous aider au <a href="tel:+33123456789" className="text-primary-600 font-medium">01 23 45 67 89</a>
+          Besoin d'assistance ? Notre équipe est là pour vous aider au <a href="tel:+33562141646" className="text-primary-600 font-medium">05 62 14 16 46</a>
         </p>
       </div>
     </div>
