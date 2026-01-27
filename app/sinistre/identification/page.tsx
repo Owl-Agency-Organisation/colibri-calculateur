@@ -35,7 +35,8 @@
 	  const [errors, setErrors] = useState<Partial<Record<keyof Assure, string>>>({});
 	  const [touched, setTouched] = useState<Partial<Record<keyof Assure, boolean>>>({});
 	  const [isSubmitting, setIsSubmitting] = useState(false);
-	  const [submitError, setSubmitError] = useState<string | null>(null);
+		  const [submitError, setSubmitError] = useState<string | null>(null);
+		  const isAssureurSelected = formData.assureur && formData.assureur.trim() !== '';
 
 	  // Charger les données depuis localStorage au montage
 	  useEffect(() => {
@@ -287,9 +288,14 @@
 	              value={formData.assureur || ''}
 	              onChange={(e) => handleChange('assureur', e.target.value)}
 	              onBlur={() => handleBlur('assureur')}
-	              error={errors.assureur}
-	              required
-	            />
+		              error={errors.assureur}
+		              required
+		            />
+		            {isAssureurSelected && (
+		              <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+		                Félicitations ! Grâce à <b>{formData.assureur}</b>, vous bénéficiez de 15% de remise sur votre projet.
+		              </div>
+		            )}
 
 	            {/* Adresse (optionnelle) */}
 	            <div className="border-t border-gray-200 pt-6 mt-6">
