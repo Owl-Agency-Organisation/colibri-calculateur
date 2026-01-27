@@ -324,9 +324,9 @@ export default function PanierPage() {
             </div>
             <div className="text-center">
               <p className="text-xl font-bold text-primary-600">
-                {resultat.peintures.reduce((sum, p) => sum + p.litresCommandes, 0)}L
+                {(total / resultat.surfaceTotale).toFixed(2)} €
               </p>
-              <p className="text-xs text-primary-800">Peinture</p>
+              <p className="text-xs text-primary-800">Coût / m²</p>
             </div>
             <div className="text-center sm:border-l sm:border-primary-300 sm:pl-4">
               <p className="text-xl font-bold text-gray-500 line-through">{totalFull.toFixed(2)} €</p>
