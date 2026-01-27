@@ -22,6 +22,7 @@ export const initialAssure: Assure = {
   adresse: '',
   codePostal: '',
   ville: '',
+  assureur: '',
 };
 
 // Fonctions utilitaires pour la gestion du localStorage

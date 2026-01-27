@@ -12,6 +12,7 @@ export interface Assure {
   adresse?: string;
   codePostal?: string;
   ville?: string;
+  assureur?: string;
 }
 
 // ========== PIÈCE ==========
