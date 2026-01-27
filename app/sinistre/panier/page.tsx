@@ -12,8 +12,27 @@ import { mapCalculToCartLines, canRemoveLine, getLineType, PRODUITS_RENOVATION }
 import type { ResultatCalcul } from '@/lib/calcul';
 import type { Piece, Assure } from '@/lib/types';
 
-// Clé localStorage pour persister l'ID du panier Shopify
+// Clés localStorage pour persister l'ID du panier Shopify et détecter les changements
 const CART_ID_KEY = 'SHOPIFY_CART_ID';
+const CART_DATA_HASH_KEY = 'SHOPIFY_CART_DATA_HASH';
+
+// Fonction pour générer un hash des données du panier
+function generateCartDataHash(resultat: ResultatCalcul, options: any): string {
+  return JSON.stringify({
+    peintures: resultat.peintures.map(p => ({ 
+      couleur: p.couleur.titre, 
+      contenants: p.contenants.map(c => ({ contenance: c.contenance, quantite: c.quantite })),
+      litresCommandes: p.litresCommandes 
+    })),
+    sousCouches: resultat.sousCouches.map(s => ({ 
+      type: s.type, 
+      contenants: s.contenants.map(c => ({ contenance: c.contenance, quantite: c.quantite })),
+      litresCommandes: s.litresCommandes 
+    })),
+    kit: resultat.kit,
+    options,
+  });
+}
 
 export default function PanierPage() {
   const router = useRouter();
@@ -72,12 +91,17 @@ export default function PanierPage() {
     setError(null);
 
     try {
-      // Vérifier si un panier existe déjà
+      // Générer un hash des données actuelles
+      const currentHash = generateCartDataHash(resultat, options);
+      const storedHash = localStorage.getItem(CART_DATA_HASH_KEY);
       const existingCartId = localStorage.getItem(CART_ID_KEY);
       
-      if (existingCartId) {
+      // Si les données ont changé, on doit recréer le panier
+      const dataHasChanged = currentHash !== storedHash;
+      
+      if (existingCartId && !dataHasChanged) {
         try {
-          // Essayer de récupérer le panier existant
+          // Essayer de récupérer le panier existant (données inchangées)
           const existingCart = await getCart(existingCartId);
           setCart(existingCart);
           setIsLoading(false);
@@ -86,7 +110,12 @@ export default function PanierPage() {
         } catch {
           // Le panier a expiré ou n'existe plus, on en crée un nouveau
           localStorage.removeItem(CART_ID_KEY);
+          localStorage.removeItem(CART_DATA_HASH_KEY);
         }
+      } else if (dataHasChanged && existingCartId) {
+        // Les données ont changé, on supprime l'ancien panier
+        localStorage.removeItem(CART_ID_KEY);
+        localStorage.removeItem(CART_DATA_HASH_KEY);
       }
 
       // Créer un nouveau panier
@@ -101,8 +130,9 @@ export default function PanierPage() {
 
       const newCart = await createCart(cartLines, assure?.email);
       
-      // Sauvegarder l'ID du panier
+      // Sauvegarder l'ID du panier et le hash des données
       localStorage.setItem(CART_ID_KEY, newCart.id);
+      localStorage.setItem(CART_DATA_HASH_KEY, currentHash);
       
       setCart(newCart);
     } catch (err) {
