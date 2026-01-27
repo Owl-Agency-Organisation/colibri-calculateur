@@ -11,11 +11,12 @@ import type { ResultatCalcul, CalculPeinture, CalculSousCouche } from '@/lib/cal
 import type { Piece, Assure } from '@/lib/types';
 
 // Produits de rénovation
+// REMARQUE : Les prix sont récupérés dynamiquement depuis Shopify
 const PRODUITS_RENOVATION = [
-  { handle: 'pate-a-renover-multi-materiaux', titre: 'Pâte à rénover multi matériaux', prix: 29.20 },
-  { handle: 'couteau-de-peintre', titre: 'Couteau de peintre (spatule)', prix: 7.80 },
-  { handle: 'papier-a-poncer', titre: 'Papier à poncer grain 120', prix: 3.60 },
-  { handle: 'cale-a-poncer-auto-agrippante', titre: 'Cale à poncer', prix: 6.40 },
+  { handle: 'pate-a-renover-multi-materiaux', titre: 'Pâte à rénover multi matériaux' },
+  { handle: 'couteau-de-peintre', titre: 'Couteau de peintre (spatule)' },
+  { handle: 'papier-a-poncer', titre: 'Papier à poncer grain 120' },
+  { handle: 'cale-a-poncer-auto-agrippante', titre: 'Cale à poncer' },
 ];
 
 // Les prix sont désormais calculés dynamiquement via l'API Shopify
@@ -42,6 +43,7 @@ export default function PanierPage() {
   const [resultat, setResultat] = useState<ResultatCalcul | null>(null);
   const [options, setOptions] = useState({ sousCouche: true, kit: true, renovation: false });
   const [lignesPanier, setLignesPanier] = useState<LignePanier[]>([]);
+  const [shopifyData, setShopifyData] = useState<Record<string, any>>({});
   const [isLoaded, setIsLoaded] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
@@ -51,6 +53,7 @@ export default function PanierPage() {
     const storedPieces = getStoredPieces();
     const storedCalcul = localStorage.getItem(STORAGE_KEYS.CALCUL);
     const storedOptions = localStorage.getItem(STORAGE_KEYS.OPTIONS);
+    const storedShopifyData = localStorage.getItem(STORAGE_KEYS.SHOPIFY_DATA);
 
     if (!storedCalcul || storedPieces.length === 0) {
       router.push('/sinistre/piece');
@@ -63,6 +66,10 @@ export default function PanierPage() {
     
     if (storedOptions) {
       setOptions(JSON.parse(storedOptions));
+    }
+    
+    if (storedShopifyData) {
+      setShopifyData(JSON.parse(storedShopifyData));
     }
 
     setIsLoaded(true);
@@ -137,6 +144,9 @@ export default function PanierPage() {
     // Produits de rénovation (si option activée)
     if (options.renovation) {
       PRODUITS_RENOVATION.forEach((produit) => {
+        const variants = shopifyData[produit.handle]?.variants || [];
+        const prix = variants.length > 0 ? parseFloat(variants[0].price.amount || variants[0].price) : 0;
+        
         lignes.push({
           id: `renovation-${produit.handle}`,
           type: 'renovation',
@@ -144,15 +154,15 @@ export default function PanierPage() {
           description: 'Préparation des surfaces',
           quantite: 1,
           unite: '',
-          prixUnitaire: produit.prix,
-          prixTotal: produit.prix,
+          prixUnitaire: prix,
+          prixTotal: prix,
           editable: false,
         });
       });
     }
 
     setLignesPanier(lignes);
-  }, [resultat, options]);
+  }, [resultat, options, shopifyData]);
 
   // Calculer le total
   const calculerTotal = (): number => {

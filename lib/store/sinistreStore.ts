@@ -9,6 +9,7 @@ export const STORAGE_KEYS = {
   PIECES: 'colibri-sinistre-pieces',
   CALCUL: 'colibri-sinistre-calcul',
   OPTIONS: 'colibri-sinistre-options',
+  SHOPIFY_DATA: 'colibri-sinistre-shopify-data',
 } as const;
 
 // État initial de l'assuré

@@ -5,8 +5,8 @@
  * - Peinture (2 couches) : (Surface × 2 / 10) + 5% de marge, arrondi au litre le plus proche.
  * - Sous-couche (1 couche) : (Surface × 1 / 10) + 5% de marge, arrondi au litre le plus proche.
  * - Optimisation dynamique : Utilise uniquement les contenants réellement disponibles sur Shopify pour chaque couleur.
- * - Kit petite surface (≤30m²) : 29,90€
- * - Kit moyenne/grande surface (>30m²) : 40,90€
+ * - Kit petite surface (≤30m²) : Prix dynamique depuis Shopify
+ * - Kit moyenne/grande surface (>30m²) : Prix dynamique depuis Shopify
  */
 
 import type { Piece, Couleur } from '@/lib/types';
@@ -209,12 +209,29 @@ export function determinerTypeSousCouche(base: string): 'blanche' | 'grise' {
 
 /**
  * Calcule le prix total pour un ensemble de contenants basés sur les variants Shopify
+ * Filtre sur la contenance ET la finition pour garantir le bon prix
  */
-export function calculerPrixTotal(contenants: CalculContenant[], variants: any[]): number {
+export function calculerPrixTotal(
+  contenants: CalculContenant[], 
+  variants: any[], 
+  finition?: string
+): number {
   if (!variants || variants.length === 0) return 0;
   
   return contenants.reduce((total, c) => {
-    const variant = variants.find(v => v.title.includes(c.contenance));
+    let variant;
+    
+    if (finition) {
+      // Filtrer sur contenance + finition
+      variant = variants.find(v => {
+        const title = v.title || '';
+        return title.includes(c.contenance) && title.includes(finition);
+      });
+    } else {
+      // Fallback : filtrer uniquement sur la contenance (pour sous-couches)
+      variant = variants.find(v => (v.title || '').includes(c.contenance));
+    }
+    
     const prix = variant ? parseFloat(variant.price.amount || variant.price) : 0;
     return total + (prix * c.quantite);
   }, 0);
@@ -242,7 +259,7 @@ export function calculerQuantites(pieces: Piece[], shopifyData?: Record<string, 
       litresNecessaires,
       litresCommandes: calculerLitresCommandes(contenants),
       contenants,
-      prixTotal: calculerPrixTotal(contenants, variants)
+      prixTotal: calculerPrixTotal(contenants, variants, s.couleur.finition)
     };
   });
 
@@ -279,11 +296,16 @@ export function calculerQuantites(pieces: Piece[], shopifyData?: Record<string, 
     return sum + surfaceMurs + (p.surfacePlafond || 0) + (p.surfaceBoiseries || 0);
   }, 0);
 
+  const kitType = surfaceTotale <= SEUIL_SURFACE_KIT ? 'petite' : 'grande';
+  const kitHandle = surfaceTotale <= SEUIL_SURFACE_KIT ? KIT_HANDLES.petiteSurface : KIT_HANDLES.grandeSurface;
+  const kitVariants = shopifyData?.[kitHandle]?.variants || [];
+  const kitPrix = kitVariants.length > 0 ? parseFloat(kitVariants[0].price.amount || kitVariants[0].price) : 0;
+  
   const kit: CalculKit = {
-    type: surfaceTotale <= SEUIL_SURFACE_KIT ? 'petite' : 'grande',
-    handle: surfaceTotale <= SEUIL_SURFACE_KIT ? KIT_HANDLES.petiteSurface : KIT_HANDLES.grandeSurface,
+    type: kitType,
+    handle: kitHandle,
     titre: surfaceTotale <= SEUIL_SURFACE_KIT ? 'Kit matériel de peinture - Petite surface' : 'Kit matériel de peinture - Moyenne et grande surface',
-    prix: surfaceTotale <= SEUIL_SURFACE_KIT ? 29.90 : 40.90,
+    prix: kitPrix,
   };
 
   // 4. Résumé

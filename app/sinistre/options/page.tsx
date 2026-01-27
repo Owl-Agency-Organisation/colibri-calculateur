@@ -11,11 +11,12 @@ import { calculerQuantites, type ResultatCalcul } from '@/lib/calcul';
 import type { Piece } from '@/lib/types';
 
 // Produits de rénovation (trous/fissures)
+// REMARQUE : Les prix sont récupérés dynamiquement depuis Shopify
 const PRODUITS_RENOVATION = [
-  { handle: 'pate-a-renover-multi-materiaux', titre: 'Pâte à rénover multi matériaux', prix: 29.20 },
-  { handle: 'couteau-de-peintre', titre: 'Couteau de peintre (spatule)', prix: 7.80 },
-  { handle: 'papier-a-poncer', titre: 'Papier à poncer grain 120', prix: 3.60 },
-  { handle: 'cale-a-poncer-auto-agrippante', titre: 'Cale à poncer', prix: 6.40 },
+  { handle: 'pate-a-renover-multi-materiaux', titre: 'Pâte à rénover multi matériaux' },
+  { handle: 'couteau-de-peintre', titre: 'Couteau de peintre (spatule)' },
+  { handle: 'papier-a-poncer', titre: 'Papier à poncer grain 120' },
+  { handle: 'cale-a-poncer-auto-agrippante', titre: 'Cale à poncer' },
 ];
 
 export default function OptionsPage() {
@@ -29,6 +30,7 @@ export default function OptionsPage() {
   const [optionKit, setOptionKit] = useState(true);
   const [optionRenovation, setOptionRenovation] = useState(false);
   const [isPeintureExpanded, setIsPeintureExpanded] = useState(false);
+  const [shopifyData, setShopifyData] = useState<Record<string, any>>({});
 
   useEffect(() => {
     const init = async () => {
@@ -50,6 +52,13 @@ export default function OptionsPage() {
       // Ajouter les sous-couches
       handles.add('sous-couche-blanche-peinture-biosourcee-murs-et-plafonds');
       handles.add('sous-couche-grise-peinture-biosourcee-murs-et-plafonds');
+      
+      // Ajouter les kits
+      handles.add('kit-materiel-de-peinture-petite-surface');
+      handles.add('kit-materiel-de-peinture-moyenne-et-grande-surface');
+      
+      // Ajouter les produits de rénovation
+      PRODUITS_RENOVATION.forEach(p => handles.add(p.handle));
 
       // 2. Charger les données Shopify en parallèle
       setIsLoadingShopify(true);
@@ -82,8 +91,10 @@ export default function OptionsPage() {
         setOptionRenovation(parsed.renovation ?? false);
       }
 
-      // 5. Sauvegarder le calcul dans localStorage
+      // 5. Sauvegarder le calcul et les données Shopify dans localStorage
       localStorage.setItem(STORAGE_KEYS.CALCUL, JSON.stringify(calcul));
+      localStorage.setItem(STORAGE_KEYS.SHOPIFY_DATA, JSON.stringify(shopifyData));
+      setShopifyData(shopifyData);
       setIsLoaded(true);
     };
 
@@ -139,7 +150,11 @@ export default function OptionsPage() {
     
     // Produits rénovation
     if (optionRenovation) {
-      total += PRODUITS_RENOVATION.reduce((sum, p) => sum + p.prix, 0);
+      PRODUITS_RENOVATION.forEach(produit => {
+        const variants = shopifyData[produit.handle]?.variants || [];
+        const prix = variants.length > 0 ? parseFloat(variants[0].price.amount || variants[0].price) : 0;
+        total += prix;
+      });
     }
     
     return total;
@@ -400,16 +415,24 @@ export default function OptionsPage() {
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                 <h5 className="font-medium text-amber-900 mb-3">Matériel de rénovation inclus :</h5>
                 <div className="space-y-2">
-                  {PRODUITS_RENOVATION.map((produit) => (
-                    <div key={produit.handle} className="flex justify-between text-sm">
-                      <span className="text-amber-800">{produit.titre}</span>
-                      <span className="font-medium text-amber-900">{produit.prix.toFixed(2)} €</span>
-                    </div>
-                  ))}
+                  {PRODUITS_RENOVATION.map((produit) => {
+                    const variants = shopifyData[produit.handle]?.variants || [];
+                    const prix = variants.length > 0 ? parseFloat(variants[0].price.amount || variants[0].price) : 0;
+                    return (
+                      <div key={produit.handle} className="flex justify-between text-sm">
+                        <span className="text-amber-800">{produit.titre}</span>
+                        <span className="font-medium text-amber-900">{prix.toFixed(2)} €</span>
+                      </div>
+                    );
+                  })}
                   <div className="flex justify-between text-sm pt-2 border-t border-amber-300">
                     <span className="font-medium text-amber-900">Total rénovation</span>
                     <span className="font-bold text-amber-900">
-                      {PRODUITS_RENOVATION.reduce((sum, p) => sum + p.prix, 0).toFixed(2)} €
+                      {PRODUITS_RENOVATION.reduce((sum, p) => {
+                        const variants = shopifyData[p.handle]?.variants || [];
+                        const prix = variants.length > 0 ? parseFloat(variants[0].price.amount || variants[0].price) : 0;
+                        return sum + prix;
+                      }, 0).toFixed(2)} €
                     </span>
                   </div>
                 </div>

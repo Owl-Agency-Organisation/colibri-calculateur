@@ -2,27 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { Assure, Piece } from '@/lib/types';
 import type { ResultatCalcul } from '@/lib/calcul';
 
-// Produits de rénovation
-const PRODUITS_RENOVATION = [
-  { handle: 'pate-a-renover-multi-materiaux', titre: 'Pâte à rénover multi matériaux', prix: 29.20 },
-  { handle: 'couteau-de-peintre', titre: 'Couteau de peintre (spatule)', prix: 7.80 },
-  { handle: 'papier-a-poncer', titre: 'Papier à poncer grain 120', prix: 3.60 },
-  { handle: 'cale-a-poncer-auto-agrippante', titre: 'Cale à poncer', prix: 6.40 },
-];
-
-// Prix estimés par contenant
-const PRIX_PAR_CONTENANT = {
-  peinture: {
-    '1L': 24.90,
-    '3L': 59.90,
-    '12L': 199.90,
-  },
-  sousCouche: {
-    '1L': 19.90,
-    '3L': 49.90,
-    '12L': 159.90,
-  },
-};
+// REMARQUE : Les prix sont désormais calculés dynamiquement depuis Shopify
+// via le paramètre lignesPanier qui contient les prix réels.
 
 interface LignePanier {
   id: string;
@@ -93,43 +74,8 @@ function generatePdfHtml(
 
   const numeroCommande = `COL-${Date.now().toString(36).toUpperCase()}`;
 
-  // Calculer les prix si non fournis
-  const calculerPrixPeinture = (contenants: { contenance: string; quantite: number }[]): number => {
-    return contenants.reduce((total, c) => {
-      const prix = PRIX_PAR_CONTENANT.peinture[c.contenance as keyof typeof PRIX_PAR_CONTENANT.peinture] || 0;
-      return total + (prix * c.quantite);
-    }, 0);
-  };
-
-  const calculerPrixSousCouche = (contenants: { contenance: string; quantite: number }[]): number => {
-    return contenants.reduce((total, c) => {
-      const prix = PRIX_PAR_CONTENANT.sousCouche[c.contenance as keyof typeof PRIX_PAR_CONTENANT.sousCouche] || 0;
-      return total + (prix * c.quantite);
-    }, 0);
-  };
-
-  // Calculer le total si non fourni
-  let totalCalcule = total || 0;
-  if (!total) {
-    // Peintures
-    resultat.peintures.forEach(p => {
-      totalCalcule += calculerPrixPeinture(p.contenants);
-    });
-    // Sous-couches
-    if (options.sousCouche) {
-      resultat.sousCouches.forEach(sc => {
-        totalCalcule += calculerPrixSousCouche(sc.contenants);
-      });
-    }
-    // Kit
-    if (options.kit) {
-      totalCalcule += resultat.kit.prix;
-    }
-    // Rénovation
-    if (options.renovation) {
-      totalCalcule += PRODUITS_RENOVATION.reduce((sum, p) => sum + p.prix, 0);
-    }
-  }
+  // Le total est désormais toujours fourni via lignesPanier
+  const totalCalcule = total || 0;
 
   return `
 <!DOCTYPE html>
@@ -426,9 +372,7 @@ function generatePdfHtml(
         </tr>
       </thead>
       <tbody>
-        ${resultat.peintures.map(peinture => {
-          const prix = calculerPrixPeinture(peinture.contenants);
-          return `
+        ${resultat.peintures.map(peinture => `
           <tr>
             <td>
               <div class="product-name">${peinture.couleur.titre}</div>
@@ -439,12 +383,10 @@ function generatePdfHtml(
               <div class="product-desc">${peinture.contenants.map(c => `${c.quantite}×${c.contenance}`).join(' + ')}</div>
             </td>
             <td class="quantity">${peinture.litresCommandes}L</td>
-            <td class="price">${prix.toFixed(2)} €</td>
+            <td class="price">${peinture.prixTotal.toFixed(2)} €</td>
           </tr>
-        `}).join('')}
-        ${options.sousCouche ? resultat.sousCouches.map(sc => {
-          const prix = calculerPrixSousCouche(sc.contenants);
-          return `
+        `).join('')}
+        ${options.sousCouche ? resultat.sousCouches.map(sc => `
           <tr>
             <td>
               <div class="product-name">Sous-couche ${sc.type}</div>
@@ -452,12 +394,12 @@ function generatePdfHtml(
             </td>
             <td>
               <div>${sc.surfaceTotale.toFixed(1)} m²</div>
-              <div class="product-desc">${sc.contenants.map(c => `${c.quantite}×${c.contenance}`).join(' + ')}</div>
+              <div class="product-desc">${sc.contenants.map((c: any) => `${c.quantite}×${c.contenance}`).join(' + ')}</div>
             </td>
             <td class="quantity">${sc.litresCommandes}L</td>
-            <td class="price">${prix.toFixed(2)} €</td>
+            <td class="price">${sc.prixTotal.toFixed(2)} €</td>
           </tr>
-        `}).join('') : ''}
+        `).join('') : ''}
         ${options.kit ? `
           <tr>
             <td>
@@ -471,17 +413,17 @@ function generatePdfHtml(
             <td class="price">${resultat.kit.prix.toFixed(2)} €</td>
           </tr>
         ` : ''}
-        ${options.renovation ? PRODUITS_RENOVATION.map(produit => `
+        ${lignesPanier ? lignesPanier.filter(l => l.type === 'renovation').map(ligne => `
           <tr>
             <td>
-              <div class="product-name">${produit.titre}</div>
-              <div class="product-desc">Préparation des surfaces</div>
+              <div class="product-name">${ligne.titre}</div>
+              <div class="product-desc">${ligne.description}</div>
             </td>
             <td>
               <div>Rénovation</div>
             </td>
-            <td class="quantity">1</td>
-            <td class="price">${produit.prix.toFixed(2)} €</td>
+            <td class="quantity">${ligne.quantite}</td>
+            <td class="price">${ligne.prixTotal.toFixed(2)} €</td>
           </tr>
         `).join('') : ''}
       </tbody>
