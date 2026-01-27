@@ -24,6 +24,7 @@ export default function LandingPage() {
             <Link href="/sinistre" className="cta-btn">
               Estimer mon projet
             </Link>
+            <p className="discount-message">Grâce à votre assureur, vous bénéficiez de 15% de remise.</p>
           </div>
           <div className="hero-image"></div>
         </div>
@@ -150,12 +151,13 @@ export default function LandingPage() {
           </div>
         </div>
         
-        {/* CTA secondaire en bas de page */}
-        <div style={{ textAlign: 'center', marginTop: '50px' }}>
-          <Link href="/sinistre" className="cta-btn">
-            Estimer mon projet
-          </Link>
-        </div>
+	        {/* CTA secondaire en bas de page */}
+	        <div style={{ textAlign: 'center', marginTop: '50px' }}>
+	          <Link href="/sinistre" className="cta-btn">
+	            Estimer mon projet
+	          </Link>
+	          <p className="discount-message" style={{ marginTop: '10px' }}>Grâce à votre assureur, vous bénéficiez de 15% de remise.</p>
+	        </div>
       </section>
 
       <footer className="site-footer">
