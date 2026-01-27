@@ -393,15 +393,18 @@ export default function PanierPage() {
 	              let prixM2Remise = 0;
 	              
 	              if (lineType === 'peinture' && surfaceOriginale > 0) {
-	                // Prix total de la ligne (avec remise)
-	                const prixTotalLigneRemise = lineTotal;
-	                // Prix total de la ligne (sans remise)
-	                const prixTotalLignePlein = prixTotalLigneRemise / (1 - REMISE);
+// Prix total de la ligne (sans remise)
+		                const prixTotalLignePlein = lineTotal;
+		                // Prix total de la ligne (avec remise)
+		                const prixTotalLigneRemise = prixTotalLignePlein * (1 - REMISE);
 	                
 	                // Prix au m² (sans remise)
 	                prixM2Plein = prixTotalLignePlein / (surfaceOriginale * 2);
-	                // Prix au m² (avec remise)
-	                prixM2Remise = prixTotalLigneRemise / (surfaceOriginale * 2);
+// Prix au m² (avec remise)
+		                prixM2Remise = prixTotalLigneRemise / (surfaceOriginale * 2);
+		                
+		                // Le prix affiché dans la colonne Prix est le prix remisé
+		                lineTotal = prixTotalLigneRemise;
 	              }
 	              
 	              
