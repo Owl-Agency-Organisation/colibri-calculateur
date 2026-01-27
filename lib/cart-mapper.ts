@@ -112,7 +112,8 @@ function mapPeinturesToCartLines(
           { key: 'type', value: 'peinture' },
           { key: 'couleur', value: peinture.couleur.titre },
           { key: 'finition', value: peinture.couleur.finition || '' },
-          { key: 'surface', value: `${peinture.surfaceTotale.toFixed(1)}m²` },
+          { key: 'surface_originale', value: `${peinture.surfaceTotale.toFixed(1)}` },
+	          { key: 'surface_display', value: `${peinture.surfaceTotale.toFixed(1)}m²` },
           { key: 'contenance', value: contenant.contenance },
         ],
       });

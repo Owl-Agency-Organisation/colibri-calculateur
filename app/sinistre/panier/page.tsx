@@ -377,10 +377,38 @@ export default function PanierPage() {
         <CardContent>
           <div className="divide-y divide-gray-200">
             {cart?.lines.edges.map(({ node }) => {
-              const lineType = getLineType(node.attributes);
+	              const surfaceOriginaleAttr = node.attributes.find(a => a.key === 'surface_originale');
+	              const surfaceOriginale = surfaceOriginaleAttr ? parseFloat(surfaceOriginaleAttr.value) : 0;
+	              const prixUnitaire = parseFloat(node.merchandise.price.amount);
+	              const lineType = getLineType(node.attributes);
+	              const lineTotal = parseFloat(node.merchandise.price.amount) * node.quantity;
+	              
+	              // Calcul du prix au m² (approximatif, basé sur le prix total de la ligne)
+	              // On suppose que le prix total de la ligne correspond au prix du contenant
+	              // On doit trouver le prix du contenant sans remise pour le prix barré
+	              // Pour l'instant, on va utiliser une remise fixe de 15% pour simuler
+	              const REMISE = 0.15;
+	              
+	              let prixM2Plein = 0;
+	              let prixM2Remise = 0;
+	              
+	              if (lineType === 'peinture' && surfaceOriginale > 0) {
+	                // Prix total de la ligne (avec remise)
+	                const prixTotalLigneRemise = lineTotal;
+	                // Prix total de la ligne (sans remise)
+	                const prixTotalLignePlein = prixTotalLigneRemise / (1 - REMISE);
+	                
+	                // Prix au m² (sans remise)
+	                prixM2Plein = prixTotalLignePlein / (surfaceOriginale * 2);
+	                // Prix au m² (avec remise)
+	                prixM2Remise = prixTotalLigneRemise / (surfaceOriginale * 2);
+	              }
+	              
+	              
+
               const canRemove = canRemoveLine(node.attributes);
               const isRemoving = isRemovingLine === node.id;
-              const lineTotal = parseFloat(node.merchandise.price.amount) * node.quantity;
+              
               const imageUrl = node.merchandise.image?.url || node.merchandise.product.featuredImage?.url;
 
               return (
@@ -403,14 +431,22 @@ export default function PanierPage() {
                   )}
 
                   {/* Info */}
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-900">
-                      {node.merchandise.product.title}
-                    </h4>
-                    <p className="text-sm text-gray-500">
-                      {node.merchandise.title}
-                    </p>
-                  </div>
+<div className="flex-1">
+	                    <h4 className="font-medium text-gray-900">
+	                      {node.merchandise.product.title}
+	                    </h4>
+	                    <p className="text-sm text-gray-500">
+	                      {node.merchandise.title}
+	                    </p>
+	                    {lineType === 'peinture' && (
+	                      <div className="mt-1 text-xs text-gray-500">
+	                        <p>Surface réelle : {surfaceOriginale} m² (soit {surfaceOriginale * 2} m² pour 2 couches)</p>
+	                        <p>
+	                          Prix au m² : <span className="line-through text-red-500">{prixM2Plein.toFixed(2)} €</span> <span className="font-semibold text-green-600">{prixM2Remise.toFixed(2)} €</span>
+	                        </p>
+	                      </div>
+	                    )}
+	                  </div>
 
                   {/* Quantité */}
                   <div className="text-center min-w-[60px]">
@@ -420,9 +456,9 @@ export default function PanierPage() {
                   </div>
 
                   {/* Prix */}
-                  <div className="text-right min-w-[80px]">
-                    <p className="font-semibold text-gray-900">{lineTotal.toFixed(2)} €</p>
-                  </div>
+<div className="text-right min-w-[80px]">
+	                    <p className="font-semibold text-gray-900">{lineTotal.toFixed(2)} €</p>
+	                  </div>
 
                   {/* Bouton supprimer (si autorisé) */}
                   {canRemove && (
