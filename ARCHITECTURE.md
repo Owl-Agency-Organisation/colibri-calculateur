@@ -47,6 +47,7 @@ interface Assure {
   adresse: string
   codePostal: string
   ville: string
+  assureur: string     // MAAF, MMA, GMF, BPCE, Karma, ALLIANZ
 }
 
 // 2. PIÈCE (multi-pièces possible)
@@ -74,7 +75,6 @@ interface Couleur {
   titre: string
   collection: string
   base: "Blanc" | "BLC" | "B" | "C"
-  sousCouche: "grise" | "blanche"
   codeHex: string
   imageUrl: string
 }
@@ -146,24 +146,25 @@ pieces.forEach(piece => {
 
 ```typescript
 const RENDEMENT_PEINTURE = 10 // m² par litre (2 couches)
+const MARGE_SECURITE = 1.05 // +5%
 
-const quantiteLitres = (surfaceTotale * 2) / RENDEMENT_PEINTURE
+const quantiteLitres = Math.ceil(((surfaceTotale * 2) / RENDEMENT_PEINTURE) * MARGE_SECURITE)
 ```
 
 ### Étape 3 : Optimisation contenants
 
 ```typescript
 const CONTENANCES = [
-  { taille: 12, prix: 265 },
-  { taille: 3, prix: 79.90 },
-  { taille: 1, prix: 28.50 }
+  { taille: 12 },
+  { taille: 3 },
+  { taille: 1 }
 ]
 
 function optimiserContenants(quantiteLitres) {
   const contenants = []
   let restant = quantiteLitres
 
-  // Algorithme glouton (greedy)
+  // Algorithme glouton (greedy) basé sur les variants réels Shopify
   for (const contenance of CONTENANCES) {
     const nbPots = Math.floor(restant / contenance.taille)
     if (nbPots > 0) {
@@ -177,9 +178,8 @@ function optimiserContenants(quantiteLitres) {
 
   // Combler le reste avec le plus petit contenant adapté
   if (restant > 0) {
-    const contenant = CONTENANCES.find(c => c.taille >= restant) || CONTENANCES[CONTENANCES.length - 1]
     contenants.push({
-      contenance: `${contenant.taille}L`,
+      contenance: "1L",
       quantite: 1
     })
   }
@@ -190,44 +190,16 @@ function optimiserContenants(quantiteLitres) {
 
 ### Étape 4 : Sous-couches (séparées grise/blanche)
 
+La détermination de la sous-couche se base sur le champ meta `base` du produit :
+
+- **Sous-couche Blanche** : si `base` est `blanc`, `BLC` ou `B`
+- **Sous-couche Grise** : si `base` est `C`
+
 ```typescript
-// Grouper par type de sous-couche
-let totalSousCoucheGrise = 0
-let totalSousCoucheBlanche = 0
-
-Object.values(surfacesParProduit).forEach(produit => {
-  // Récupérer type via complementary_products
-  const sousCouche = getComplementaryProduct(produit.productId)
-  
-  if (sousCouche.titre.includes('grise')) {
-    totalSousCoucheGrise += produit.surfaceTotale
-  } else {
-    totalSousCoucheBlanche += produit.surfaceTotale
-  }
-})
-
-// Calculer quantités
 const RENDEMENT_SOUS_COUCHE = 10 // m² par litre (1 couche)
 
-const sousCouches = []
-
-if (totalSousCoucheGrise > 0) {
-  const quantiteLitres = totalSousCoucheGrise / RENDEMENT_SOUS_COUCHE
-  sousCouches.push({
-    type: 'grise',
-    quantiteLitres,
-    contenants: optimiserContenants(quantiteLitres)
-  })
-}
-
-if (totalSousCoucheBlanche > 0) {
-  const quantiteLitres = totalSousCoucheBlanche / RENDEMENT_SOUS_COUCHE
-  sousCouches.push({
-    type: 'blanche',
-    quantiteLitres,
-    contenants: optimiserContenants(quantiteLitres)
-  })
-}
+// Calculer quantités avec marge de 5%
+const quantiteLitres = Math.ceil((totalSurface / RENDEMENT_SOUS_COUCHE) * MARGE_SECURITE)
 ```
 
 ### Étape 5 : Sélection kit matériel
@@ -239,14 +211,12 @@ const surfaceTotale = Object.values(surfacesParProduit)
 // Seuil : 30m²
 const kit = surfaceTotale < 30 
   ? { 
-      productHandle: 'kit-materiel-de-peinture-petite-surface',
-      titre: 'Kit matériel de peinture - Petite surface',
-      prix: 29.90
+      productHandle: 'kit-peinture-petite-surface',
+      titre: 'Kit matériel de peinture - Petite surface'
     }
   : { 
-      productHandle: 'kit-materiel-de-peinture-moyenne-et-grande-surface',
-      titre: 'Kit matériel de peinture - Moyenne et grande surface',
-      prix: 40.90
+      productHandle: 'kit-materiel-de-peinture-moyenne-et-grande-surface-1',
+      titre: 'Kit matériel de peinture - Moyenne et grande surface'
     }
 ```
 
@@ -261,36 +231,13 @@ const kit = surfaceTotale < 30
 - Lecture variants et metafields
 - Recherche de produits
 
-**Endpoints** :
-```typescript
-// Récupération collections
-GET /api/shopify/collections
-
-// Récupération produits d'une collection
-GET /api/shopify/products?collectionHandle=les-blancs
-
-// Détails d'un produit
-GET /api/shopify/product?handle=schmidt-navy
-```
-
 ### Admin API (privé)
 
 **Utilisé pour** :
 - Création clients avec tags
 - Création Draft Orders
-- Application codes réduction
+- Application automatique de la remise de 15%
 - Envoi emails automatiques
-
-**Endpoints** :
-```typescript
-// Création Draft Order
-POST /api/shopify/draft-order
-{
-  assure: Assure,
-  lineItems: Array<{ variantId, quantity }>,
-  tags: ["Covea", "Sinistre"]
-}
-```
 
 ---
 
@@ -308,12 +255,6 @@ SHOPIFY_ADMIN_ACCESS_TOKEN
 COVEA_DISCOUNT_CODE
 ```
 
-### Validation
-
-- **Frontend** : Validation temps réel (email, téléphone, etc.)
-- **Backend** : Re-validation côté serveur avant appels API
-- **Shopify** : Tokens sécurisés, pas de données sensibles exposées
-
 ---
 
 ## Performance
@@ -325,51 +266,15 @@ COVEA_DISCOUNT_CODE
 - **Cache API** : Réduction des appels Shopify (collections, produits)
 - **Compression** : Gzip/Brotli automatique (Vercel)
 
-### Métriques cibles
-
-- **Time to First Byte** : < 200ms
-- **First Contentful Paint** : < 1s
-- **Lighthouse Score** : > 90/100
-
 ---
 
 ## Déploiement
 
 ### CI/CD (Vercel)
 
-```
-Git push → Vercel détecte
-         ↓
-      Build automatique (npm run build)
-         ↓
-      Tests (npm run type-check)
-         ↓
-      Déploiement (Edge Network)
-         ↓
-      URL disponible (< 2 min)
-```
-
-### Environnements
-
 - **Production** : `main` branch → https://sinistre.colibri.fr
 - **Staging** : `develop` branch → https://colibri-assurances-staging.vercel.app
 - **Preview** : Pull Requests → URL unique par PR
-
----
-
-## Monitoring (optionnel)
-
-### Sentry (erreurs)
-
-- Tracking des erreurs JavaScript
-- Stack traces complètes
-- Alertes en temps réel
-
-### Vercel Analytics (performance)
-
-- Core Web Vitals
-- Page views
-- Conversion tracking
 
 ---
 
@@ -379,6 +284,4 @@ Git push → Vercel détecte
 - ✅ Espace client avec historique
 - ✅ Envoi SMS (notifications)
 - ✅ Support multi-langues (i18n)
-- ✅ Analytics avancés (Mixpanel, Amplitude)
 - ✅ Tests E2E (Playwright)
-- ✅ A/B testing (Optimizely)
