@@ -29,9 +29,13 @@ export default function OptionsPage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoadingShopify, setIsLoadingShopify] = useState(false);
   const optionSousCouche = true;
-  const [optionKit, setOptionKit] = useState(true);
+  const [optionKit, setOptionKit] = useState(false);
   const [optionRenovation, setOptionRenovation] = useState(false);
   const [shopifyData, setShopifyData] = useState<Record<string, any>>({});
+  
+  // États pour la gestion des composants sélectionnés
+  const [composantsKit, setComposantsKit] = useState<string[]>([]);
+  const [produitsRenovation, setProduitsRenovation] = useState<string[]>([]);
 
   useEffect(() => {
     const init = async () => {
@@ -130,11 +134,26 @@ export default function OptionsPage() {
       if (savedOptions) {
         const parsed = JSON.parse(savedOptions);
         
-        setOptionKit(parsed.kit ?? true);
+        setOptionKit(parsed.kit ?? false);
         setOptionRenovation(parsed.renovation ?? false);
+        
+        // Charger les composants sélectionnés
+        if (parsed.composantsKit) {
+          setComposantsKit(parsed.composantsKit);
+        } else if (parsed.kit) {
+          // Si pas de composants sauvegardés mais kit activé, initialiser avec tous les composants
+          setComposantsKit(kitConfig.composants.map(c => c.handle));
+        }
+        
+        if (parsed.produitsRenovation) {
+          setProduitsRenovation(parsed.produitsRenovation);
+        } else if (parsed.renovation) {
+          // Si pas de produits sauvegardés mais rénovation activée, initialiser avec tous les produits
+          setProduitsRenovation(PRODUITS_RENOVATION.map(p => p.handle));
+        }
       }
 
-      // 5. Sauvegarder le calcul et les données Shopify dans localStorage
+      // 6. Sauvegarder le calcul et les données Shopify dans localStorage
       localStorage.setItem(STORAGE_KEYS.CALCUL, JSON.stringify(calcul));
       localStorage.setItem(STORAGE_KEYS.SHOPIFY_DATA, JSON.stringify(shopifyData));
       setShopifyData(shopifyData);
@@ -144,22 +163,83 @@ export default function OptionsPage() {
     init();
   }, [router]);
 
-  const saveOptions = (kit: boolean, renovation: boolean) => {
+  const saveOptions = (kit: boolean, renovation: boolean, composants?: string[], produits?: string[]) => {
     localStorage.setItem(STORAGE_KEYS.OPTIONS, JSON.stringify({
       sousCouche: true, // Toujours true car obligatoire
       kit,
       renovation,
+      composantsKit: composants || composantsKit,
+      produitsRenovation: produits || produitsRenovation,
     }));
   };
 
   const handleOptionChange = (option: 'kit' | 'renovation', value: boolean) => {
     if (option === 'kit') {
       setOptionKit(value);
-      saveOptions(value, optionRenovation);
+      if (value && resultat) {
+        // Initialiser avec tous les composants du kit
+        const kitType = determinerKit(resultat.surfaceTotale);
+        const handles = KITS_CONFIG[kitType].composants.map(c => c.handle);
+        setComposantsKit(handles);
+        saveOptions(value, optionRenovation, handles, produitsRenovation);
+      } else {
+        saveOptions(value, optionRenovation, [], produitsRenovation);
+      }
     } else if (option === 'renovation') {
       setOptionRenovation(value);
-      saveOptions(optionKit, value);
+      if (value) {
+        // Initialiser avec tous les produits de rénovation
+        const handles = PRODUITS_RENOVATION.map(p => p.handle);
+        setProduitsRenovation(handles);
+        saveOptions(optionKit, value, composantsKit, handles);
+      } else {
+        saveOptions(optionKit, value, composantsKit, []);
+      }
     }
+  };
+
+  const supprimerComposantKit = (handle: string) => {
+    const nouveauxComposants = composantsKit.filter(h => h !== handle);
+    setComposantsKit(nouveauxComposants);
+    saveOptions(optionKit, optionRenovation, nouveauxComposants, produitsRenovation);
+    
+    // Forcer recréation du panier
+    localStorage.removeItem('SHOPIFY_CART_ID');
+    localStorage.removeItem('SHOPIFY_CART_DATA_HASH');
+  };
+
+  const reinitialiserKit = () => {
+    if (!resultat) return;
+    const kitType = determinerKit(resultat.surfaceTotale);
+    const handles = KITS_CONFIG[kitType].composants.map(c => c.handle);
+    setComposantsKit(handles);
+    setOptionKit(true);
+    saveOptions(true, optionRenovation, handles, produitsRenovation);
+    
+    // Forcer recréation du panier
+    localStorage.removeItem('SHOPIFY_CART_ID');
+    localStorage.removeItem('SHOPIFY_CART_DATA_HASH');
+  };
+
+  const supprimerProduitRenovation = (handle: string) => {
+    const nouveauxProduits = produitsRenovation.filter(h => h !== handle);
+    setProduitsRenovation(nouveauxProduits);
+    saveOptions(optionKit, optionRenovation, composantsKit, nouveauxProduits);
+    
+    // Forcer recréation du panier
+    localStorage.removeItem('SHOPIFY_CART_ID');
+    localStorage.removeItem('SHOPIFY_CART_DATA_HASH');
+  };
+
+  const reinitialiserRenovation = () => {
+    const handles = PRODUITS_RENOVATION.map(p => p.handle);
+    setProduitsRenovation(handles);
+    setOptionRenovation(true);
+    saveOptions(optionKit, true, composantsKit, handles);
+    
+    // Forcer recréation du panier
+    localStorage.removeItem('SHOPIFY_CART_ID');
+    localStorage.removeItem('SHOPIFY_CART_DATA_HASH');
   };
 
   const handleContinue = () => {
@@ -170,36 +250,6 @@ export default function OptionsPage() {
     router.push('/sinistre/recapitulatif');
   };
 
-  // Calculer le coût total estimé
-  const calculerCoutTotal = (): number => {
-    if (!resultat) return 0;
-    let total = 0;
-    
-    // Peintures
-    total += resultat.peintures.reduce((sum, p) => sum + p.prixTotal, 0);
-    
-    // Sous-couches
-    if (optionSousCouche) {
-      total += resultat.sousCouches.reduce((sum, s) => sum + s.prixTotal, 0);
-    }
-    
-    // Kit
-    if (optionKit) {
-      total += resultat.kit.prix;
-    }
-    
-    // Produits rénovation
-    if (optionRenovation) {
-      PRODUITS_RENOVATION.forEach(produit => {
-        const variants = shopifyData[produit.handle]?.variants || [];
-        const prix = variants.length > 0 ? parseFloat(variants[0].price.amount || variants[0].price) : 0;
-        total += prix;
-      });
-    }
-    
-    return total;
-  };
-
   if (!isLoaded || !resultat) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -207,6 +257,9 @@ export default function OptionsPage() {
       </div>
     );
   }
+
+  const kitType = determinerKit(resultat.surfaceTotale);
+  const kitConfig = KITS_CONFIG[kitType];
 
   return (
     <div className="space-y-6">
@@ -224,61 +277,11 @@ export default function OptionsPage() {
           Choix des options
         </h1>
         <p className="text-gray-600">
-          Sous-couche, kit matériel, préparation des surfaces : vous choisissez !
+          Kit matériel, préparation des surfaces : vous choisissez !
         </p>
       </div>
 
-      {/* Sous-couches (optionnel) */}
-      {resultat.sousCouches.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Sous-couche (1 couche)</CardTitle>
-              <div className="flex items-center gap-2 px-3 py-1 bg-primary-50 text-primary-700 rounded-full">
-                <span className="text-sm font-semibold">Obligatoire</span>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {resultat.sousCouches.map((sousCouche, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-900">
-                        Sous-couche {sousCouche.type}
-                      </h4>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Surface : {sousCouche.surfaceTotale.toFixed(1)} m² → {sousCouche.litresNecessaires}L nécessaires
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-gray-900">{sousCouche.litresCommandes}L</p>
-                      <p className="text-sm font-medium text-primary-600">{sousCouche.prixTotal.toFixed(2)}€</p>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {sousCouche.contenants.map((c, i) => (
-                          <span key={i}>
-                            {c.quantite}×{c.contenance}
-                            {i < sousCouche.contenants.length - 1 ? ' + ' : ''}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800">
-                <strong>Recommandation :</strong> La sous-couche assure une meilleure adhérence 
-                et un rendu optimal de la peinture de finition.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Kit matériel (optionnel) */}
+      {/* Kit matériel */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -294,41 +297,80 @@ export default function OptionsPage() {
             </label>
           </div>
         </CardHeader>
-        <CardContent className={!optionKit ? 'opacity-50' : ''}>
-          <div className="border border-gray-200 rounded-lg p-4">
-            <div className="flex items-center justify-between">
+        {optionKit && (
+          <CardContent>
+            <div className="space-y-4">
               <div>
-                <h4 className="font-medium text-gray-900">{KITS_CONFIG[determinerKit(resultat.surfaceTotale)].titre}</h4>
+                <h4 className="font-medium text-gray-900">{kitConfig.titre}</h4>
                 <p className="text-sm text-gray-600 mt-1">
                   Recommandé pour les surfaces {resultat.surfaceTotale <= 30 ? '≤ 30' : '> 30'} m²
                 </p>
               </div>
-              <div className="text-right">
-                <p className="font-semibold text-gray-900">{resultat.kit.prix.toFixed(2)} €</p>
+
+              {/* Liste des composants */}
+              <div className="space-y-2">
+                {kitConfig.composants
+                  .filter(c => composantsKit.includes(c.handle))
+                  .map((composant) => {
+                    const productData = shopifyData[composant.handle];
+                    const imageUrl = productData?.featuredImage?.url;
+                    
+                    return (
+                      <div key={composant.handle} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                        {/* Image */}
+                        {imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            alt={composant.nom}
+                            className="w-12 h-12 object-cover rounded"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center">
+                            <span className="text-xl">🧰</span>
+                          </div>
+                        )}
+                        
+                        {/* Nom */}
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{composant.nom}</p>
+                        </div>
+                        
+                        {/* Bouton supprimer */}
+                        <button
+                          onClick={() => supprimerComposantKit(composant.handle)}
+                          className="text-gray-400 hover:text-red-600 transition-colors"
+                          aria-label="Supprimer"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              {/* Bouton réinitialiser */}
+              <div className="pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={reinitialiserKit}
+                >
+                  Réinitialiser le kit
+                </Button>
               </div>
             </div>
-          </div>
-          <div className="mt-4 p-3 bg-green-50 rounded-lg">
-            <p className="text-sm text-green-800">
-              <strong>Contenu :</strong> Bâche de protection, ruban de masquage, 
-              {resultat.kit.type === 'petite' 
-                ? ' rouleau, bac, pinceau' 
-                : ' rouleaux, bac pro, pinceaux, perche télescopique'}
-            </p>
-          </div>
-        </CardContent>
+          </CardContent>
+        )}
       </Card>
 
-      {/* Question trous/fissures */}
+      {/* Préparation des surfaces */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Préparation des surfaces</CardTitle>
-          </div>
+          <CardTitle>Préparation des surfaces</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex items-start gap-4 p-4 border border-gray-200 rounded-lg">
+            <div className="flex items-start gap-4">
               <input
                 type="checkbox"
                 id="renovation"
@@ -347,47 +389,61 @@ export default function OptionsPage() {
             </div>
 
             {optionRenovation && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <h5 className="font-medium text-amber-900 mb-3">Matériel de rénovation inclus :</h5>
-                <div className="space-y-2">
-                  {PRODUITS_RENOVATION.map((produit) => {
-                    const variants = shopifyData[produit.handle]?.variants || [];
-                    const prix = variants.length > 0 ? parseFloat(variants[0].price.amount || variants[0].price) : 0;
+              <div className="space-y-2 pt-2 border-t border-gray-200">
+                {/* Liste des produits */}
+                {PRODUITS_RENOVATION
+                  .filter(p => produitsRenovation.includes(p.handle))
+                  .map((produit) => {
+                    const productData = shopifyData[produit.handle];
+                    const imageUrl = productData?.featuredImage?.url;
+                    
                     return (
-                      <div key={produit.handle} className="flex justify-between text-sm">
-                        <span className="text-amber-800">{produit.titre}</span>
-                        <span className="font-medium text-amber-900">{prix.toFixed(2)} €</span>
+                      <div key={produit.handle} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                        {/* Image */}
+                        {imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            alt={produit.titre}
+                            className="w-12 h-12 object-cover rounded"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center">
+                            <span className="text-xl">🔧</span>
+                          </div>
+                        )}
+                        
+                        {/* Nom */}
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{produit.titre}</p>
+                        </div>
+                        
+                        {/* Bouton supprimer */}
+                        <button
+                          onClick={() => supprimerProduitRenovation(produit.handle)}
+                          className="text-gray-400 hover:text-red-600 transition-colors"
+                          aria-label="Supprimer"
+                        >
+                          ✕
+                        </button>
                       </div>
                     );
                   })}
-                  <div className="flex justify-between text-sm pt-2 border-t border-amber-300">
-                    <span className="font-medium text-amber-900">Total rénovation</span>
-                    <span className="font-bold text-amber-900">
-                      {PRODUITS_RENOVATION.reduce((sum, p) => {
-                        const variants = shopifyData[p.handle]?.variants || [];
-                        const prix = variants.length > 0 ? parseFloat(variants[0].price.amount || variants[0].price) : 0;
-                        return sum + prix;
-                      }, 0).toFixed(2)} €
-                    </span>
-                  </div>
+
+                {/* Bouton réinitialiser */}
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={reinitialiserRenovation}
+                  >
+                    Réinitialiser la sélection
+                  </Button>
                 </div>
               </div>
             )}
           </div>
         </CardContent>
       </Card>
-
-      {/* Coût total estimé (hors peintures) */}
-      {(optionKit || optionRenovation) && (
-        <Card className="bg-primary-50 border-primary-200">
-          <CardContent className="py-4">
-            <div className="flex justify-between items-center">
-              <span className="font-medium text-primary-900">Coût matériel estimé (hors peintures)</span>
-              <span className="text-xl font-bold text-primary-600">{calculerCoutTotal().toFixed(2)} €</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Navigation buttons */}
       <div className="flex justify-between pt-4">
