@@ -164,6 +164,41 @@ export default function PanierPage() {
     try {
       const updatedCart = await removeCartLines(cart.id, [lineId]);
       setCart(updatedCart);
+
+      // Synchroniser avec localStorage pour l'étape 5
+      const lineType = attributes.find(a => a.key === 'type')?.value;
+      
+      if (lineType === 'kit') {
+        // Retirer le composant de la liste des composants kit
+        const composantHandle = attributes.find(a => a.key === 'composant')?.value;
+        if (composantHandle) {
+          const composantsKit = JSON.parse(localStorage.getItem('composantsKit') || '[]');
+          const updatedComposants = composantsKit.filter((h: string) => h !== composantHandle);
+          localStorage.setItem('composantsKit', JSON.stringify(updatedComposants));
+          
+          // Si tous les composants sont supprimés, décocher l'option kit
+          if (updatedComposants.length === 0) {
+            localStorage.setItem('optionKit', 'false');
+          }
+        }
+      } else if (lineType === 'renovation') {
+        // Retirer le produit de la liste des produits rénovation
+        const produitHandle = attributes.find(a => a.key === 'produit')?.value;
+        if (produitHandle) {
+          const produitsRenovation = JSON.parse(localStorage.getItem('produitsRenovation') || '[]');
+          const updatedProduits = produitsRenovation.filter((h: string) => h !== produitHandle);
+          localStorage.setItem('produitsRenovation', JSON.stringify(updatedProduits));
+          
+          // Si tous les produits sont supprimés, décocher l'option rénovation
+          if (updatedProduits.length === 0) {
+            localStorage.setItem('optionRenovation', 'false');
+          }
+        }
+      }
+
+      // Forcer la recréation du panier à la prochaine visite
+      localStorage.removeItem('cartId');
+      localStorage.removeItem('cartDataHash');
     } catch (err) {
       console.error('Erreur suppression ligne:', err);
       setError(err instanceof Error ? err.message : 'Erreur lors de la suppression');

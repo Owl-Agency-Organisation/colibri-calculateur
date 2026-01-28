@@ -276,7 +276,8 @@ function mapRenovationToCartLines(
       quantity: 1,
       attributes: [
         { key: 'type', value: 'renovation' },
-        { key: 'produit', value: produit.titre },
+        { key: 'produit', value: produit.handle },
+        { key: 'produit_nom', value: produit.titre },
       ],
     });
   });
