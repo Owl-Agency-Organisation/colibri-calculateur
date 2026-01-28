@@ -5,6 +5,24 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [1.5.0] - 2026-01-28
+
+### Ajouté
+- **Assureurs** : Ajout de **ALLIANZ** à la liste des assureurs partenaires dans le formulaire d'identification.
+- **Interface (UI)** : Affichage du coût global au m² dans le récapitulatif du panier.
+- **Interface (UI)** : Affichage des prix barrés (original vs remisé) pour chaque article et pour le total.
+
+### Modifié
+- **Logique métier** : Mise à jour de la règle de détermination des sous-couches basée sur le champ meta `base` :
+  - `blanc`, `BLC`, `B` → Sous-couche blanche.
+  - `C` → Sous-couche grise.
+- **Expérience (UX)** : La sélection de la sous-couche à l'étape 5 est désormais obligatoire et non désélectionnable.
+- **Documentation** : Mise à jour complète du `README.md` et de `ARCHITECTURE.md` pour refléter les dernières règles métier et fonctionnalités.
+
+### Technique
+- Optimisation de l'algorithme de calcul pour intégrer les nouvelles règles de sous-couche.
+- Amélioration de l'affichage des prix dans le panier pour gérer les remises de 15% de manière plus transparente.
+
 ## [1.4.0] - 2026-01-22
 
 ### Ajouté

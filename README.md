@@ -105,21 +105,23 @@ Voir [ARCHITECTURE.md](./ARCHITECTURE.md) pour la documentation complète de l'a
 
 ### Flux utilisateur (7 étapes)
 
-1. **Identification** : Capture coordonnées assuré
+1. **Identification** : Capture coordonnées assuré + Sélection de l'assureur (MAAF, MMA, GMF, BPCE, Karma, ALLIANZ)
 2. **Sélection pièce** : Choix type de pièce (7 types disponibles)
 3. **Saisie surfaces** : Plafond + murs (jusqu'à 4 murs avec couleurs distinctes) + boiseries
 4. **Multi-pièces** : Ajout/modification/suppression de pièces
-5. **Options** : Sélection options supplémentaires (rénovation, etc.)
-6. **Récapitulatif** : Panier complet avec quantités optimisées
+5. **Options** : Sélection options supplémentaires (rénovation, etc.) - **Sous-couche obligatoire**
+6. **Récapitulatif** : Panier complet avec quantités optimisées, **remise de 15% appliquée**, prix barrés et coût au m²
 7. **Confirmation** : Création Draft Order Shopify + email automatique
 
 ### Algorithme de calcul
 
 1. **Cumul des surfaces** identiques (même couleur + finition + gamme)
-2. **Calcul litres** : surface × 2 couches / 10
-3. **Optimisation contenants** : algorithme glouton (12L, 3L, 1L)
-4. **Sous-couches** : séparées grise/blanche (via complementary_products)
-5. **Kit matériel** : sélection selon surface totale (< 30m² ou ≥ 30m²)
+2. **Calcul litres** : (surface × 2 couches / 10) + 5% de marge, arrondi au litre supérieur
+3. **Optimisation contenants** : algorithme glouton basé sur les variants réels Shopify (12L, 3L, 1L)
+4. **Sous-couches** : Déterminées par le champ meta `base` du produit :
+   - Si `base` est `blanc`, `BLC` ou `B` → **Sous-couche blanche**
+   - Si `base` est `C` → **Sous-couche grise**
+5. **Kit matériel** : sélection automatique selon surface totale (< 30m² ou ≥ 30m²)
 
 ## 🔑 Variables d'environnement
 
