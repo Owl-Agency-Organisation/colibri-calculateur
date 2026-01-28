@@ -285,6 +285,102 @@ export default function PanierPage() {
   const coutAuM2 = (prixPeintures + prixSousCouches) / (resultat.surfaceTotale * 3);
   const coutAuM2Full = coutAuM2 / DISCOUNT_FACTOR;
 
+  // Grouper les lignes du panier par type
+  const lignesParType = {
+    peinture: [] as CartLineNode[],
+    sousCouche: [] as CartLineNode[],
+    kit: [] as CartLineNode[],
+    renovation: [] as CartLineNode[],
+  };
+
+  cart?.lines.edges.forEach(({ node }) => {
+    const type = getLineType(node.attributes);
+    if (type === 'peinture') lignesParType.peinture.push(node);
+    else if (type === 'sous-couche') lignesParType.sousCouche.push(node);
+    else if (type === 'kit') lignesParType.kit.push(node);
+    else if (type === 'renovation') lignesParType.renovation.push(node);
+  });
+
+  // Composant pour afficher une ligne produit
+  const LigneProductJSX = ({ node }: { node: CartLineNode }) => {
+    const surfaceOriginaleAttr = node.attributes.find(a => a.key === 'surface_originale');
+    const surfaceOriginale = surfaceOriginaleAttr ? parseFloat(surfaceOriginaleAttr.value) : 0;
+    const lineType = getLineType(node.attributes);
+    let lineTotal = parseFloat(node.merchandise.price.amount) * node.quantity;
+
+    const canRemove = canRemoveLine(node.attributes);
+    const isRemoving = isRemovingLine === node.id;
+    
+    const imageUrl = node.merchandise.image?.url || node.merchandise.product.featuredImage?.url;
+
+    return (
+      <div className="py-4 flex items-center gap-4">
+        {/* Image */}
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={node.merchandise.product.title}
+            className="w-16 h-16 object-cover rounded"
+          />
+        ) : (
+          <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center">
+            {lineType === 'sous-couche' && <span className="text-2xl">🪣</span>}
+            {lineType === 'kit' && <span className="text-2xl">🧰</span>}
+            {lineType === 'renovation' && <span className="text-2xl">🔧</span>}
+            {lineType === 'peinture' && <span className="text-2xl">🎨</span>}
+            {lineType === 'unknown' && <span className="text-2xl">📦</span>}
+          </div>
+        )}
+
+        {/* Info */}
+        <div className="flex-1">
+          <h4 className="font-medium text-gray-900">
+            {node.merchandise.product.title}
+          </h4>
+          <p className="text-sm text-gray-500">
+            {node.merchandise.title}
+          </p>
+          {lineType === 'peinture' && surfaceOriginale > 0 && (
+            <p className="mt-1 text-xs text-gray-500">
+              Surface réelle : {surfaceOriginale} m² (soit {surfaceOriginale * 2} m² pour 2 couches)
+            </p>
+          )}
+        </div>
+
+        {/* Quantité */}
+        <div className="text-center min-w-[60px]">
+          <p className="font-medium text-gray-900">
+            ×{node.quantity}
+          </p>
+        </div>
+
+        {/* Prix */}
+        <div className="text-right min-w-[80px]">
+          <p className="text-sm text-gray-500 line-through">{(lineTotal / DISCOUNT_FACTOR).toFixed(2)} €</p>
+          <p className="text-lg font-semibold text-gray-900">{lineTotal.toFixed(2)} €</p>
+        </div>
+
+        {/* Bouton supprimer (si autorisé) */}
+        {canRemove && (
+          <button
+            onClick={() => handleRemoveLine(node.id, node.attributes)}
+            disabled={isRemoving}
+            className="p-2 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+            title="Supprimer"
+          >
+            {isRemoving ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500"></div>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            )}
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Step indicator */}
@@ -401,85 +497,66 @@ export default function PanierPage() {
           <CardTitle>Produits sélectionnés</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="divide-y divide-gray-200">
-            {cart?.lines.edges.map(({ node }) => {
-              const surfaceOriginaleAttr = node.attributes.find(a => a.key === 'surface_originale');
-              const surfaceOriginale = surfaceOriginaleAttr ? parseFloat(surfaceOriginaleAttr.value) : 0;
-              const lineType = getLineType(node.attributes);
-              let lineTotal = parseFloat(node.merchandise.price.amount) * node.quantity;
-
-              const canRemove = canRemoveLine(node.attributes);
-              const isRemoving = isRemovingLine === node.id;
-              
-              const imageUrl = node.merchandise.image?.url || node.merchandise.product.featuredImage?.url;
-
-              return (
-                <div key={node.id} className="py-4 flex items-center gap-4">
-                  {/* Image */}
-                  {imageUrl ? (
-                    <img
-                      src={imageUrl}
-                      alt={node.merchandise.product.title}
-                      className="w-16 h-16 object-cover rounded"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center">
-                      {lineType === 'sous-couche' && <span className="text-2xl">🪣</span>}
-                      {lineType === 'kit' && <span className="text-2xl">🧰</span>}
-                      {lineType === 'renovation' && <span className="text-2xl">🔧</span>}
-                      {lineType === 'peinture' && <span className="text-2xl">🎨</span>}
-                      {lineType === 'unknown' && <span className="text-2xl">📦</span>}
-                    </div>
-                  )}
-
-                  {/* Info */}
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-900">
-                      {node.merchandise.product.title}
-                    </h4>
-                    <p className="text-sm text-gray-500">
-                      {node.merchandise.title}
-                    </p>
-                    {lineType === 'peinture' && surfaceOriginale > 0 && (
-                      <p className="mt-1 text-xs text-gray-500">
-                        Surface réelle : {surfaceOriginale} m² (soit {surfaceOriginale * 2} m² pour 2 couches)
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Quantité */}
-                  <div className="text-center min-w-[60px]">
-                    <p className="font-medium text-gray-900">
-                      ×{node.quantity}
-                    </p>
-                  </div>
-
-                  {/* Prix */}
-                  <div className="text-right min-w-[80px]">
-                    <p className="text-sm text-gray-500 line-through">{(lineTotal / DISCOUNT_FACTOR).toFixed(2)} €</p>
-                    <p className="text-lg font-semibold text-gray-900">{lineTotal.toFixed(2)} €</p>
-                  </div>
-
-                  {/* Bouton supprimer (si autorisé) */}
-                  {canRemove && (
-                    <button
-                      onClick={() => handleRemoveLine(node.id, node.attributes)}
-                      disabled={isRemoving}
-                      className="p-2 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                      title="Supprimer"
-                    >
-                      {isRemoving ? (
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500"></div>
-                      ) : (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      )}
-                    </button>
-                  )}
+          <div className="space-y-6">
+            {/* Section Peintures de finition */}
+            {lignesParType.peinture.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-lg mb-3 pb-2 border-b border-gray-200 flex items-center gap-2">
+                  <span>🎨</span> Peintures de finition
+                  <span className="ml-2 text-sm text-gray-500">({lignesParType.peinture.length})</span>
+                </h3>
+                <div className="divide-y divide-gray-200">
+                  {lignesParType.peinture.map((node) => (
+                    <LigneProductJSX key={node.id} node={node} />
+                  ))}
                 </div>
-              );
-            })}
+              </div>
+            )}
+
+            {/* Section Sous-couches */}
+            {lignesParType.sousCouche.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-lg mb-3 pb-2 border-b border-gray-200 flex items-center gap-2">
+                  <span>🪣</span> Sous-couches
+                  <span className="ml-2 text-sm text-gray-500">({lignesParType.sousCouche.length})</span>
+                </h3>
+                <div className="divide-y divide-gray-200">
+                  {lignesParType.sousCouche.map((node) => (
+                    <LigneProductJSX key={node.id} node={node} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Section Kit matériel */}
+            {lignesParType.kit.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-lg mb-3 pb-2 border-b border-gray-200 flex items-center gap-2">
+                  <span>🧰</span> Kit matériel
+                  <span className="ml-2 text-sm text-gray-500">({lignesParType.kit.length})</span>
+                </h3>
+                <div className="divide-y divide-gray-200">
+                  {lignesParType.kit.map((node) => (
+                    <LigneProductJSX key={node.id} node={node} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Section Préparation des surfaces (si présente) */}
+            {lignesParType.renovation.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-lg mb-3 pb-2 border-b border-gray-200 flex items-center gap-2">
+                  <span>🔧</span> Préparation des surfaces
+                  <span className="ml-2 text-sm text-gray-500">({lignesParType.renovation.length})</span>
+                </h3>
+                <div className="divide-y divide-gray-200">
+                  {lignesParType.renovation.map((node) => (
+                    <LigneProductJSX key={node.id} node={node} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Total */}
