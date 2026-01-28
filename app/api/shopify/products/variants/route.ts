@@ -30,7 +30,14 @@ export async function GET(request: Request) {
     }));
     
     return NextResponse.json({ 
+      id: product.id,
+      handle: product.handle,
+      title: product.title,
       variants,
+      featuredImage: product.featuredImage ? {
+        url: product.featuredImage.url,
+        altText: product.featuredImage.altText,
+      } : undefined,
       metafields: {
         base: product.metafield_base?.value,
         hex: product.metafield_hex?.value,
