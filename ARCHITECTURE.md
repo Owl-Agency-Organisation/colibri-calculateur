@@ -151,6 +151,14 @@ const MARGE_SECURITE = 1.05 // +5%
 const quantiteLitres = Math.ceil(((surfaceTotale * 2) / RENDEMENT_PEINTURE) * MARGE_SECURITE)
 ```
 
+### Étape 2.1 : Calcul du coût au m² (Formule Colibri)
+
+Le coût au m² est calculé pour l'ensemble du projet (peintures + sous-couches) sur la base de 3 couches (1 sous-couche + 2 couches de finition).
+
+```typescript
+Coût au m² = (Total Prix Peintures + Total Prix Sous-couches) / (Surface Totale × 3)
+```
+
 ### Étape 3 : Optimisation contenants
 
 ```typescript
@@ -236,8 +244,14 @@ const kit = surfaceTotale < 30
 **Utilisé pour** :
 - Création clients avec tags
 - Création Draft Orders
-- Application automatique de la remise de 15%
+- Application automatique de la remise de 15% (DISCOUNT_FACTOR = 0.85)
 - Envoi emails automatiques
+
+### Affichage des prix
+
+L'application affiche systématiquement le prix barré (prix public) et le prix remisé (prix assuré) pour :
+- Le total du panier
+- Le coût au m² (calculé sur 3 couches)
 
 ---
 
