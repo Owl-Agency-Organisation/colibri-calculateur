@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import toast, { Toaster } from 'react-hot-toast';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
 import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { getStoredPieces, STORAGE_KEYS } from '@/lib/store/sinistreStore';
 import { calculerQuantites, type ResultatCalcul } from '@/lib/calcul';
+import { determinerKit, KITS_CONFIG } from '@/lib/kits-config';
 import type { Piece } from '@/lib/types';
 
 // Produits de rénovation (trous/fissures)
@@ -40,7 +42,15 @@ export default function OptionsPage() {
       }
       setPieces(stored);
 
-      // 1. Identifier tous les handles de produits nécessaires
+      // 1. Calculer d'abord la surface totale pour déterminer le kit
+      const surfaceTotale = stored.reduce((sum, p) => {
+        const surfacePlafond = p.surfacePlafond || 0;
+        const surfaceMurs = p.murs.reduce((s, m) => s + (m.surface || 0), 0);
+        const surfaceBoiseries = p.surfaceBoiseries || 0;
+        return sum + surfacePlafond + surfaceMurs + surfaceBoiseries;
+      }, 0);
+
+      // 2. Identifier tous les handles de produits nécessaires
       const handles = new Set<string>();
       stored.forEach(p => {
         p.murs.forEach(m => handles.add(m.couleur.productHandle));
@@ -52,14 +62,17 @@ export default function OptionsPage() {
       handles.add('sous-couche-blanche-peinture-biosourcee-murs-et-plafonds');
       handles.add('sous-couche-grise-peinture-biosourcee-murs-et-plafonds');
       
-      // Ajouter les kits
-      handles.add('kit-materiel-de-peinture-petite-surface');
-      handles.add('kit-materiel-de-peinture-moyenne-et-grande-surface');
+      // Ajouter les composants des kits selon la surface
+      const kitType = determinerKit(surfaceTotale);
+      const kitConfig = KITS_CONFIG[kitType];
+      kitConfig.composants.forEach(composant => {
+        handles.add(composant.handle);
+      });
       
       // Ajouter les produits de rénovation
       PRODUITS_RENOVATION.forEach(p => handles.add(p.handle));
 
-      // 2. Charger les données Shopify en parallèle
+      // 3. Charger les données Shopify en parallèle
       setIsLoadingShopify(true);
       const shopifyData: Record<string, any> = {};
       
@@ -77,11 +90,42 @@ export default function OptionsPage() {
         setIsLoadingShopify(false);
       }
 
-      // 3. Calculer les quantités avec les données réelles
+      // 4. Calculer les quantités avec les données réelles
       const calcul = calculerQuantites(stored, shopifyData);
       setResultat(calcul);
 
-      // 4. Charger les options sauvegardées
+      // Détecter si le kit a changé
+      const kitActuel = determinerKit(calcul.surfaceTotale);
+      const kitPrecedent = localStorage.getItem('KIT_TYPE');
+      
+      if (kitPrecedent && kitPrecedent !== kitActuel) {
+        const ancienKit = KITS_CONFIG[kitPrecedent as keyof typeof KITS_CONFIG]?.titre || 'Kit précédent';
+        const nouveauKit = KITS_CONFIG[kitActuel].titre;
+        
+        toast.success(
+          `Votre surface a changé.\nLe kit "${ancienKit}" a été remplacé par "${nouveauKit}".`,
+          {
+            duration: 6000,
+            position: 'top-center',
+            icon: '🔄',
+            style: {
+              background: '#10B981',
+              color: '#fff',
+              padding: '16px',
+              borderRadius: '8px',
+            },
+          }
+        );
+        
+        // Forcer recréation du panier
+        localStorage.removeItem('SHOPIFY_CART_ID');
+        localStorage.removeItem('SHOPIFY_CART_DATA_HASH');
+      }
+      
+      // Sauvegarder le type de kit actuel
+      localStorage.setItem('KIT_TYPE', kitActuel);
+
+      // 5. Charger les options sauvegardées
       const savedOptions = localStorage.getItem(STORAGE_KEYS.OPTIONS);
       if (savedOptions) {
         const parsed = JSON.parse(savedOptions);
@@ -254,9 +298,9 @@ export default function OptionsPage() {
           <div className="border border-gray-200 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="font-medium text-gray-900">{resultat.kit.titre}</h4>
+                <h4 className="font-medium text-gray-900">{KITS_CONFIG[determinerKit(resultat.surfaceTotale)].titre}</h4>
                 <p className="text-sm text-gray-600 mt-1">
-                  Recommandé pour les surfaces {resultat.kit.type === 'petite' ? '≤ 30' : '> 30'} m²
+                  Recommandé pour les surfaces {resultat.surfaceTotale <= 30 ? '≤ 30' : '> 30'} m²
                 </p>
               </div>
               <div className="text-right">
@@ -360,6 +404,9 @@ export default function OptionsPage() {
           Voir le panier →
         </Button>
       </div>
+
+      {/* Toast notifications */}
+      <Toaster />
     </div>
   );
 }

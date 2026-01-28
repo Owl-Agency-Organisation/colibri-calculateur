@@ -9,6 +9,7 @@ import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { getStoredPieces, getStoredAssure, STORAGE_KEYS } from '@/lib/store/sinistreStore';
 import { createCart, removeCartLines, getCart, type ShopifyCart, type CartLineNode } from '@/lib/shopify-cart';
 import { mapCalculToCartLines, canRemoveLine, getLineType, PRODUITS_RENOVATION } from '@/lib/cart-mapper';
+import { determinerKit, KITS_CONFIG } from '@/lib/kits-config';
 import type { ResultatCalcul } from '@/lib/calcul';
 import type { Piece, Assure } from '@/lib/types';
 
@@ -301,6 +302,31 @@ export default function PanierPage() {
     else if (type === 'renovation') lignesParType.renovation.push(node);
   });
 
+  // Vérifier si tous les composants du kit sont présents
+  const kitType = lignesParType.kit.length > 0
+    ? lignesParType.kit[0].attributes.find(a => a.key === 'kit_type')?.value
+    : null;
+
+  let estKitComplet = false;
+  let titreKit = '🧰 Matériel sélectionné';
+
+  if (kitType && resultat) {
+    const kitConfig = KITS_CONFIG[kitType as keyof typeof KITS_CONFIG];
+    if (kitConfig) {
+      const composantsPresents = lignesParType.kit.map(node =>
+        node.attributes.find(a => a.key === 'composant')?.value
+      );
+
+      estKitComplet = kitConfig.composants.every(c =>
+        composantsPresents.includes(c.handle)
+      );
+
+      if (estKitComplet) {
+        titreKit = `🧰 ${kitConfig.titre}`;
+      }
+    }
+  }
+
   // Composant pour afficher une ligne produit
   const LigneProductJSX = ({ node }: { node: CartLineNode }) => {
     const surfaceOriginaleAttr = node.attributes.find(a => a.key === 'surface_originale');
@@ -531,14 +557,37 @@ export default function PanierPage() {
             {/* Section Kit matériel */}
             {lignesParType.kit.length > 0 && (
               <div>
-                <h3 className="font-semibold text-lg mb-3 pb-2 border-b border-gray-200 flex items-center gap-2">
-                  <span>🧰</span> Kit matériel
-                  <span className="ml-2 text-sm text-gray-500">({lignesParType.kit.length})</span>
-                </h3>
+                <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    {titreKit}
+                    <span className="ml-2 text-sm text-gray-500">({lignesParType.kit.length})</span>
+                  </h3>
+                  {estKitComplet && (
+                    <span className="text-xs text-green-600 font-medium">✓ Kit complet</span>
+                  )}
+                </div>
                 <div className="divide-y divide-gray-200">
                   {lignesParType.kit.map((node) => (
                     <LigneProductJSX key={node.id} node={node} />
                   ))}
+                </div>
+                {/* Sous-total kit */}
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium">Sous-total matériel</span>
+                    <div className="text-right">
+                      <p className="text-gray-500 line-through">
+                        {lignesParType.kit.reduce((sum, node) =>
+                          sum + (parseFloat(node.merchandise.price.amount) * node.quantity / DISCOUNT_FACTOR), 0
+                        ).toFixed(2)} €
+                      </p>
+                      <p className="font-semibold text-primary-600">
+                        {lignesParType.kit.reduce((sum, node) =>
+                          sum + (parseFloat(node.merchandise.price.amount) * node.quantity), 0
+                        ).toFixed(2)} €
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
