@@ -29,7 +29,6 @@ export default function OptionsPage() {
   const optionSousCouche = true;
   const [optionKit, setOptionKit] = useState(true);
   const [optionRenovation, setOptionRenovation] = useState(false);
-  const [isPeintureExpanded, setIsPeintureExpanded] = useState(false);
   const [shopifyData, setShopifyData] = useState<Record<string, any>>({});
 
   useEffect(() => {
@@ -184,105 +183,6 @@ export default function OptionsPage() {
           Sous-couche, kit matériel, préparation des surfaces : vous choisissez !
         </p>
       </div>
-
-      {/* Résumé */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Résumé du projet</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <p className="text-2xl font-bold text-primary-600">{resultat.resume.nombrePieces}</p>
-              <p className="text-sm text-gray-600">Pièce{resultat.resume.nombrePieces > 1 ? 's' : ''}</p>
-            </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <p className="text-2xl font-bold text-primary-600">{resultat.resume.nombreCouleurs}</p>
-              <p className="text-sm text-gray-600">Couleur{resultat.resume.nombreCouleurs > 1 ? 's' : ''}</p>
-            </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <p className="text-2xl font-bold text-primary-600">{resultat.surfaceTotale.toFixed(1)}</p>
-              <p className="text-sm text-gray-600">m² totaux</p>
-            </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <p className="text-2xl font-bold text-primary-600">
-                {resultat.peintures.reduce((sum, p) => sum + p.litresCommandes, 0)}L
-              </p>
-              <p className="text-sm text-gray-600">de peinture</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Peintures (Accordéon) */}
-      <Card className="overflow-hidden">
-        <button 
-          onClick={() => setIsPeintureExpanded(!isPeintureExpanded)}
-          className="w-full flex items-center justify-between p-6 hover:bg-gray-50 transition-colors focus:outline-none"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-              <span className="text-xl">🎨</span>
-            </div>
-            <div className="text-left">
-              <CardTitle className="text-lg">Peintures de finition (2 couches)</CardTitle>
-              <p className="text-sm text-gray-500">Détail des quantités calculées</p>
-            </div>
-          </div>
-          <div className={`transform transition-transform duration-200 ${isPeintureExpanded ? 'rotate-180' : ''}`}>
-            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-        </button>
-        
-        {isPeintureExpanded && (
-          <CardContent className="border-t border-gray-100 bg-gray-50/30">
-            <div className="space-y-4 pt-4">
-              {resultat.peintures.map((peinture, index) => (
-                <div key={index} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                  <div className="flex items-start gap-4">
-                    {peinture.couleur.imageUrl && (
-                      <img
-                        src={peinture.couleur.imageUrl}
-                        alt={peinture.couleur.titre}
-                        className="w-16 h-16 object-cover rounded-lg shadow-inner"
-                      />
-                    )}
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900">{peinture.couleur.titre}</h4>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider">{peinture.couleur.collection}</p>
-                        <span className="px-1.5 py-0.5 rounded bg-primary-50 text-primary-700 text-[10px] font-bold uppercase tracking-wider">
-                          {peinture.couleur.finition || (peinture.couleur.productHandle.includes('mat') ? 'Mat' : peinture.couleur.productHandle.includes('vel') ? 'Velours' : 'Satin')}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mt-2">
-                        Surface : <span className="font-medium">{peinture.surfaceTotale.toFixed(1)} m²</span>
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-primary-600">{peinture.litresCommandes}L</p>
-                      <p className="text-sm font-semibold text-gray-900">{peinture.prixTotal.toFixed(2)}€</p>
-                      <div className="text-xs font-medium text-gray-400 mt-1">
-                        {peinture.contenants.map((c, i) => (
-                          <span key={i}>
-                            {c.quantite}×{c.contenance}
-                            {i < peinture.contenants.length - 1 ? ' + ' : ''}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              <p className="text-xs text-center text-gray-400 italic pb-2">
-                Note : Le détail complet et l'optimisation des pots sont disponibles à l'étape panier.
-              </p>
-            </div>
-          </CardContent>
-        )}
-      </Card>
 
       {/* Sous-couches (optionnel) */}
       {resultat.sousCouches.length > 0 && (
