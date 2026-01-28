@@ -109,8 +109,8 @@ Voir [ARCHITECTURE.md](./ARCHITECTURE.md) pour la documentation complète de l'a
 2. **Sélection pièce** : Choix type de pièce (7 types disponibles)
 3. **Saisie surfaces** : Plafond + murs (jusqu'à 4 murs avec couleurs distinctes) + boiseries
 4. **Multi-pièces** : Ajout/modification/suppression de pièces
-5. **Options** : Sélection de la sous-couche (**obligatoire**) et des options supplémentaires (rénovation, etc.) - Interface simplifiée sans accordéon de peinture
-6. **Récapitulatif** : Panier organisé en 4 sections (Peintures, Sous-couches, Kit, Rénovation) avec quantités optimisées, **remise de 15% appliquée**, prix barrés, coût au m² et bannière d'économies assureur.
+5. **Options** : Interface harmonisée avec tuiles identiques pour Kit matériel et Préparation des surfaces. Affichage type panier avec vignettes produits (images Shopify), possibilité de supprimer des composants individuellement et boutons "Réinitialiser". La sous-couche est **obligatoire** et n'est plus affichée à cette étape.
+6. **Récapitulatif** : Panier organisé en 4 sections (Peintures, Sous-couches, Kit, Rénovation) avec quantités optimisées, **remise de 15% appliquée**, prix barrés, coût au m², bannière d'économies assureur et badge "✓ Kit complet" si applicable. **Synchronisation bidirectionnelle** avec l'étape 5 : les suppressions sont répercutées dans les deux sens.
 7. **Confirmation** : Création Draft Order Shopify + email automatique
 
 ### Algorithme de calcul
@@ -121,7 +121,11 @@ Voir [ARCHITECTURE.md](./ARCHITECTURE.md) pour la documentation complète de l'a
 4. **Sous-couches** : Déterminées par le champ meta `base` du produit :
    - Si `base` est `blanc`, `BLC` ou `B` → **Sous-couche blanche**
    - Si `base` est `C` → **Sous-couche grise**
-5. **Kit matériel** : sélection automatique selon surface totale (< 30m² ou ≥ 30m²)
+5. **Kit matériel** : Détection automatique du type de kit selon surface totale :
+   - **Petite surface** (≤ 30 m²) : 5 composants (bac, rouleau 180mm, monture, pinceau, ruban 38mm)
+   - **Grande surface** (> 30 m²) : 5 composants (bac, rouleau 250mm, monture, pinceau, ruban 50mm)
+   - Notification toast automatique en cas de changement de kit
+   - Composants ajoutés individuellement au panier (personnalisables par l'utilisateur)
 
 ## 🔑 Variables d'environnement
 

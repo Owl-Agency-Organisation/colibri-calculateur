@@ -5,6 +5,39 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [1.6.0] - 2026-01-28
+
+### Ajouté
+- **Gestion des kits personnalisables** : Les kits matériel sont maintenant composés de **composants individuels** au lieu d'un bundle unique, permettant à l'utilisateur de personnaliser sa sélection.
+  - Détection automatique du type de kit (petite surface ≤ 30 m² / grande surface > 30 m²).
+  - Notification toast élégante lors du changement automatique de kit.
+  - Badge "✓ Kit complet" affiché dans le panier si tous les composants sont présents.
+  - Sous-total matériel avec prix barrés dans le panier.
+  - Configuration centralisée dans `/lib/kits-config.ts`.
+- **Synchronisation bidirectionnelle Étape 5 ↔ Étape 6** : Les suppressions de composants/produits dans le panier sont maintenant répercutées dans l'étape Options, et vice-versa.
+  - Décochage automatique des options si tous les produits sont supprimés.
+  - Source de vérité unique via `localStorage` (`colibri-sinistre-options`).
+- **React Hot Toast** : Intégration de la bibliothèque `react-hot-toast` pour des notifications utilisateur professionnelles et élégantes.
+- **Images Shopify** : Affichage des images des produits (composants kit et produits rénovation) dans l'étape 5 (Options).
+
+### Modifié
+- **Harmonisation de l'étape 5 (Options)** : Refonte complète de l'interface pour une cohérence visuelle et fonctionnelle.
+  - Suppression de la tuile "Sous-couche" (obligatoire, affichée uniquement dans le panier).
+  - Structure identique pour les tuiles "Kit matériel" et "Préparation des surfaces" (question + phrase explicative + checkbox).
+  - Affichage type panier avec vignettes produits (images Shopify).
+  - Possibilité de supprimer des composants/produits individuellement avec bouton `[×]`.
+  - Boutons "Réinitialiser" (outline) pour restaurer les listes complètes.
+  - Suppression de la tuile "Coût matériel estimé" en bas de page.
+- **API Shopify** : Modification de `/api/shopify/products/variants/route.ts` pour inclure `id`, `handle`, `title` et `featuredImage` dans la réponse JSON.
+- **Attributs de panier** : Les produits de rénovation stockent maintenant le `handle` (au lieu du titre) dans l'attribut `produit` pour faciliter l'identification.
+
+### Technique
+- Création de `/lib/kits-config.ts` avec configuration des kits (petite/grande surface) et fonction `determinerKit()`.
+- Fonction `findVariantByFilter()` générique dans `cart-mapper.ts` pour filtrer les variants Shopify par `selectedOptions`.
+- Fonction `mapKitToCartLines()` pour ajouter les composants individuels avec attributs (`type`, `kit_type`, `composant`, `composant_nom`).
+- Fonction `mapRenovationToCartLines()` pour filtrer les produits de rénovation selon la sélection utilisateur.
+- Modification de `handleRemoveLine()` dans `panier/page.tsx` pour synchroniser avec `localStorage` (`colibri-sinistre-options`).
+
 ## [1.5.0] - 2026-01-28
 
 ### Ajouté

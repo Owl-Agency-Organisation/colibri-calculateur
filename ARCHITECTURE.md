@@ -212,21 +212,39 @@ const quantiteLitres = Math.ceil((totalSurface / RENDEMENT_SOUS_COUCHE) * MARGE_
 
 ### Étape 5 : Sélection kit matériel
 
+Le kit matériel est déterminé automatiquement selon la surface totale et composé de **composants individuels** ajoutés séparément au panier (personnalisables par l'utilisateur).
+
 ```typescript
+import { determinerKit, KITS_CONFIG } from '@/lib/kits-config'
+
 const surfaceTotale = Object.values(surfacesParProduit)
   .reduce((sum, produit) => sum + produit.surfaceTotale, 0)
 
-// Seuil : 30m²
-const kit = surfaceTotale < 30 
-  ? { 
-      productHandle: 'kit-peinture-petite-surface',
-      titre: 'Kit matériel de peinture - Petite surface'
-    }
-  : { 
-      productHandle: 'kit-materiel-de-peinture-moyenne-et-grande-surface-1',
-      titre: 'Kit matériel de peinture - Moyenne et grande surface'
-    }
+// Seuil : 30 m²
+const kitType = determinerKit(surfaceTotale) // 'petite_surface' ou 'grande_surface'
+const kitConfig = KITS_CONFIG[kitType]
+
+// Kit petite surface (≤ 30 m²) :
+// - Bac à peindre plat
+// - Rouleau anti-gouttes 180mm
+// - Monture rouleau 180mm
+// - Pinceau à réchampir T0
+// - Ruban de masquage 38mm x 50m
+
+// Kit grande surface (> 30 m²) :
+// - Bac à peindre plat
+// - Rouleau anti-gouttes 250mm
+// - Monture rouleau 250mm
+// - Pinceau à réchampir T0
+// - Ruban de masquage 50mm x 50m
+
+// Notification toast si changement de kit
+if (kitActuel !== kitPrecedent) {
+  toast('🔄 Votre kit a été mis à jour', { icon: '🔄', style: { background: '#10b981' } })
+}
 ```
+
+**Synchronisation bidirectionnelle** : Les suppressions de composants dans le panier (étape 6) sont répercutées dans l'étape 5 (Options), et vice-versa, via `localStorage` (`colibri-sinistre-options`).
 
 ---
 
@@ -251,15 +269,29 @@ const kit = surfaceTotale < 30
 
 L'application affiche systématiquement le prix barré (prix public) et le prix remisé (prix assuré) pour :
 - Le total du panier
-- Le coût au m² (calculé sur 3 couches)
+- Le coût au m² (calculé sur 3 couches : 1 sous-couche + 2 couches de finition)
 
 Le panier est organisé en **4 sections thématiques** pour une meilleure lisibilité :
 1. **Peintures de finition** : Regroupe tous les pots de peinture par couleur et contenance.
 2. **Sous-couches** : Affiche les sous-couches (blanches ou grises) calculées.
-3. **Kit matériel** : Affiche le kit sélectionné selon la surface totale.
+3. **Kit matériel** : Affiche les **composants individuels** du kit avec :
+   - Badge "✓ Kit complet" si tous les composants sont présents
+   - Titre dynamique selon le type de kit (petite/grande surface)
+   - Sous-total matériel avec prix barrés
+   - Possibilité de supprimer des composants individuellement
 4. **Préparation des surfaces** : Affiche les produits de rénovation si l'option a été cochée.
 
-Une **bannière d'économies** est affichée sous le récapitulatif pour valoriser le gain financier apporté par l'assureur partenaire.
+Une **bannière d'économies** est affichée sous le récapitulatif pour valoriser le gain financier apporté par l'assureur partenaire (ex: "Votre assureur MAAF vous a fait économiser 86.54€").
+
+### Interface de l'étape 5 (Options)
+
+L'interface a été harmonisée pour offrir une expérience cohérente :
+
+- **Tuiles identiques** pour "Kit matériel" et "Préparation des surfaces" (question + phrase explicative + checkbox)
+- **Affichage type panier** avec vignettes produits (images Shopify)
+- **Suppression individuelle** des composants/produits avec bouton `[×]`
+- **Boutons "Réinitialiser"** (outline) pour restaurer les listes complètes
+- **Synchronisation bidirectionnelle** avec l'étape 6 : les suppressions sont répercutées dans les deux sens via `localStorage`
 
 ---
 
