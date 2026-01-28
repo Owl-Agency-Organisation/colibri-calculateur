@@ -18,6 +18,7 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
   - `C` → Sous-couche grise.
 - **Expérience (UX)** : La sélection de la sous-couche à l'étape 5 est désormais obligatoire et non désélectionnable.
 - **Documentation** : Mise à jour complète du `README.md` et de `ARCHITECTURE.md` pour refléter les dernières règles métier et fonctionnalités.
+- **Interface (UI)** : Simplification de l'étape 5 (Options) par la suppression de l'accordéon "Peintures de finition" et de la tuile "Résumé projet" pour une expérience plus fluide.
 
 ### Technique
 - Optimisation de l'algorithme de calcul pour intégrer les nouvelles règles de sous-couche.

@@ -109,7 +109,7 @@ Voir [ARCHITECTURE.md](./ARCHITECTURE.md) pour la documentation complète de l'a
 2. **Sélection pièce** : Choix type de pièce (7 types disponibles)
 3. **Saisie surfaces** : Plafond + murs (jusqu'à 4 murs avec couleurs distinctes) + boiseries
 4. **Multi-pièces** : Ajout/modification/suppression de pièces
-5. **Options** : Sélection options supplémentaires (rénovation, etc.) - **Sous-couche obligatoire**
+5. **Options** : Sélection de la sous-couche (**obligatoire**) et des options supplémentaires (rénovation, etc.) - Interface simplifiée sans accordéon de peinture
 6. **Récapitulatif** : Panier complet avec quantités optimisées, **remise de 15% appliquée**, prix barrés et coût au m²
 7. **Confirmation** : Création Draft Order Shopify + email automatique
 
