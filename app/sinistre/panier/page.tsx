@@ -347,6 +347,19 @@ export default function PanierPage() {
         </CardContent>
       </Card>
 
+      {/* Bannière économies assureur */}
+      {assure.assureur && (
+        <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+          <svg className="w-6 h-6 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p className="text-base text-green-800">
+            Votre assureur <strong>{assure.assureur}</strong> vous a fait économiser{' '}
+            <strong>{(totalFull - total).toFixed(2)} €</strong>
+          </p>
+        </div>
+      )}
+
       {/* Vos informations */}
       <Card>
         <CardHeader>
