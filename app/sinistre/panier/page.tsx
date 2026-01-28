@@ -283,6 +283,7 @@ export default function PanierPage() {
   const prixPeintures = resultat.peintures.reduce((sum, p) => sum + p.prixTotal, 0);
   const prixSousCouches = resultat.sousCouches.reduce((sum, s) => sum + s.prixTotal, 0);
   const coutAuM2 = (prixPeintures + prixSousCouches) / (resultat.surfaceTotale * 3);
+  const coutAuM2Full = coutAuM2 / DISCOUNT_FACTOR;
 
   return (
     <div className="space-y-6">
@@ -330,6 +331,7 @@ export default function PanierPage() {
               <p className="text-xs text-primary-800">Surface totale</p>
             </div>
             <div className="text-center">
+              <p className="text-sm text-gray-500 line-through">{coutAuM2Full.toFixed(2)} €</p>
               <p className="text-xl font-bold text-primary-600">
                 {coutAuM2.toFixed(2)} €
               </p>
