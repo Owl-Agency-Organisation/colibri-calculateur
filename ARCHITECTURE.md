@@ -247,11 +247,19 @@ const kit = surfaceTotale < 30
 - Application automatique de la remise de 15% (DISCOUNT_FACTOR = 0.85)
 - Envoi emails automatiques
 
-### Affichage des prix
+### Affichage des prix et structure du panier
 
 L'application affiche systématiquement le prix barré (prix public) et le prix remisé (prix assuré) pour :
 - Le total du panier
 - Le coût au m² (calculé sur 3 couches)
+
+Le panier est organisé en **4 sections thématiques** pour une meilleure lisibilité :
+1. **Peintures de finition** : Regroupe tous les pots de peinture par couleur et contenance.
+2. **Sous-couches** : Affiche les sous-couches (blanches ou grises) calculées.
+3. **Kit matériel** : Affiche le kit sélectionné selon la surface totale.
+4. **Préparation des surfaces** : Affiche les produits de rénovation si l'option a été cochée.
+
+Une **bannière d'économies** est affichée sous le récapitulatif pour valoriser le gain financier apporté par l'assureur partenaire.
 
 ---
 
