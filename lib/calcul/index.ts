@@ -202,7 +202,7 @@ export function calculerLitresCommandes(contenants: CalculContenant[]): number {
  */
 export function determinerTypeSousCouche(base: string): 'blanche' | 'grise' {
   const b = base.toUpperCase();
-  return (b === 'C' || b === 'BLC') ? 'grise' : 'blanche';
+  return (b === 'C') ? 'grise' : 'blanche';
 }
 
 // ==================== FONCTION PRINCIPALE ====================
