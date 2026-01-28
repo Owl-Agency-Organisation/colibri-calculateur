@@ -167,38 +167,46 @@ export default function PanierPage() {
 
       // Synchroniser avec localStorage pour l'étape 5
       const lineType = attributes.find(a => a.key === 'type')?.value;
+      const STORAGE_KEY_OPTIONS = 'colibri-sinistre-options';
       
-      if (lineType === 'kit') {
-        // Retirer le composant de la liste des composants kit
-        const composantHandle = attributes.find(a => a.key === 'composant')?.value;
-        if (composantHandle) {
-          const composantsKit = JSON.parse(localStorage.getItem('composantsKit') || '[]');
-          const updatedComposants = composantsKit.filter((h: string) => h !== composantHandle);
-          localStorage.setItem('composantsKit', JSON.stringify(updatedComposants));
+      if (lineType === 'kit' || lineType === 'renovation') {
+        // Charger les options actuelles
+        const savedOptions = localStorage.getItem(STORAGE_KEY_OPTIONS);
+        if (savedOptions) {
+          const options = JSON.parse(savedOptions);
           
-          // Si tous les composants sont supprimés, décocher l'option kit
-          if (updatedComposants.length === 0) {
-            localStorage.setItem('optionKit', 'false');
+          if (lineType === 'kit') {
+            // Retirer le composant de la liste des composants kit
+            const composantHandle = attributes.find(a => a.key === 'composant')?.value;
+            if (composantHandle && options.composantsKit) {
+              options.composantsKit = options.composantsKit.filter((h: string) => h !== composantHandle);
+              
+              // Si tous les composants sont supprimés, décocher l'option kit
+              if (options.composantsKit.length === 0) {
+                options.kit = false;
+              }
+            }
+          } else if (lineType === 'renovation') {
+            // Retirer le produit de la liste des produits rénovation
+            const produitHandle = attributes.find(a => a.key === 'produit')?.value;
+            if (produitHandle && options.produitsRenovation) {
+              options.produitsRenovation = options.produitsRenovation.filter((h: string) => h !== produitHandle);
+              
+              // Si tous les produits sont supprimés, décocher l'option rénovation
+              if (options.produitsRenovation.length === 0) {
+                options.renovation = false;
+              }
+            }
           }
-        }
-      } else if (lineType === 'renovation') {
-        // Retirer le produit de la liste des produits rénovation
-        const produitHandle = attributes.find(a => a.key === 'produit')?.value;
-        if (produitHandle) {
-          const produitsRenovation = JSON.parse(localStorage.getItem('produitsRenovation') || '[]');
-          const updatedProduits = produitsRenovation.filter((h: string) => h !== produitHandle);
-          localStorage.setItem('produitsRenovation', JSON.stringify(updatedProduits));
           
-          // Si tous les produits sont supprimés, décocher l'option rénovation
-          if (updatedProduits.length === 0) {
-            localStorage.setItem('optionRenovation', 'false');
-          }
+          // Sauvegarder les options mises à jour
+          localStorage.setItem(STORAGE_KEY_OPTIONS, JSON.stringify(options));
         }
       }
 
       // Forcer la recréation du panier à la prochaine visite
-      localStorage.removeItem('cartId');
-      localStorage.removeItem('cartDataHash');
+      localStorage.removeItem('SHOPIFY_CART_ID');
+      localStorage.removeItem('SHOPIFY_CART_DATA_HASH');
     } catch (err) {
       console.error('Erreur suppression ligne:', err);
       setError(err instanceof Error ? err.message : 'Erreur lors de la suppression');
