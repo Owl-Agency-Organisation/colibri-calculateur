@@ -16,6 +16,8 @@ export interface CartOptions {
   sousCouche: boolean;
   kit: boolean;
   renovation: boolean;
+  composantsKit?: string[];
+  produitsRenovation?: string[];
 }
 
 /**
@@ -192,11 +194,13 @@ function findVariantByFilter(
 }
 
 /**
- * Convertit les composants du kit en lignes de panier Shopify individuelles
+ * Convertit le kit matériel en lignes de panier Shopify
+ * Ajoute chaque composant du kit individuellement
  */
 function mapKitToCartLines(
   surfaceTotale: number,
-  shopifyData: Record<string, ShopifyProductData>
+  shopifyData: Record<string, ShopifyProductData>,
+  composantsSelectionnes?: string[]
 ): CartLineInput[] {
   const lines: CartLineInput[] = [];
   
@@ -204,8 +208,12 @@ function mapKitToCartLines(
   const kitType = determinerKit(surfaceTotale);
   const kitConfig = KITS_CONFIG[kitType];
 
-  // Pour chaque composant du kit
-  kitConfig.composants.forEach((composant) => {
+  // Pour chaque composant du kit (filtrer par composants sélectionnés si fournis)
+  const composantsATraiter = composantsSelectionnes
+    ? kitConfig.composants.filter(c => composantsSelectionnes.includes(c.handle))
+    : kitConfig.composants;
+
+  composantsATraiter.forEach((composant) => {
     const productData = shopifyData[composant.handle];
     
     if (!productData) {
@@ -243,11 +251,17 @@ function mapKitToCartLines(
  * Convertit les produits de rénovation en lignes de panier Shopify
  */
 function mapRenovationToCartLines(
-  shopifyData: Record<string, ShopifyProductData>
+  shopifyData: Record<string, ShopifyProductData>,
+  produitsSelectionnes?: string[]
 ): CartLineInput[] {
   const lines: CartLineInput[] = [];
 
-  PRODUITS_RENOVATION.forEach((produit) => {
+  // Filtrer par produits sélectionnés si fournis
+  const produitsATraiter = produitsSelectionnes
+    ? PRODUITS_RENOVATION.filter(p => produitsSelectionnes.includes(p.handle))
+    : PRODUITS_RENOVATION;
+
+  produitsATraiter.forEach((produit) => {
     const productData = shopifyData[produit.handle];
     
     if (!productData || !productData.variants || productData.variants.length === 0) {
@@ -292,13 +306,20 @@ export function mapCalculToCartLines(
 
   // 3. Kit matériel (si option activée)
   if (options.kit) {
-    const kitLines = mapKitToCartLines(resultat.surfaceTotale, shopifyData);
+    const kitLines = mapKitToCartLines(
+      resultat.surfaceTotale,
+      shopifyData,
+      options.composantsKit
+    );
     lines.push(...kitLines);
   }
 
   // 4. Produits de rénovation (si option activée)
   if (options.renovation) {
-    const renovationLines = mapRenovationToCartLines(shopifyData);
+    const renovationLines = mapRenovationToCartLines(
+      shopifyData,
+      options.produitsRenovation
+    );
     lines.push(...renovationLines);
   }
 

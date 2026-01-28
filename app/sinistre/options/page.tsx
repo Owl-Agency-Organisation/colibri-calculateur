@@ -284,31 +284,31 @@ export default function OptionsPage() {
       {/* Kit matériel */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Kit matériel</CardTitle>
-            <label className="flex items-center gap-2 cursor-pointer">
+          <CardTitle>Kit matériel</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-start gap-4">
               <input
                 type="checkbox"
+                id="kit"
                 checked={optionKit}
                 onChange={(e) => handleOptionChange('kit', e.target.checked)}
-                className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                className="w-5 h-5 mt-1 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
               />
-              <span className="text-sm text-gray-600">Inclure</span>
-            </label>
-          </div>
-        </CardHeader>
-        {optionKit && (
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-medium text-gray-900">{kitConfig.titre}</h4>
-                <p className="text-sm text-gray-600 mt-1">
-                  Recommandé pour les surfaces {resultat.surfaceTotale <= 30 ? '≤ 30' : '> 30'} m²
+              <label htmlFor="kit" className="flex-1 cursor-pointer">
+                <p className="font-medium text-gray-900">
+                  Souhaitez-vous inclure le kit matériel ?
                 </p>
-              </div>
+                <p className="text-sm text-gray-600 mt-1">
+                  {kitConfig.titre} recommandé pour les surfaces {resultat.surfaceTotale <= 30 ? '≤ 30' : '> 30'} m²
+                </p>
+              </label>
+            </div>
 
-              {/* Liste des composants */}
-              <div className="space-y-2">
+            {optionKit && (
+              <div className="space-y-2 pt-2 border-t border-gray-200">
+                {/* Liste des composants */}
                 {kitConfig.composants
                   .filter(c => composantsKit.includes(c.handle))
                   .map((composant) => {
@@ -346,21 +346,21 @@ export default function OptionsPage() {
                       </div>
                     );
                   })}
-              </div>
 
-              {/* Bouton réinitialiser */}
-              <div className="pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={reinitialiserKit}
-                >
-                  Réinitialiser le kit
-                </Button>
+                {/* Bouton réinitialiser */}
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={reinitialiserKit}
+                  >
+                    Réinitialiser le kit
+                  </Button>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        )}
+            )}
+          </div>
+        </CardContent>
       </Card>
 
       {/* Préparation des surfaces */}
