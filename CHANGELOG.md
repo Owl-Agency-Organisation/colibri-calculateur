@@ -9,8 +9,8 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ### Ajouté
 - **Assureurs** : Ajout de **ALLIANZ** à la liste des assureurs partenaires dans le formulaire d'identification.
-- **Interface (UI)** : Affichage du coût global au m² dans le récapitulatif du panier.
-- **Interface (UI)** : Affichage des prix barrés (original vs remisé) pour chaque article et pour le total.
+- **Interface (UI)** : Affichage du coût global au m² dans le récapitulatif du panier, calculé selon la formule Colibri (Peintures + Sous-couches / Surface × 3).
+- **Interface (UI)** : Affichage des prix barrés (original vs remisé) pour chaque article, pour le total et pour le coût au m².
 
 ### Modifié
 - **Logique métier** : Mise à jour de la règle de détermination des sous-couches basée sur le champ meta `base` :
