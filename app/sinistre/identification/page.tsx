@@ -132,43 +132,40 @@ const ASSUREUR_OPTIONS = [
   // Créer ou récupérer un client Shopify
   const createOrFindCustomer = async () => {
     try {
-      // Importer les fonctions depuis lib
-      const { findCustomerByEmail, createCustomer } = await import('@/lib/shopify-customers');
-      
-      // 1. Chercher si le client existe déjà
-      let customer = await findCustomerByEmail(formData.email);
-      
-      // 2. Si le client n'existe pas, le créer
-      if (!customer) {
-        customer = await createCustomer({
+      // Appeler la route API pour créer/récupérer le customer
+      const response = await fetch('/api/shopify/customer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           email: formData.email,
           firstName: formData.prenom,
           lastName: formData.nom,
           phone: formData.telephone,
-          addresses: [
-            {
-              address1: formData.adresse,
-              city: formData.ville,
-              zip: formData.codePostal,
-              country: 'FR',
-            },
-          ],
-          tags: ['covea'],
-        });
-        
-        if (!customer) {
-          console.error('Failed to create customer');
-          throw new Error('Impossible de créer votre compte client. Veuillez réessayer ou contacter le support.');
-        }
+          address: formData.adresse,
+          city: formData.ville,
+          postalCode: formData.codePostal,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Failed to create customer:', error);
+        throw new Error('Impossible de créer votre compte client. Veuillez réessayer ou contacter le support.');
       }
-      
-      // 3. Sauvegarder le customer ID dans localStorage
-      if (customer) {
-        localStorage.setItem('CUSTOMER_ID', customer.id);
-        console.log('Customer created/found:', customer.id);
+
+      const data = await response.json();
+
+      if (!data.success || !data.customerId) {
+        throw new Error('Impossible de créer votre compte client. Veuillez réessayer ou contacter le support.');
       }
-      
-      // 4. Sauvegarder les données utilisateur (existant, à garder)
+
+      // Sauvegarder le customer ID dans localStorage
+      localStorage.setItem('CUSTOMER_ID', data.customerId);
+      console.log('Customer created/found:', data.customerId, '(isNew:', data.isNew, ')');
+
+      // Sauvegarder les données utilisateur (existant, à garder)
       localStorage.setItem('USER_DATA', JSON.stringify({
         email: formData.email,
         prenom: formData.prenom,
@@ -178,7 +175,7 @@ const ASSUREUR_OPTIONS = [
         ville: formData.ville,
         codePostal: formData.codePostal,
       }));
-      
+
       return true;
     } catch (error) {
       console.error('Error in customer creation:', error);
