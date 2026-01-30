@@ -129,66 +129,84 @@ const ASSUREUR_OPTIONS = [
 	    return Object.keys(newErrors).length === 0;
 	  };
 
-	  // Créer un client Shopify
-	  const createShopifyCustomer = async () => {
-	    try {
-	      const response = await fetch('/api/shopify/customer', {
-	        method: 'POST',
-	        headers: {
-	          'Content-Type': 'application/json',
-	        },
-	        body: JSON.stringify({
-	          firstName: formData.prenom,
-	          lastName: formData.nom,
-	          email: formData.email,
-	          phone: formData.telephone,
-	          address: formData.adresse,
-	          city: formData.ville,
-	          postalCode: formData.codePostal,
-	        }),
-	      });
+  // Créer ou récupérer un client Shopify
+  const createOrFindCustomer = async () => {
+    try {
+      // Importer les fonctions depuis lib
+      const { findCustomerByEmail, createCustomer } = await import('@/lib/shopify-customers');
+      
+      // 1. Chercher si le client existe déjà
+      let customer = await findCustomerByEmail(formData.email);
+      
+      // 2. Si le client n'existe pas, le créer
+      if (!customer) {
+        customer = await createCustomer({
+          email: formData.email,
+          firstName: formData.prenom,
+          lastName: formData.nom,
+          phone: formData.telephone,
+          addresses: [
+            {
+              address1: formData.adresse,
+              city: formData.ville,
+              zip: formData.codePostal,
+              country: 'FR',
+            },
+          ],
+          tags: ['covea'],
+        });
+        
+        if (!customer) {
+          console.error('Failed to create customer');
+          throw new Error('Impossible de créer votre compte client. Veuillez réessayer ou contacter le support.');
+        }
+      }
+      
+      // 3. Sauvegarder le customer ID dans localStorage
+      if (customer) {
+        localStorage.setItem('CUSTOMER_ID', customer.id);
+        console.log('Customer created/found:', customer.id);
+      }
+      
+      // 4. Sauvegarder les données utilisateur (existant, à garder)
+      localStorage.setItem('USER_DATA', JSON.stringify({
+        email: formData.email,
+        prenom: formData.prenom,
+        nom: formData.nom,
+        telephone: formData.telephone,
+        adresse: formData.adresse,
+        ville: formData.ville,
+        codePostal: formData.codePostal,
+      }));
+      
+      return true;
+    } catch (error) {
+      console.error('Error in customer creation:', error);
+      throw error;
+    }
+  };
 
-	      if (!response.ok) {
-	        const error = await response.json();
-	        console.error('Failed to create customer:', error);
-	        // Ne pas bloquer le flux si la création échoue
-	        console.warn('Customer creation failed, continuing anyway');
-	      } else {
-	        const data = await response.json();
-	        console.log('Customer created successfully:', data);
-	        // Sauvegarder le customerId si nécessaire pour plus tard
-	        if (data.customerId) {
-	          localStorage.setItem('shopify_customer_id', data.customerId);
-	        }
-	      }
-	    } catch (error) {
-	      console.error('Error creating customer:', error);
-	      // Ne pas bloquer le flux si la création échoue
-	      console.warn('Customer creation error, continuing anyway');
-	    }
-	  };
-
-	  // Soumettre le formulaire
-	  const handleSubmit = async (e: React.FormEvent) => {
-	    e.preventDefault();
-	    
-	    if (validateForm()) {
-	      setIsSubmitting(true);
-	      setSubmitError(null);
-	      
-	      try {
-	        // Créer le client Shopify (asynchrone mais non-bloquant)
-	        await createShopifyCustomer();
-	        
-	        // Continuer vers l'étape suivante
-	        router.push('/sinistre/piece');
-	      } catch (error) {
-	        console.error('Unexpected error:', error);
-	        setSubmitError('Une erreur est survenue. Veuillez réessayer.');
-	        setIsSubmitting(false);
-	      }
-	    }
-	  };
+  // Soumettre le formulaire
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (validateForm()) {
+      setIsSubmitting(true);
+      setSubmitError(null);
+      
+      try {
+        // Créer ou récupérer le client Shopify
+        await createOrFindCustomer();
+        
+        // Continuer vers l'étape suivante
+        router.push('/sinistre/piece');
+      } catch (error) {
+        console.error('Unexpected error:', error);
+        setSubmitError(error instanceof Error ? error.message : 'Une erreur est survenue. Veuillez réessayer.');
+        setIsSubmitting(false);
+      }
+    }
+  };
 
 	  // Vérifier si le formulaire est valide pour activer le bouton
 	  const isFormValid = 

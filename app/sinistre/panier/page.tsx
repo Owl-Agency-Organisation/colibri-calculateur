@@ -55,6 +55,8 @@ export default function PanierPage() {
   
   // États pour les actions
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [message, setMessage] = useState('');
 
   // Charger les données initiales
   useEffect(() => {
@@ -271,12 +273,108 @@ export default function PanierPage() {
     }
   };
 
-  // Procéder au checkout Shopify
-  const handleCheckout = () => {
-    if (cart?.checkoutUrl) {
-      window.location.href = cart.checkoutUrl;
-    }
+  // Fonction helper pour préparer les données de checkout
+  const prepareCheckoutData = () => {
+    const userData = JSON.parse(localStorage.getItem('USER_DATA') || '{}');
+    const customerId = localStorage.getItem('CUSTOMER_ID');
+    const lineItems = cart?.lines.edges.map((edge: any) => ({
+      variantId: edge.node.merchandise.id,
+      quantity: edge.node.quantity,
+    })) || [];
+    
+    return { userData, customerId, lineItems };
   };
+
+  // Fonction pour "Commander maintenant" (checkout direct)
+  async function handleCommanderMaintenant() {
+    if (!cart?.checkoutUrl) {
+      alert('Erreur : URL de checkout non disponible');
+      return;
+    }
+    
+    setIsProcessing(true);
+    
+    try {
+      const { userData, customerId, lineItems } = prepareCheckoutData();
+      
+      if (!customerId) {
+        console.warn('No customer ID found');
+      }
+      
+      // Appeler l'API checkout en mode direct
+      const response = await fetch('/api/sinistre/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'direct',
+          customerId,
+          lineItems,
+          userData,
+          cartCheckoutUrl: cart.checkoutUrl,
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.checkoutUrl) {
+        // Rediriger vers le checkout Shopify
+        window.location.href = result.checkoutUrl;
+      } else {
+        alert('Erreur lors de la préparation du checkout');
+        setIsProcessing(false);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Une erreur est survenue');
+      setIsProcessing(false);
+    }
+  }
+
+  // Fonction pour "Sauvegarder mon projet" (draft order)
+  async function handleSauvegarderProjet() {
+    if (!cart) {
+      alert('Erreur : Panier non disponible');
+      return;
+    }
+    
+    setIsProcessing(true);
+    setMessage('');
+    
+    try {
+      const { userData, customerId, lineItems } = prepareCheckoutData();
+      
+      if (!customerId) {
+        alert('Erreur : Client non créé. Veuillez recharger la page.');
+        setIsProcessing(false);
+        return;
+      }
+      
+      // Appeler l'API checkout en mode save
+      const response = await fetch('/api/sinistre/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'save',
+          customerId,
+          lineItems,
+          userData,
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setMessage(result.message);
+      } else {
+        alert('Erreur lors de la sauvegarde du projet : ' + (result.error || 'Erreur inconnue'));
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Une erreur est survenue');
+    } finally {
+      setIsProcessing(false);
+    }
+  }
 
   const handleBack = () => {
     router.push('/sinistre/options');
@@ -667,23 +765,30 @@ export default function PanierPage() {
       {/* Actions */}
       <div className="space-y-6 pt-4">
         <div className="flex flex-col gap-4 max-w-2xl mx-auto">
-          {/* CTA Principal : Checkout Shopify */}
-          <div className="text-center space-y-2">
-            <Button
-              size="lg"
-              className="w-full py-8 text-xl font-bold bg-primary-600 hover:bg-primary-700 shadow-lg flex items-center justify-center gap-3"
-              onClick={handleCheckout}
-              disabled={!cart?.checkoutUrl}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              Commander et recevoir sous 72h
-            </Button>
-            <p className="text-sm text-gray-500 font-medium">
-              ⚡ Livraison prioritaire à domicile pour votre sinistre
-            </p>
-          </div>
+          {/* Message de confirmation si projet sauvegardé */}
+          {message && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-green-800">{message}</p>
+            </div>
+          )}
+
+          {/* Bouton Commander maintenant */}
+          <button
+            onClick={handleCommanderMaintenant}
+            disabled={isProcessing}
+            className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          >
+            {isProcessing ? 'Chargement...' : 'Commander maintenant'}
+          </button>
+          
+          {/* Bouton Sauvegarder projet */}
+          <button
+            onClick={handleSauvegarderProjet}
+            disabled={isProcessing}
+            className="w-full bg-gray-200 text-gray-800 py-3 px-6 rounded-lg font-semibold hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
+          >
+            {isProcessing ? 'Envoi en cours...' : 'Sauvegarder mon projet'}
+          </button>
 
           <div className="relative py-4">
             <div className="absolute inset-0 flex items-center">
