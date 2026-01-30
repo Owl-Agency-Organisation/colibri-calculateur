@@ -4,6 +4,7 @@
  */
 
 import { callAdminAPI } from './shopify-admin';
+import { normalizeFrenchPhone } from './utils/phone';
 
 interface DraftOrderLineItem {
   variantId: string;
@@ -83,13 +84,22 @@ export async function createDraftOrder(input: DraftOrderInput): Promise<ShopifyD
     }
   `;
 
+  // Normaliser les numéros de téléphone au format E.164
+  const normalizedPhone = normalizeFrenchPhone(input.phone);
+  const normalizedShippingPhone = input.shippingAddress?.phone
+    ? normalizeFrenchPhone(input.shippingAddress.phone)
+    : null;
+
   const variables = {
     input: {
       customerId: input.customerId,
       lineItems: input.lineItems,
-      shippingAddress: input.shippingAddress,
+      shippingAddress: input.shippingAddress ? {
+        ...input.shippingAddress,
+        phone: normalizedShippingPhone || undefined,
+      } : undefined,
       email: input.email,
-      phone: input.phone,
+      phone: normalizedPhone || undefined,
       note: input.note,
       tags: input.tags,
       appliedDiscount: input.appliedDiscount,
