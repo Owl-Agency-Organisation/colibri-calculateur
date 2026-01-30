@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/Button';
 import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
 import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { getStoredPieces, getStoredAssure, STORAGE_KEYS } from '@/lib/store/sinistreStore';
-import { createCart, removeCartLines, getCart, type ShopifyCart, type CartLineNode } from '@/lib/shopify-cart';
+import { createCart, removeCartLines, getCart, type ShopifyCart, type CartLineNode, type BuyerInfo } from '@/lib/shopify-cart';
+import { normalizeFrenchPhone } from '@/lib/utils/phone';
 import { mapCalculToCartLines, canRemoveLine, getLineType, PRODUITS_RENOVATION } from '@/lib/cart-mapper';
 import { determinerKit, KITS_CONFIG } from '@/lib/kits-config';
 import type { ResultatCalcul } from '@/lib/calcul';
@@ -131,7 +132,21 @@ export default function PanierPage() {
         return;
       }
 
-      const newCart = await createCart(cartLines, assure?.email);
+      // Préparer les informations de l'acheteur pour pré-remplir le checkout
+      const userData = JSON.parse(localStorage.getItem('USER_DATA') || '{}');
+      const normalizedPhone = normalizeFrenchPhone(userData.telephone);
+      const buyerInfo = assure?.email ? {
+        email: assure.email,
+        phone: normalizedPhone || undefined,
+        firstName: userData.prenom,
+        lastName: userData.nom,
+        address1: userData.adresse,
+        city: userData.ville,
+        zip: userData.codePostal,
+        country: 'FR',
+      } : undefined;
+
+      const newCart = await createCart(cartLines, buyerInfo);
       
       // Sauvegarder l'ID du panier et le hash des données
       localStorage.setItem(CART_ID_KEY, newCart.id);

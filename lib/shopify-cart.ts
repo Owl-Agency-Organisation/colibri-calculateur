@@ -129,11 +129,25 @@ const CART_FRAGMENT = `
 `;
 
 /**
+ * Informations de l'acheteur pour pré-remplir le checkout
+ */
+export interface BuyerInfo {
+  email: string;
+  phone?: string;
+  firstName?: string;
+  lastName?: string;
+  address1?: string;
+  city?: string;
+  zip?: string;
+  country?: string;
+}
+
+/**
  * Créer un nouveau panier Shopify
  */
 export async function createCart(
   lines: CartLineInput[],
-  buyerEmail?: string
+  buyerInfo?: BuyerInfo
 ): Promise<ShopifyCart> {
   const mutation = `
     ${CART_FRAGMENT}
@@ -150,18 +164,45 @@ export async function createCart(
     }
   `;
 
-  const variables: { input: { lines: CartLineInput[]; buyerIdentity?: { email: string; countryCode: string } } } = {
+  const variables: any = {
     input: {
       lines,
     },
   };
 
-  // Ajouter l'email si fourni
-  if (buyerEmail) {
+  // Construire buyerIdentity avec toutes les informations disponibles
+  if (buyerInfo) {
     variables.input.buyerIdentity = {
-      email: buyerEmail,
-      countryCode: 'FR',
+      email: buyerInfo.email,
+      countryCode: buyerInfo.country || 'FR',
     };
+
+    // Ajouter le téléphone si fourni
+    if (buyerInfo.phone) {
+      variables.input.buyerIdentity.phone = buyerInfo.phone;
+    }
+
+    // Ajouter les préférences de livraison si l'adresse est fournie
+    if (buyerInfo.firstName && buyerInfo.lastName && buyerInfo.address1 && buyerInfo.city && buyerInfo.zip) {
+      variables.input.buyerIdentity.preferences = {
+        delivery: {
+          deliveryAddressPreferences: [
+            {
+              deliveryAddress: {
+                firstName: buyerInfo.firstName,
+                lastName: buyerInfo.lastName,
+                address1: buyerInfo.address1,
+                city: buyerInfo.city,
+                zip: buyerInfo.zip,
+                country: buyerInfo.country || 'FR',
+                phone: buyerInfo.phone,
+              },
+              oneTimeUse: true,
+            },
+          ],
+        },
+      };
+    }
   }
 
   const response = await shopifyFetch<{
