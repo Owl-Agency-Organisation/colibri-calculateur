@@ -3,18 +3,19 @@
  * Génère un token d'accès frais (valide 24h) à chaque appel
  */
 
-const SHOPIFY_STORE_DOMAIN = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN;
-const CLIENT_ID = process.env.SHOPIFY_ADMIN_CLIENT_ID;
-const CLIENT_SECRET = process.env.SHOPIFY_ADMIN_CLIENT_SECRET;
-
-if (!SHOPIFY_STORE_DOMAIN || !CLIENT_ID || !CLIENT_SECRET) {
-  throw new Error('Missing Shopify Admin API credentials in environment variables');
-}
-
 /**
  * Génère un token Admin API frais (valide 24h)
  */
 export async function getAdminAccessToken(): Promise<string> {
+  const SHOPIFY_STORE_DOMAIN = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN;
+  const CLIENT_ID = process.env.SHOPIFY_ADMIN_CLIENT_ID;
+  const CLIENT_SECRET = process.env.SHOPIFY_ADMIN_CLIENT_SECRET;
+
+  // Vérifier les credentials
+  if (!SHOPIFY_STORE_DOMAIN || !CLIENT_ID || !CLIENT_SECRET) {
+    throw new Error('Missing Shopify Admin API credentials in environment variables');
+  }
+
   const response = await fetch(
     `https://${SHOPIFY_STORE_DOMAIN}/admin/oauth/access_token`,
     {
@@ -46,8 +47,10 @@ export async function callAdminAPI<T = any>(
   query: string,
   variables?: Record<string, any>
 ): Promise<T> {
-  const token = await getAdminAccessToken();
+  const SHOPIFY_STORE_DOMAIN = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN;
   const apiVersion = process.env.SHOPIFY_API_VERSION || '2025-01';
+
+  const token = await getAdminAccessToken();
   
   const response = await fetch(
     `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${apiVersion}/graphql.json`,
