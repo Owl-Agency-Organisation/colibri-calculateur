@@ -73,9 +73,36 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ---
 
+### 4. Valider et gérer les Customer ID invalides 🟠
+
+**Problème** : Si un customer est supprimé dans Shopify Admin mais que son ID reste dans localStorage, la création de Draft Order échoue avec "Record is invalid".
+
+**Solution** :
+- Vérifier que le customer existe avant de créer un Draft Order
+- Si le customer n'existe plus, le re-créer automatiquement
+- Nettoyer localStorage en cas d'erreur
+- Logger les cas de customer invalide pour monitoring
+
+**Implémentation** :
+- Créer une fonction `findCustomerById()` dans `/lib/shopify-customers.ts`
+- Dans `/app/api/sinistre/checkout/route.ts`, vérifier le customer avant la création du Draft Order
+- Si customer invalide, appeler `findCustomerByEmail()` ou `createCustomer()` pour récupérer/créer un customer valide
+- Côté frontend, nettoyer localStorage en cas d'erreur 500
+
+**Fichiers concernés** :
+- `/lib/shopify-customers.ts` (nouvelle fonction `findCustomerById()`)
+- `/app/api/sinistre/checkout/route.ts` (validation + fallback)
+- `/app/sinistre/panier/page.tsx` (cleanup localStorage)
+
+**Estimation** : 2-3 heures
+
+**Labels** : `bug`, `enhancement`, `shopify`, `customers`
+
+---
+
 ## 🧪 Tests et Qualité
 
-### 4. Ajouter des tests unitaires 🔴
+### 5. Ajouter des tests unitaires 🔴
 
 **Problème** : Aucun test unitaire n'est présent dans le projet.
 
@@ -94,7 +121,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ---
 
-### 5. Ajouter des tests end-to-end (E2E) 🟠
+### 6. Ajouter des tests end-to-end (E2E) 🟠
 
 **Problème** : Aucun test E2E pour valider le parcours utilisateur complet.
 
@@ -114,7 +141,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ## 📊 Monitoring et Logging
 
-### 6. Améliorer le logging 🟠
+### 7. Améliorer le logging 🟠
 
 **Problème** : Les erreurs sont loggées avec `console.error`, mais pas de système de monitoring centralisé.
 
@@ -130,7 +157,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ---
 
-### 7. Ajouter des métriques de performance 🟢
+### 8. Ajouter des métriques de performance 🟢
 
 **Problème** : Pas de métriques de performance pour suivre les temps de réponse des API.
 
@@ -148,7 +175,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ## 🎨 UX et Interface
 
-### 8. Améliorer la gestion des erreurs côté client 🟠
+### 9. Améliorer la gestion des erreurs côté client 🟠
 
 **Problème** : Les erreurs sont affichées avec `alert()`, ce qui n'est pas professionnel.
 
@@ -167,7 +194,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ---
 
-### 9. Ajouter un indicateur de chargement global 🟢
+### 10. Ajouter un indicateur de chargement global 🟢
 
 **Problème** : Pas d'indicateur de chargement global pendant les appels API.
 
@@ -184,7 +211,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ## 🔧 Optimisations Techniques
 
-### 10. Mettre en cache les tokens OAuth 🟠
+### 11. Mettre en cache les tokens OAuth 🟠
 
 **Problème** : Les tokens OAuth sont générés à chaque appel, ce qui est inefficace (valides 24h).
 
@@ -202,7 +229,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ---
 
-### 11. Optimiser les requêtes GraphQL 🟢
+### 12. Optimiser les requêtes GraphQL 🟢
 
 **Problème** : Les requêtes GraphQL pourraient être optimisées pour réduire la latence.
 
@@ -224,7 +251,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ## 📝 Documentation
 
-### 12. Ajouter de la documentation technique 🟠
+### 13. Ajouter de la documentation technique 🟠
 
 **Problème** : Manque de documentation technique sur les nouvelles fonctionnalités.
 
@@ -240,7 +267,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ---
 
-### 13. Créer un ADR pour les décisions architecturales 🟢
+### 14. Créer un ADR pour les décisions architecturales 🟢
 
 **Problème** : Les décisions architecturales importantes ne sont pas documentées.
 
@@ -257,7 +284,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ## 🚀 Fonctionnalités Futures
 
-### 14. Ajouter un système de retry automatique 🟢
+### 15. Ajouter un système de retry automatique 🟢
 
 **Problème** : Pas de retry automatique en cas d'échec temporaire des appels Shopify.
 
@@ -272,7 +299,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ---
 
-### 15. Ajouter un webhook Shopify pour les draft orders 🟢
+### 16. Ajouter un webhook Shopify pour les draft orders 🟢
 
 **Problème** : Pas de notification côté application quand un draft order est payé.
 
@@ -292,9 +319,9 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 | Priorité | Nombre d'améliorations | Estimation totale |
 |----------|------------------------|-------------------|
 | 🔴 Haute | 2 | 10-13 heures |
-| 🟠 Moyenne | 8 | 25-32 heures |
+| 🟠 Moyenne | 9 | 27-35 heures |
 | 🟢 Basse | 5 | 13-17 heures |
-| **Total** | **15** | **48-62 heures** |
+| **Total** | **16** | **50-65 heures** |
 
 ---
 
@@ -304,27 +331,28 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 1. Implémenter le rate limiting
 2. Ajouter des tests unitaires
 
-### Sprint 2 (Sécurité et Qualité) - 12-15 heures
+### Sprint 2 (Sécurité et Qualité) - 14-18 heures
 3. Renforcer la validation des données
 4. Vérifier les doublons de customers
-5. Améliorer le logging
-6. Ajouter des tests E2E
+5. **Valider et gérer les Customer ID invalides** ⭐ **NOUVEAU**
+6. Améliorer le logging
+7. Ajouter des tests E2E
 
 ### Sprint 3 (UX et Optimisations) - 10-13 heures
-7. Améliorer la gestion des erreurs côté client
-8. Mettre en cache les tokens OAuth
-9. Ajouter de la documentation technique
-10. Ajouter un indicateur de chargement global
+8. Améliorer la gestion des erreurs côté client
+9. Mettre en cache les tokens OAuth
+10. Ajouter de la documentation technique
+11. Ajouter un indicateur de chargement global
 
 ### Sprint 4 (Optimisations et Fonctionnalités) - 16-21 heures
-11. Optimiser les requêtes GraphQL
-12. Ajouter des métriques de performance
-13. Créer un ADR pour les décisions architecturales
-14. Ajouter un système de retry automatique
-15. Ajouter un webhook Shopify pour les draft orders
+12. Optimiser les requêtes GraphQL
+13. Ajouter des métriques de performance
+14. Créer un ADR pour les décisions architecturales
+15. Ajouter un système de retry automatique
+16. Ajouter un webhook Shopify pour les draft orders
 
 ---
 
 **Dernière mise à jour** : 31 janvier 2026  
-**Auteur** : Manus  
-**Version** : 1.0
+**Auteur** : Manus + @shopify-product-engineer  
+**Version** : 1.1
