@@ -55,7 +55,6 @@ export default function PanierPage() {
   const [error, setError] = useState<string | null>(null);
   
   // États pour les actions
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -232,61 +231,7 @@ export default function PanierPage() {
     }
   };
 
-  // Générer le PDF
-  const handleGeneratePdf = async () => {
-    setIsGeneratingPdf(true);
-    try {
-      // Construire les lignes du panier pour le PDF depuis le cart Shopify
-      const lignesPanier = cart?.lines.edges.map(({ node }) => ({
-        id: node.id,
-        type: getLineType(node.attributes),
-        titre: `${node.merchandise.product.title} - ${node.merchandise.title}`,
-        description: '',
-        quantite: node.quantity,
-        unite: '',
-        prixUnitaire: parseFloat(node.merchandise.price.amount),
-        prixTotal: parseFloat(node.merchandise.price.amount) * node.quantity,
-        imageUrl: node.merchandise.image?.url || node.merchandise.product.featuredImage?.url,
-        editable: false,
-      })) || [];
 
-      const response = await fetch('/api/generate-pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          assure,
-          pieces,
-          resultat,
-          options,
-          lignesPanier,
-          total: parseFloat(cart?.cost.totalAmount.amount || '0'),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de la génération du PDF');
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `commande-colibri-${Date.now()}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      router.push('/sinistre/confirmation');
-    } catch (error) {
-      console.error('Erreur PDF:', error);
-      alert('Une erreur est survenue lors de la génération du PDF. Veuillez réessayer.');
-    } finally {
-      setIsGeneratingPdf(false);
-    }
-  };
 
   // Fonction helper pour préparer les données de checkout
   const prepareCheckoutData = () => {
@@ -802,23 +747,19 @@ export default function PanierPage() {
             </div>
           )}
 
-          {/* Bouton Commander maintenant */}
-          <button
-            onClick={handleCommanderMaintenant}
-            disabled={isProcessing}
-            className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            {isProcessing ? 'Chargement...' : 'Commander maintenant'}
-          </button>
-          
-          {/* Bouton Sauvegarder projet */}
-          <button
-            onClick={handleSauvegarderProjet}
-            disabled={isProcessing}
-            className="w-full bg-gray-200 text-gray-800 py-3 px-6 rounded-lg font-semibold hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
-          >
-            {isProcessing ? 'Envoi en cours...' : 'Sauvegarder mon projet'}
-          </button>
+          {/* Bouton 1 : Valider le panier */}
+          <div className="text-center space-y-2">
+            <button
+              onClick={handleCommanderMaintenant}
+              disabled={isProcessing}
+              className="w-full bg-primary-700 text-white py-4 px-6 rounded-lg font-semibold hover:bg-primary-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-lg"
+            >
+              {isProcessing ? 'Chargement...' : '⚡ Valider le panier'}
+            </button>
+            <p className="text-sm text-gray-600">
+              ⚡ Expédition 1 jour ouvré après commande
+            </p>
+          </div>
 
           <div className="relative py-4">
             <div className="absolute inset-0 flex items-center">
@@ -829,31 +770,17 @@ export default function PanierPage() {
             </div>
           </div>
 
-          {/* CTA Secondaire : Sauvegarde PDF */}
+          {/* Bouton 2 : Recevoir mon estimation par e-mail */}
           <div className="text-center space-y-2">
-            <Button
-              variant="outline"
-              size="lg"
-              className="w-full py-6 text-lg border-2 border-primary-200 text-primary-700 hover:bg-primary-50 flex items-center justify-center gap-3"
-              onClick={handleGeneratePdf}
-              disabled={isGeneratingPdf}
+            <button
+              onClick={handleSauvegarderProjet}
+              disabled={isProcessing}
+              className="w-full bg-white border-2 border-primary-200 text-primary-700 py-4 px-6 rounded-lg font-semibold hover:bg-primary-50 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors text-lg"
             >
-              {isGeneratingPdf ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-600"></div>
-                  Génération en cours...
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Sauvegarder mon estimation (PDF)
-                </>
-              )}
-            </Button>
-            <p className="text-sm text-gray-500">
-              ⏳ J'attends mon indemnisation de la part de mon assureur
+              {isProcessing ? 'Envoi en cours...' : 'Recevoir mon estimation par e-mail'}
+            </button>
+            <p className="text-sm text-gray-600">
+              ⏳ Je peux commander plus tard
             </p>
           </div>
         </div>
