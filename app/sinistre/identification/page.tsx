@@ -117,13 +117,13 @@ const ASSUREUR_OPTIONS = [
 	    });
 
 	    setErrors(newErrors);
-	    setTouched({
-	      nom: true,
-	      prenom: true,
-	      email: true,
-	      telephone: true,
-	      assureur: true,
+	    
+	    // Marquer tous les champs comme touchés pour afficher les erreurs
+	    const allTouched: Partial<Record<keyof Assure, boolean>> = {};
+	    requiredFields.forEach(field => {
+	      allTouched[field] = true;
 	    });
+	    setTouched(prev => ({ ...prev, ...allTouched }));
 
 	    return Object.keys(newErrors).length === 0;
 	  };
