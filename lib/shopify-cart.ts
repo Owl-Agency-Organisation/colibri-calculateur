@@ -352,12 +352,28 @@ export async function updateCartLines(
 }
 
 /**
- * Mettre à jour l'identité de l'acheteur (email)
+ * Données utilisateur pour pré-remplir le checkout
+ */
+export interface UserData {
+  email?: string;
+  prenom?: string;
+  nom?: string;
+  telephone?: string;
+  adresse?: string;
+  ville?: string;
+  codePostal?: string;
+}
+
+/**
+ * Mettre à jour l'identité de l'acheteur avec adresse complète
+ * Ces informations pré-remplissent automatiquement le checkout Shopify
+ * @param cartId - ID du panier (format: gid://shopify/Cart/xxx)
+ * @param userData - Données utilisateur du formulaire initial
  */
 export async function updateCartBuyerIdentity(
   cartId: string,
-  email: string
-): Promise<ShopifyCart> {
+  userData: UserData
+): Promise<ShopifyCart | null> {
   const mutation = `
     ${CART_FRAGMENT}
     mutation cartBuyerIdentityUpdate($cartId: ID!, $buyerIdentity: CartBuyerIdentityInput!) {
@@ -373,26 +389,49 @@ export async function updateCartBuyerIdentity(
     }
   `;
 
-  const response = await shopifyFetch<{
-    cartBuyerIdentityUpdate: {
-      cart: ShopifyCart;
-      userErrors: Array<{ field: string; message: string }>;
-    };
-  }>({
-    query: mutation,
-    variables: {
-      cartId,
-      buyerIdentity: {
-        email,
-        countryCode: 'FR',
-      },
+  const variables: any = {
+    cartId,
+    buyerIdentity: {
+      email: userData.email,
+      phone: userData.telephone,
+      deliveryAddressPreferences: [
+        {
+          deliveryAddress: {
+            firstName: userData.prenom,
+            lastName: userData.nom,
+            address1: userData.adresse,
+            city: userData.ville,
+            country: 'FR',
+            zip: userData.codePostal,
+            phone: userData.telephone,
+          },
+        },
+      ],
     },
-  });
+  };
 
-  if (response.data?.cartBuyerIdentityUpdate?.userErrors?.length > 0) {
-    const error = response.data.cartBuyerIdentityUpdate.userErrors[0];
-    throw new Error(`Erreur mise à jour identité: ${error.message}`);
+  try {
+    const response = await shopifyFetch<{
+      cartBuyerIdentityUpdate: {
+        cart: ShopifyCart;
+        userErrors: Array<{ field: string; message: string }>;
+      };
+    }>({
+      query: mutation,
+      variables,
+    });
+
+    if (response.data?.cartBuyerIdentityUpdate?.userErrors?.length > 0) {
+      console.error(
+        'Cart buyer identity errors:',
+        response.data.cartBuyerIdentityUpdate.userErrors
+      );
+      return null;
+    }
+
+    return response.data.cartBuyerIdentityUpdate.cart;
+  } catch (error) {
+    console.error('Error updating cart buyer identity:', error);
+    return null;
   }
-
-  return response.data.cartBuyerIdentityUpdate.cart;
 }

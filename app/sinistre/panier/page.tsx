@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
 import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { getStoredPieces, getStoredAssure, STORAGE_KEYS } from '@/lib/store/sinistreStore';
-import { createCart, removeCartLines, getCart, type ShopifyCart, type CartLineNode, type BuyerInfo } from '@/lib/shopify-cart';
+import { createCart, removeCartLines, getCart, updateCartBuyerIdentity, type ShopifyCart, type CartLineNode, type BuyerInfo, type UserData } from '@/lib/shopify-cart';
 import { normalizeFrenchPhone } from '@/lib/utils/phone';
 import { mapCalculToCartLines, canRemoveLine, getLineType, PRODUITS_RENOVATION } from '@/lib/cart-mapper';
 import { determinerKit, KITS_CONFIG } from '@/lib/kits-config';
@@ -302,8 +302,8 @@ export default function PanierPage() {
 
   // Fonction pour "Commander maintenant" (checkout direct)
   async function handleCommanderMaintenant() {
-    if (!cart?.checkoutUrl) {
-      alert('Erreur : URL de checkout non disponible');
+    if (!cart?.checkoutUrl || !cart?.id) {
+      alert('Erreur : Panier non disponible');
       return;
     }
     
@@ -316,7 +316,19 @@ export default function PanierPage() {
         console.warn('No customer ID found');
       }
       
-      // Appeler l'API checkout en mode direct
+      // NOUVEAU : Pré-remplir le checkout avec les données utilisateur
+      if (userData.email) {
+        console.log('Updating cart buyer identity...');
+        const updatedCart = await updateCartBuyerIdentity(cart.id, userData);
+        
+        if (updatedCart) {
+          console.log('Buyer identity updated successfully');
+        } else {
+          console.warn('Failed to update buyer identity, checkout may not be pre-filled');
+        }
+      }
+      
+      // Appeler l'API checkout en mode direct (pour tracking/logs)
       const response = await fetch('/api/sinistre/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -332,7 +344,7 @@ export default function PanierPage() {
       const result = await response.json();
       
       if (result.success && result.checkoutUrl) {
-        // Rediriger vers le checkout Shopify
+        // Rediriger vers le checkout Shopify (maintenant pré-rempli)
         window.location.href = result.checkoutUrl;
       } else {
         alert('Erreur lors de la préparation du checkout');
