@@ -13,7 +13,12 @@ export async function getAdminAccessToken(): Promise<string> {
 
   // Vérifier les credentials
   if (!SHOPIFY_STORE_DOMAIN || !CLIENT_ID || !CLIENT_SECRET) {
-    throw new Error('Missing Shopify Admin API credentials in environment variables');
+    const missing = [];
+    if (!SHOPIFY_STORE_DOMAIN) missing.push('NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN');
+    if (!CLIENT_ID) missing.push('SHOPIFY_ADMIN_CLIENT_ID');
+    if (!CLIENT_SECRET) missing.push('SHOPIFY_ADMIN_CLIENT_SECRET');
+    console.error('Missing Shopify Admin API credentials:', missing.join(', '));
+    throw new Error(`Missing Shopify Admin API credentials: ${missing.join(', ')}`);
   }
 
   const response = await fetch(
