@@ -26,7 +26,6 @@ const ASSUREUR_OPTIONS = [
   { value: 'GMF', label: 'GMF' },
   { value: 'BPCE', label: 'BPCE' },
   { value: 'Karma', label: 'Karma' },
-  { value: 'ALLIANZ', label: 'ALLIANZ' },
 ];
 
 	export default function IdentificationPage() {

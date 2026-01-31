@@ -45,13 +45,16 @@ export default function SinistreLayout({
       <footer className="bg-white border-t border-gray-100 mt-auto">
         <div className="max-w-4xl mx-auto px-4 py-12">
           <div className="flex flex-col items-center space-y-4">
-            <img 
-              src="https://cdn.shopify.com/s/files/1/0971/0436/3865/files/logo-colibri-lettre-ligne-gris.png?v=1761219657" 
-              alt="Colibri Logo" 
-              className="h-6 w-auto opacity-50 grayscale"
-            />
             <p className="text-center text-xs text-gray-400 tracking-wide">
-              © 2026 COLIBRI PEINTURE — TOUS DROITS RÉSERVÉS
+              © {new Date().getFullYear()} COLIBRI PEINTURE — RÉALISATION{' '}
+              <a 
+                href="https://owl-agency.io" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:text-gray-600 transition-colors"
+              >
+                OWL AGENCY
+              </a>
             </p>
           </div>
         </div>
