@@ -21,7 +21,8 @@ export default function SaisieSurfacesPage() {
   const [nomPiece, setNomPiece] = useState('');
   
   // État local pour les murs (nouveau modèle)
-  const [murs, setMurs] = useState<Array<{ id: string; surface: string; couleur: Couleur | null }>>([\n    { id: '1', surface: '', couleur: null },
+  const [murs, setMurs] = useState<Array<{ id: string; surface: string; couleur: Couleur | null }>>([
+    { id: '1', surface: '', couleur: null },
   ]);
   
   // État local pour plafond
