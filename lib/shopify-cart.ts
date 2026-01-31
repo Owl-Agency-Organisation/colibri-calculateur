@@ -170,7 +170,7 @@ export async function createCart(
     },
   };
 
-  // Construire buyerIdentity avec toutes les informations disponibles
+  // Construire buyerIdentity avec les informations de base
   if (buyerInfo) {
     variables.input.buyerIdentity = {
       email: buyerInfo.email,
@@ -180,28 +180,6 @@ export async function createCart(
     // Ajouter le téléphone si fourni
     if (buyerInfo.phone) {
       variables.input.buyerIdentity.phone = buyerInfo.phone;
-    }
-
-    // Ajouter les préférences de livraison si l'adresse est fournie
-    if (buyerInfo.firstName && buyerInfo.lastName && buyerInfo.address1 && buyerInfo.city && buyerInfo.zip) {
-      variables.input.buyerIdentity.preferences = {
-        delivery: {
-          deliveryAddressPreferences: [
-            {
-              deliveryAddress: {
-                firstName: buyerInfo.firstName,
-                lastName: buyerInfo.lastName,
-                address1: buyerInfo.address1,
-                city: buyerInfo.city,
-                zip: buyerInfo.zip,
-                country: buyerInfo.country || 'FR',
-                phone: buyerInfo.phone,
-              },
-              oneTimeUse: true,
-            },
-          ],
-        },
-      };
     }
   }
 
