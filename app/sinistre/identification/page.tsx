@@ -204,14 +204,8 @@ const ASSUREUR_OPTIONS = [
     }
   };
 
-	  // Vérifier si le formulaire est valide pour activer le bouton
-	  const isFormValid = 
-	    formData.nom.trim() !== '' &&
-	    formData.prenom.trim() !== '' &&
-	    isValidEmail(formData.email) &&
-	    isValidPhone(formData.telephone) &&
-	    formData.assureur && formData.assureur.trim() !== '' &&
-	    !isSubmitting;
+	  // Le bouton est toujours activé pour permettre de déclencher la validation au clic
+	  const isFormValid = !isSubmitting;
 
 	  if (!isLoaded) {
 	    return (
