@@ -21,20 +21,15 @@ export default function SaisieSurfacesPage() {
   const [nomPiece, setNomPiece] = useState('');
   
   // État local pour les murs (nouveau modèle)
-  const [murs, setMurs] = useState<Array<{ id: string; surface: string; couleur: Couleur | null }>>([
-    { id: '1', surface: '', couleur: null },
+  const [murs, setMurs] = useState<Array<{ id: string; surface: string; couleur: Couleur | null }>>([\n    { id: '1', surface: '', couleur: null },
   ]);
   
-  // État local pour plafond et boiseries
-  const [surfaces, setSurfaces] = useState({
-    plafond: '',
-    boiseries: '',
-  });
-  
+  // État local pour plafond
+  const [surfacePlafond, setSurfacePlafond] = useState('');
   const [couleurPlafond, setCouleurPlafond] = useState<Couleur | null>(null);
-  const [couleurBoiseries, setCouleurBoiseries] = useState<Couleur | null>(null);
+  
   const [showCouleurModal, setShowCouleurModal] = useState(false);
-  const [currentSelection, setCurrentSelection] = useState<{ type: 'mur' | 'plafond' | 'boiseries'; murId?: string } | null>(null);
+  const [currentSelection, setCurrentSelection] = useState<{ type: 'mur' | 'plafond'; murId?: string } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isEditMode, setIsEditMode] = useState(false);
   const [hasPieces, setHasPieces] = useState(false);
@@ -66,13 +61,9 @@ export default function SaisieSurfacesPage() {
           );
         }
         
-        // Charger plafond et boiseries
-        setSurfaces({
-          plafond: pieceToEdit.surfacePlafond?.toString() || '',
-          boiseries: pieceToEdit.surfaceBoiseries?.toString() || '',
-        });
+        // Charger plafond
+        setSurfacePlafond(pieceToEdit.surfacePlafond?.toString() || '');
         setCouleurPlafond(pieceToEdit.couleurPlafond || null);
-        setCouleurBoiseries(pieceToEdit.couleurBoiseries || null);
       } else {
         router.push('/sinistre/piece');
       }
@@ -125,7 +116,7 @@ export default function SaisieSurfacesPage() {
     setMurs(murs.map((m) => (m.id === murId ? { ...m, surface: value } : m)));
   };
 
-  const handleOpenCouleurModal = (type: 'mur' | 'plafond' | 'boiseries', murId?: string) => {
+  const handleOpenCouleurModal = (type: 'mur' | 'plafond', murId?: string) => {
     setCurrentSelection({ type, murId });
     setShowCouleurModal(true);
   };
@@ -137,7 +128,7 @@ export default function SaisieSurfacesPage() {
 
     if (currentSelection.type === 'mur') return regles.murs;
     if (currentSelection.type === 'plafond') return regles.plafond;
-    return undefined; // Boiseries (Laque) géré séparément ou pas de filtrage
+    return undefined;
   };
 
   const handleSelectCouleur = (couleur: Couleur) => {
@@ -147,8 +138,6 @@ export default function SaisieSurfacesPage() {
       setMurs(murs.map((m) => (m.id === currentSelection.murId ? { ...m, couleur } : m)));
     } else if (currentSelection.type === 'plafond') {
       setCouleurPlafond(couleur);
-    } else if (currentSelection.type === 'boiseries') {
-      setCouleurBoiseries(couleur);
     }
 
     setShowCouleurModal(false);
@@ -173,22 +162,12 @@ export default function SaisieSurfacesPage() {
     });
 
     // Valider plafond
-    if (surfaces.plafond) {
-      const plafondValue = parseFloat(surfaces.plafond);
+    if (surfacePlafond) {
+      const plafondValue = parseFloat(surfacePlafond);
       if (isNaN(plafondValue) || plafondValue <= 0) {
         newErrors.plafond = 'La surface du plafond doit être positive';
       } else if (!couleurPlafond) {
         newErrors.couleurPlafond = 'Veuillez sélectionner une couleur pour le plafond';
-      }
-    }
-
-    // Valider boiseries
-    if (surfaces.boiseries) {
-      const boiseriesValue = parseFloat(surfaces.boiseries);
-      if (isNaN(boiseriesValue) || boiseriesValue <= 0) {
-        newErrors.boiseries = 'La surface des boiseries doit être positive';
-      } else if (!couleurBoiseries) {
-        newErrors.couleurBoiseries = 'Veuillez sélectionner une couleur pour les boiseries';
       }
     }
 
@@ -216,10 +195,8 @@ export default function SaisieSurfacesPage() {
       typePiece,
       nom: nomPiece,
       murs: mursData,
-      surfacePlafond: surfaces.plafond ? parseFloat(surfaces.plafond) : undefined,
-      surfaceBoiseries: surfaces.boiseries ? parseFloat(surfaces.boiseries) : undefined,
+      surfacePlafond: surfacePlafond ? parseFloat(surfacePlafond) : undefined,
       couleurPlafond: couleurPlafond || undefined,
-      couleurBoiseries: couleurBoiseries || undefined,
     };
 
     console.log('DEBUG: Sauvegarde pièce', {
@@ -417,8 +394,8 @@ export default function SaisieSurfacesPage() {
                   label="Surface (m²)"
                   type="number"
                   step="0.01"
-                  value={surfaces.plafond}
-                  onChange={(e) => setSurfaces({ ...surfaces, plafond: e.target.value })}
+                  value={surfacePlafond}
+                  onChange={(e) => setSurfacePlafond(e.target.value)}
                   error={errors.plafond}
                   placeholder="0.00"
                 />
@@ -447,50 +424,6 @@ export default function SaisieSurfacesPage() {
                   </button>
                   {errors.couleurPlafond && (
                     <p className="text-xs text-red-500">{errors.couleurPlafond}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Boiseries (optionnel) */}
-            <div className="border border-gray-100 rounded-xl p-6 space-y-4 bg-gray-50/30">
-              <h3 className="font-serif font-bold text-gray-700">Boiseries (optionnel)</h3>
-              <p className="text-xs text-gray-500 -mt-2 italic">Portes, fenêtres, plinthes...</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input
-                  label="Surface (m²)"
-                  type="number"
-                  step="0.01"
-                  value={surfaces.boiseries}
-                  onChange={(e) => setSurfaces({ ...surfaces, boiseries: e.target.value })}
-                  error={errors.boiseries}
-                  placeholder="0.00"
-                />
-                
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">Couleur</label>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenCouleurModal('boiseries')}
-                    className={`w-full flex items-center gap-3 px-3 py-2 border rounded-md text-left transition-all ${
-                      errors.couleurBoiseries ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-primary-500'
-                    }`}
-                  >
-                    {couleurBoiseries ? (
-                      <>
-                        <div className="w-6 h-6 rounded-full border border-gray-200 shadow-sm" style={{ backgroundColor: couleurBoiseries.codeHex || '#fff' }}>
-                          {couleurBoiseries.imageUrl && (
-                            <img src={couleurBoiseries.imageUrl} alt="" className="w-full h-full rounded-full object-cover" />
-                          )}
-                        </div>
-                        <span className="text-sm text-gray-900 truncate">{couleurBoiseries.titre}</span>
-                      </>
-                    ) : (
-                      <span className="text-sm text-gray-400 italic">Choisir une couleur</span>
-                    )}
-                  </button>
-                  {errors.couleurBoiseries && (
-                    <p className="text-xs text-red-500">{errors.couleurBoiseries}</p>
                   )}
                 </div>
               </div>
@@ -535,9 +468,7 @@ export default function SaisieSurfacesPage() {
         title={
           currentSelection?.type === 'mur' 
             ? 'Choisir une couleur pour le mur' 
-            : currentSelection?.type === 'plafond'
-            ? 'Choisir une couleur pour le plafond'
-            : 'Choisir une couleur pour les boiseries'
+            : 'Choisir une couleur pour le plafond'
         }
         targetFinition={getTargetFinition()}
       />
