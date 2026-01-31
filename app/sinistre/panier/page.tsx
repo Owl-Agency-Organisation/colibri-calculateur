@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/Button';
 import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
 import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { getStoredPieces, getStoredAssure, STORAGE_KEYS } from '@/lib/store/sinistreStore';
-import { createCart, removeCartLines, getCart, type ShopifyCart, type CartLineNode } from '@/lib/shopify-cart';
+import { createCart, removeCartLines, getCart, updateCartBuyerIdentity, type ShopifyCart, type CartLineNode, type BuyerInfo, type UserData } from '@/lib/shopify-cart';
+import { normalizeFrenchPhone } from '@/lib/utils/phone';
 import { mapCalculToCartLines, canRemoveLine, getLineType, PRODUITS_RENOVATION } from '@/lib/cart-mapper';
 import { determinerKit, KITS_CONFIG } from '@/lib/kits-config';
 import type { ResultatCalcul } from '@/lib/calcul';
@@ -54,7 +55,8 @@ export default function PanierPage() {
   const [error, setError] = useState<string | null>(null);
   
   // États pour les actions
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [message, setMessage] = useState('');
 
   // Charger les données initiales
   useEffect(() => {
@@ -129,7 +131,21 @@ export default function PanierPage() {
         return;
       }
 
-      const newCart = await createCart(cartLines, assure?.email);
+      // Préparer les informations de l'acheteur pour pré-remplir le checkout
+      const userData = JSON.parse(localStorage.getItem('USER_DATA') || '{}');
+      const normalizedPhone = normalizeFrenchPhone(userData.telephone);
+      const buyerInfo = assure?.email ? {
+        email: assure.email,
+        phone: normalizedPhone || undefined,
+        firstName: userData.prenom,
+        lastName: userData.nom,
+        address1: userData.adresse,
+        city: userData.ville,
+        zip: userData.codePostal,
+        country: 'FR',
+      } : undefined;
+
+      const newCart = await createCart(cartLines, buyerInfo);
       
       // Sauvegarder l'ID du panier et le hash des données
       localStorage.setItem(CART_ID_KEY, newCart.id);
@@ -215,68 +231,122 @@ export default function PanierPage() {
     }
   };
 
-  // Générer le PDF
-  const handleGeneratePdf = async () => {
-    setIsGeneratingPdf(true);
-    try {
-      // Construire les lignes du panier pour le PDF depuis le cart Shopify
-      const lignesPanier = cart?.lines.edges.map(({ node }) => ({
-        id: node.id,
-        type: getLineType(node.attributes),
-        titre: `${node.merchandise.product.title} - ${node.merchandise.title}`,
-        description: '',
-        quantite: node.quantity,
-        unite: '',
-        prixUnitaire: parseFloat(node.merchandise.price.amount),
-        prixTotal: parseFloat(node.merchandise.price.amount) * node.quantity,
-        imageUrl: node.merchandise.image?.url || node.merchandise.product.featuredImage?.url,
-        editable: false,
-      })) || [];
 
-      const response = await fetch('/api/generate-pdf', {
+
+  // Fonction helper pour préparer les données de checkout
+  const prepareCheckoutData = () => {
+    const userData = JSON.parse(localStorage.getItem('USER_DATA') || '{}');
+    const customerId = localStorage.getItem('CUSTOMER_ID');
+    const lineItems = cart?.lines.edges.map((edge: any) => ({
+      variantId: edge.node.merchandise.id,
+      quantity: edge.node.quantity,
+    })) || [];
+    
+    return { userData, customerId, lineItems };
+  };
+
+  // Fonction pour "Commander maintenant" (checkout direct)
+  async function handleCommanderMaintenant() {
+    if (!cart?.checkoutUrl || !cart?.id) {
+      alert('Erreur : Panier non disponible');
+      return;
+    }
+    
+    setIsProcessing(true);
+    
+    try {
+      const { userData, customerId, lineItems } = prepareCheckoutData();
+      
+      if (!customerId) {
+        console.warn('No customer ID found');
+      }
+      
+      // NOUVEAU : Pré-remplir le checkout avec les données utilisateur
+      if (userData.email) {
+        console.log('Updating cart buyer identity...');
+        const updatedCart = await updateCartBuyerIdentity(cart.id, userData);
+        
+        if (updatedCart) {
+          console.log('Buyer identity updated successfully');
+        } else {
+          console.warn('Failed to update buyer identity, checkout may not be pre-filled');
+        }
+      }
+      
+      // Appeler l'API checkout en mode direct (pour tracking/logs)
+      const response = await fetch('/api/sinistre/checkout', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          assure,
-          pieces,
-          resultat,
-          options,
-          lignesPanier,
-          total: parseFloat(cart?.cost.totalAmount.amount || '0'),
+          mode: 'direct',
+          customerId,
+          lineItems,
+          userData,
+          cartCheckoutUrl: cart.checkoutUrl,
         }),
       });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de la génération du PDF');
+      
+      const result = await response.json();
+      
+      if (result.success && result.checkoutUrl) {
+        // Rediriger vers le checkout Shopify (maintenant pré-rempli)
+        window.location.href = result.checkoutUrl;
+      } else {
+        alert('Erreur lors de la préparation du checkout');
+        setIsProcessing(false);
       }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `commande-colibri-${Date.now()}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      router.push('/sinistre/confirmation');
     } catch (error) {
-      console.error('Erreur PDF:', error);
-      alert('Une erreur est survenue lors de la génération du PDF. Veuillez réessayer.');
-    } finally {
-      setIsGeneratingPdf(false);
+      console.error('Error:', error);
+      alert('Une erreur est survenue');
+      setIsProcessing(false);
     }
-  };
+  }
 
-  // Procéder au checkout Shopify
-  const handleCheckout = () => {
-    if (cart?.checkoutUrl) {
-      window.location.href = cart.checkoutUrl;
+  // Fonction pour "Sauvegarder mon projet" (draft order)
+  async function handleSauvegarderProjet() {
+    if (!cart) {
+      alert('Erreur : Panier non disponible');
+      return;
     }
-  };
+    
+    setIsProcessing(true);
+    setMessage('');
+    
+    try {
+      const { userData, customerId, lineItems } = prepareCheckoutData();
+      
+      if (!customerId) {
+        alert('Erreur : Client non créé. Veuillez recharger la page.');
+        setIsProcessing(false);
+        return;
+      }
+      
+      // Appeler l'API checkout en mode save
+      const response = await fetch('/api/sinistre/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'save',
+          customerId,
+          lineItems,
+          userData,
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setMessage(result.message);
+      } else {
+        alert('Erreur lors de la sauvegarde du projet : ' + (result.error || 'Erreur inconnue'));
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Une erreur est survenue');
+    } finally {
+      setIsProcessing(false);
+    }
+  }
 
   const handleBack = () => {
     router.push('/sinistre/options');
@@ -316,8 +386,11 @@ export default function PanierPage() {
     );
   }
 
-  // Calculer le total depuis le panier Shopify
-  const total = parseFloat(cart?.cost.totalAmount.amount || '0');
+  // Calculer le total manuellement (somme des produits, sans frais de port)
+  // Les frais de port seront calculés uniquement au checkout
+  const total = cart?.lines.edges.reduce((sum, edge) => {
+    return sum + (parseFloat(edge.node.merchandise.price.amount) * edge.node.quantity);
+  }, 0) || 0;
   const DISCOUNT_FACTOR = 0.85;
   const totalFull = total / DISCOUNT_FACTOR;
 
@@ -667,21 +740,24 @@ export default function PanierPage() {
       {/* Actions */}
       <div className="space-y-6 pt-4">
         <div className="flex flex-col gap-4 max-w-2xl mx-auto">
-          {/* CTA Principal : Checkout Shopify */}
+          {/* Message de confirmation si projet sauvegardé */}
+          {message && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-green-800">{message}</p>
+            </div>
+          )}
+
+          {/* Bouton 1 : Valider le panier */}
           <div className="text-center space-y-2">
-            <Button
-              size="lg"
-              className="w-full py-8 text-xl font-bold bg-primary-600 hover:bg-primary-700 shadow-lg flex items-center justify-center gap-3"
-              onClick={handleCheckout}
-              disabled={!cart?.checkoutUrl}
+            <button
+              onClick={handleCommanderMaintenant}
+              disabled={isProcessing}
+              className="w-full bg-primary-700 text-white py-4 px-6 rounded-lg font-semibold hover:bg-primary-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-lg"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              Commander et recevoir sous 72h
-            </Button>
-            <p className="text-sm text-gray-500 font-medium">
-              ⚡ Livraison prioritaire à domicile pour votre sinistre
+              {isProcessing ? 'Chargement...' : '⚡ Valider le panier'}
+            </button>
+            <p className="text-sm text-gray-600">
+              ⚡ Expédition 1 jour ouvré après commande
             </p>
           </div>
 
@@ -694,31 +770,17 @@ export default function PanierPage() {
             </div>
           </div>
 
-          {/* CTA Secondaire : Sauvegarde PDF */}
+          {/* Bouton 2 : Recevoir mon estimation par e-mail */}
           <div className="text-center space-y-2">
-            <Button
-              variant="outline"
-              size="lg"
-              className="w-full py-6 text-lg border-2 border-primary-200 text-primary-700 hover:bg-primary-50 flex items-center justify-center gap-3"
-              onClick={handleGeneratePdf}
-              disabled={isGeneratingPdf}
+            <button
+              onClick={handleSauvegarderProjet}
+              disabled={isProcessing}
+              className="w-full bg-white border-2 border-primary-200 text-primary-700 py-4 px-6 rounded-lg font-semibold hover:bg-primary-50 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors text-lg"
             >
-              {isGeneratingPdf ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-600"></div>
-                  Génération en cours...
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Sauvegarder mon estimation (PDF)
-                </>
-              )}
-            </Button>
-            <p className="text-sm text-gray-500">
-              ⏳ J'attends mon indemnisation de la part de mon assureur
+              {isProcessing ? 'Envoi en cours...' : 'Recevoir mon estimation par e-mail'}
+            </button>
+            <p className="text-sm text-gray-600">
+              ⏳ Je peux commander plus tard
             </p>
           </div>
         </div>

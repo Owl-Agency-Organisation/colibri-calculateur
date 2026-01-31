@@ -5,6 +5,53 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [1.7.0] - 2026-01-31
+
+### Ajouté
+- **Checkout direct Shopify** : Possibilité de commander immédiatement via le checkout Shopify avec pré-remplissage automatique des coordonnées client.
+  - Bouton "Valider le panier" avec expédition sous 1 jour ouvré.
+  - Pré-remplissage du checkout avec email, téléphone, nom, prénom et adresse complète.
+  - Utilisation de `cartBuyerIdentityUpdate` avec `deliveryAddressPreferences` selon les best practices Shopify.
+- **Draft Orders** : Possibilité de recevoir une estimation par e-mail pour commander plus tard.
+  - Bouton "Recevoir mon estimation par e-mail" avec envoi automatique d'un lien de paiement.
+  - Création automatique d'un Draft Order dans Shopify avec toutes les informations client.
+  - Envoi d'un email invoice via l'API Shopify avec lien de paiement sécurisé.
+- **API Admin Shopify** : Intégration de l'API Admin Shopify avec authentification OAuth Client Credentials Grant.
+  - Génération automatique de tokens d'accès frais (valides 24h).
+  - Gestion des customers (création, recherche par email).
+  - Gestion des draft orders (création, envoi d'invoices).
+- **Normalisation des téléphones** : Normalisation automatique des numéros de téléphone français au format E.164 pour Shopify.
+  - Support des formats : `0612345678`, `06 12 34 56 78`, `+33612345678`, `33612345678`.
+  - Validation avec regex et nettoyage automatique.
+
+### Modifié
+- **Panier** : Refonte complète des boutons d'action avec nouvelle mise en forme.
+  - Bouton 1 : "Valider le panier" (fond vert, texte blanc) avec "⚡ Expédition 1 jour ouvré après commande".
+  - Bouton 2 : "Recevoir mon estimation par e-mail" (fond blanc, bordure) avec "⏳ Je peux commander plus tard".
+  - Suppression complète de la notion de téléchargement PDF.
+- **Calcul du total** : Le total du panier est maintenant calculé manuellement (somme des produits) au lieu d'utiliser `cart.cost.totalAmount`.
+  - Les frais de port ne sont plus inclus dans le total affiché au panier.
+  - Les frais de port seront calculés uniquement au checkout Shopify.
+- **Draft Orders** : Retrait de la réduction `appliedDiscount` car les prix sont déjà réduits de 15% dans les line items.
+  - La ligne "Réduction sur la commande" n'apparaît plus dans l'email invoice.
+
+### Technique
+- Création de `/lib/shopify-admin.ts` : Client pour l'API Admin Shopify avec OAuth.
+- Création de `/lib/shopify-customers.ts` : Gestion des customers Shopify.
+- Création de `/lib/shopify-draft-orders.ts` : Gestion des draft orders et invoices.
+- Création de `/lib/utils/phone.ts` : Normalisation des téléphones au format E.164.
+- Création de `/app/api/sinistre/checkout/route.ts` : Route API pour gérer le checkout (2 modes : direct + draft order).
+- Modification de `/lib/shopify-cart.ts` : Ajout de `updateCartBuyerIdentity()` pour pré-remplir le checkout.
+- Modification de `/app/sinistre/panier/page.tsx` : Intégration des nouveaux boutons et appel à `updateCartBuyerIdentity()` avant redirection.
+- Refactor de `/app/api/shopify/customer/route.ts` : Séparation client/serveur avec utilisation de `lib/shopify-customers.ts`.
+
+### Sécurité
+- ✅ Aucun secret hardcodé dans le code.
+- ✅ Tous les secrets stockés dans les variables d'environnement.
+- ✅ Tokens OAuth générés à la demande (valides 24h).
+- ✅ Validation des données utilisateur avant envoi à Shopify.
+- ✅ Gestion des erreurs avec messages génériques pour l'utilisateur.
+
 ## [1.6.0] - 2026-01-28
 
 ### Ajouté
