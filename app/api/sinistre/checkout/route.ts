@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     // MODE B : Sauvegarder projet (Draft Order)
     if (mode === 'save') {
-      // Créer le Draft Order avec remise de 15%
+      // Créer le Draft Order (les prix sont déjà réduits dans les line items)
       const draftOrder = await createDraftOrder({
         customerId,
         lineItems,
@@ -74,11 +74,6 @@ export async function POST(request: NextRequest) {
         phone: userData.telephone,
         note: 'Projet sauvegardé par le client - À finaliser ultérieurement',
         tags: ['projet-sauvegarde', 'covea'],
-        appliedDiscount: {
-          description: 'Remise assureur Covea',
-          value: 15,
-          valueType: 'PERCENTAGE',
-        },
       });
 
       if (!draftOrder) {
