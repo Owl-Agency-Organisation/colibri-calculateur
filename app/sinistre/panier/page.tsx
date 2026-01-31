@@ -441,8 +441,11 @@ export default function PanierPage() {
     );
   }
 
-  // Calculer le total depuis le panier Shopify
-  const total = parseFloat(cart?.cost.totalAmount.amount || '0');
+  // Calculer le total manuellement (somme des produits, sans frais de port)
+  // Les frais de port seront calculés uniquement au checkout
+  const total = cart?.lines.edges.reduce((sum, edge) => {
+    return sum + (parseFloat(edge.node.merchandise.price.amount) * edge.node.quantity);
+  }, 0) || 0;
   const DISCOUNT_FACTOR = 0.85;
   const totalFull = total / DISCOUNT_FACTOR;
 
