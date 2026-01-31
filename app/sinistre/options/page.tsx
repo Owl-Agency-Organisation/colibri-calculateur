@@ -29,7 +29,7 @@ export default function OptionsPage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoadingShopify, setIsLoadingShopify] = useState(false);
   const optionSousCouche = true;
-  const [optionKit, setOptionKit] = useState(false);
+  const [optionKit, setOptionKit] = useState(true); // ✅ Kit coché par défaut
   const [optionRenovation, setOptionRenovation] = useState(false);
   const [shopifyData, setShopifyData] = useState<Record<string, any>>({});
   
@@ -107,7 +107,7 @@ export default function OptionsPage() {
         const nouveauKit = KITS_CONFIG[kitActuel].titre;
         
         toast.success(
-          `Votre surface a changé.\nLe kit "${ancienKit}" a été remplacé par "${nouveauKit}".`,
+          `Votre surface a changé.\\nLe kit "${ancienKit}" a été remplacé par "${nouveauKit}".`,
           {
             duration: 6000,
             position: 'top-center',
@@ -134,13 +134,13 @@ export default function OptionsPage() {
       if (savedOptions) {
         const parsed = JSON.parse(savedOptions);
         
-        setOptionKit(parsed.kit ?? false);
+        setOptionKit(parsed.kit ?? true); // ✅ Default true si undefined
         setOptionRenovation(parsed.renovation ?? false);
         
         // Charger les composants sélectionnés
         if (parsed.composantsKit) {
           setComposantsKit(parsed.composantsKit);
-        } else if (parsed.kit) {
+        } else if (parsed.kit ?? true) {
           // Si pas de composants sauvegardés mais kit activé, initialiser avec tous les composants
           setComposantsKit(kitConfig.composants.map(c => c.handle));
         }
@@ -151,6 +151,12 @@ export default function OptionsPage() {
           // Si pas de produits sauvegardés mais rénovation activée, initialiser avec tous les produits
           setProduitsRenovation(PRODUITS_RENOVATION.map(p => p.handle));
         }
+      } else {
+        // ✅ NOUVEAU : Initialiser par défaut avec le kit activé et complet
+        setOptionKit(true);
+        setComposantsKit(kitConfig.composants.map(c => c.handle));
+        // Sauvegarder immédiatement
+        saveOptions(true, false, kitConfig.composants.map(c => c.handle), []);
       }
 
       // 6. Sauvegarder le calcul et les données Shopify dans localStorage
