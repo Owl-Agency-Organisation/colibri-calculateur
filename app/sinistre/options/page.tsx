@@ -103,25 +103,10 @@ export default function OptionsPage() {
       const kitPrecedent = localStorage.getItem('KIT_TYPE');
       
       if (kitPrecedent && kitPrecedent !== kitActuel) {
-        const ancienKit = KITS_CONFIG[kitPrecedent as keyof typeof KITS_CONFIG]?.titre || 'Kit précédent';
-        const nouveauKit = KITS_CONFIG[kitActuel].titre;
+        // ✅ SUPPRIMÉ : Toast de notification (inutile et confusant)
+        // Le kit change automatiquement, pas besoin d'informer l'utilisateur
         
-        toast.success(
-          `Votre surface a changé.\\nLe kit "${ancienKit}" a été remplacé par "${nouveauKit}".`,
-          {
-            duration: 6000,
-            position: 'top-center',
-            icon: '🔄',
-            style: {
-              background: '#10B981',
-              color: '#fff',
-              padding: '16px',
-              borderRadius: '8px',
-            },
-          }
-        );
-        
-        // Forcer recréation du panier
+        // Forcer recréation du panier pour mettre à jour le kit
         localStorage.removeItem('SHOPIFY_CART_ID');
         localStorage.removeItem('SHOPIFY_CART_DATA_HASH');
       }

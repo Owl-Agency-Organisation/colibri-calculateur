@@ -209,9 +209,56 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ---
 
+## 🎓 Onboarding et Adoption
+
+### 11. Implémenter un Guided Tour (onboarding) 🟠
+
+**Problème** : Les nouveaux utilisateurs peuvent être perdus face au workflow en 7 étapes. Pas de guide pour les accompagner lors de leur première visite.
+
+**Solution** :
+- Ajouter un guided tour interactif avec `react-joyride`
+- Créer un parcours étape par étape qui explique le workflow complet
+- Afficher le tour uniquement à la première visite (localStorage)
+- Permettre de passer ou reprendre le tour
+
+**Implémentation** :
+- Installer `react-joyride` : `pnpm add react-joyride`
+- Déplacer `<Toaster />` dans `/app/layout.tsx` pour usage transversal
+- Créer un composant `<OnboardingTour />` dans `/components/onboarding/`
+- Définir les steps du tour (Identification → Pièce → Surfaces → Récap → Options → Panier → Confirmation)
+- Intégrer le composant dans `/app/sinistre/layout.tsx` ou page principale
+- Sauvegarder l'état du tour dans localStorage (`colibri-tour-seen`)
+
+**Steps du tour suggérés** :
+1. **Étape 1** : "Commencez par vous identifier avec vos coordonnées"
+2. **Étape 2** : "Choisissez le type de pièce à peindre"
+3. **Étape 3** : "Renseignez les surfaces (murs, plafond)"
+4. **Étape 4** : "Vérifiez le récapitulatif de vos pièces"
+5. **Étape 5** : "Personnalisez vos options (kit matériel, rénovation)"
+6. **Étape 6** : "Consultez votre panier et validez"
+7. **Étape 7** : "Confirmez votre commande"
+
+**Fonctionnalités** :
+- Boutons "Suivant", "Précédent", "Passer le tour"
+- Progression visible (1/7, 2/7, etc.)
+- Spotlights sur les éléments importants
+- Tooltips contextuels
+- Possibilité de relancer le tour depuis un menu "Aide"
+
+**Fichiers concernés** :
+- `/components/onboarding/OnboardingTour.tsx` (nouveau composant)
+- `/app/layout.tsx` (déplacer `<Toaster />`)
+- `/app/sinistre/layout.tsx` ou `/app/sinistre/page.tsx` (intégration du tour)
+
+**Estimation** : 4-6 heures
+
+**Labels** : `ux`, `onboarding`, `enhancement`, `react-joyride`
+
+---
+
 ## 🔧 Optimisations Techniques
 
-### 11. Mettre en cache les tokens OAuth 🟠
+### 12. Mettre en cache les tokens OAuth 🟠
 
 **Problème** : Les tokens OAuth sont générés à chaque appel, ce qui est inefficace (valides 24h).
 
@@ -229,7 +276,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ---
 
-### 12. Optimiser les requêtes GraphQL 🟢
+### 13. Optimiser les requêtes GraphQL 🟢
 
 **Problème** : Les requêtes GraphQL pourraient être optimisées pour réduire la latence.
 
@@ -251,7 +298,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ## 📝 Documentation
 
-### 13. Ajouter de la documentation technique 🟠
+### 14. Ajouter de la documentation technique 🟠
 
 **Problème** : Manque de documentation technique sur les nouvelles fonctionnalités.
 
@@ -267,7 +314,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ---
 
-### 14. Créer un ADR pour les décisions architecturales 🟢
+### 15. Créer un ADR pour les décisions architecturales 🟢
 
 **Problème** : Les décisions architecturales importantes ne sont pas documentées.
 
@@ -284,7 +331,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ## 🚀 Fonctionnalités Futures
 
-### 15. Ajouter un système de retry automatique 🟢
+### 16. Ajouter un système de retry automatique 🟢
 
 **Problème** : Pas de retry automatique en cas d'échec temporaire des appels Shopify.
 
@@ -299,7 +346,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ---
 
-### 16. Ajouter un webhook Shopify pour les draft orders 🟢
+### 17. Ajouter un webhook Shopify pour les draft orders 🟢
 
 **Problème** : Pas de notification côté application quand un draft order est payé.
 
@@ -319,9 +366,9 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 | Priorité | Nombre d'améliorations | Estimation totale |
 |----------|------------------------|-------------------|
 | 🔴 Haute | 2 | 10-13 heures |
-| 🟠 Moyenne | 9 | 27-35 heures |
+| 🟠 Moyenne | 10 | 31-41 heures |
 | 🟢 Basse | 5 | 13-17 heures |
-| **Total** | **16** | **50-65 heures** |
+| **Total** | **17** | **54-71 heures** |
 
 ---
 
@@ -334,25 +381,26 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 ### Sprint 2 (Sécurité et Qualité) - 14-18 heures
 3. Renforcer la validation des données
 4. Vérifier les doublons de customers
-5. **Valider et gérer les Customer ID invalides** ⭐ **NOUVEAU**
+5. **Valider et gérer les Customer ID invalides**
 6. Améliorer le logging
 7. Ajouter des tests E2E
 
-### Sprint 3 (UX et Optimisations) - 10-13 heures
+### Sprint 3 (UX et Optimisations) - 14-19 heures
 8. Améliorer la gestion des erreurs côté client
-9. Mettre en cache les tokens OAuth
-10. Ajouter de la documentation technique
-11. Ajouter un indicateur de chargement global
+9. Ajouter un indicateur de chargement global
+10. **Implémenter un Guided Tour (onboarding)** ⭐ **NOUVEAU**
+11. Mettre en cache les tokens OAuth
+12. Ajouter de la documentation technique
 
 ### Sprint 4 (Optimisations et Fonctionnalités) - 16-21 heures
-12. Optimiser les requêtes GraphQL
-13. Ajouter des métriques de performance
-14. Créer un ADR pour les décisions architecturales
-15. Ajouter un système de retry automatique
-16. Ajouter un webhook Shopify pour les draft orders
+13. Optimiser les requêtes GraphQL
+14. Ajouter des métriques de performance
+15. Créer un ADR pour les décisions architecturales
+16. Ajouter un système de retry automatique
+17. Ajouter un webhook Shopify pour les draft orders
 
 ---
 
 **Dernière mise à jour** : 31 janvier 2026  
 **Auteur** : Manus + @shopify-product-engineer  
-**Version** : 1.1
+**Version** : 1.2
