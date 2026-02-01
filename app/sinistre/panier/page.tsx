@@ -456,16 +456,16 @@ export default function PanierPage() {
     const imageUrl = node.merchandise.image?.url || node.merchandise.product.featuredImage?.url;
 
     return (
-      <div className="py-4 flex items-center gap-4">
+      <div className="py-4 flex flex-wrap items-start gap-4">
         {/* Image */}
         {imageUrl ? (
           <img
             src={imageUrl}
             alt={node.merchandise.product.title}
-            className="w-16 h-16 object-cover rounded"
+            className="w-16 h-16 object-cover rounded flex-shrink-0"
           />
         ) : (
-          <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center">
+          <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center flex-shrink-0">
             {lineType === 'sous-couche' && <span className="text-2xl">🪣</span>}
             {lineType === 'kit' && <span className="text-2xl">🧰</span>}
             {lineType === 'renovation' && <span className="text-2xl">🔧</span>}
@@ -475,7 +475,7 @@ export default function PanierPage() {
         )}
 
         {/* Info */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <h4 className="font-medium text-gray-900">
             {node.merchandise.product.title}
           </h4>
@@ -491,36 +491,42 @@ export default function PanierPage() {
           )}
         </div>
 
-        {/* Quantité */}
-        <div className="text-center min-w-[60px]">
-          <p className="font-medium text-gray-900">
-            ×{node.quantity}
-          </p>
-        </div>
+        {/* Prix + Quantité + Corbeille (responsive) */}
+        <div className="flex items-start gap-4 sm:ml-auto">
+          {/* Prix */}
+          <div className="text-right">
+            <p className="text-sm text-gray-500 line-through">{(lineTotal / DISCOUNT_FACTOR).toFixed(2)} €</p>
+            <p className="text-lg font-semibold text-gray-900">{lineTotal.toFixed(2)} €</p>
+          </div>
 
-        {/* Prix */}
-        <div className="text-right min-w-[80px]">
-          <p className="text-sm text-gray-500 line-through">{(lineTotal / DISCOUNT_FACTOR).toFixed(2)} €</p>
-          <p className="text-lg font-semibold text-gray-900">{lineTotal.toFixed(2)} €</p>
-        </div>
+          {/* Quantité + Corbeille (stacked on mobile, horizontal on desktop) */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            {/* Quantité */}
+            <div className="text-center sm:min-w-[60px]">
+              <p className="font-medium text-gray-900">
+                ×{node.quantity}
+              </p>
+            </div>
 
-        {/* Bouton supprimer (si autorisé) */}
-        {canRemove && (
-          <button
-            onClick={() => handleRemoveLine(node.id, node.attributes)}
-            disabled={isRemoving}
-            className="p-2 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-            title="Supprimer"
-          >
-            {isRemoving ? (
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500"></div>
-            ) : (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
+            {/* Bouton supprimer (si autorisé) */}
+            {canRemove && (
+              <button
+                onClick={() => handleRemoveLine(node.id, node.attributes)}
+                disabled={isRemoving}
+                className="p-2 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50 self-center"
+                title="Supprimer"
+              >
+                {isRemoving ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500"></div>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                )}
+              </button>
             )}
-          </button>
-        )}
+          </div>
+        </div>
       </div>
     );
   };
