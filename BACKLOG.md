@@ -35,6 +35,8 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 **Labels** : `security`, `enhancement`, `api`
 
+**Issue GitHub** : [#6](https://github.com/Owl-Agency-Organisation/colibri-assurances/issues/6)
+
 ---
 
 ### 2. Renforcer la validation des données 🟠
@@ -55,6 +57,8 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 **Estimation** : 3-4 heures
 
 **Labels** : `security`, `enhancement`, `validation`
+
+**Issue GitHub** : [#8](https://github.com/Owl-Agency-Organisation/colibri-assurances/issues/8)
 
 ---
 
@@ -119,6 +123,8 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 **Labels** : `testing`, `quality`, `high-priority`
 
+**Issue GitHub** : [#7](https://github.com/Owl-Agency-Organisation/colibri-assurances/issues/7)
+
 ---
 
 ### 6. Ajouter des tests end-to-end (E2E) 🟠
@@ -154,6 +160,8 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 **Estimation** : 4-5 heures
 
 **Labels** : `monitoring`, `logging`, `enhancement`
+
+**Issue GitHub** : [#9](https://github.com/Owl-Agency-Organisation/colibri-assurances/issues/9)
 
 ---
 
@@ -256,9 +264,50 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ---
 
+## 🎁 Partenariats et Fonctionnalités Métier
+
+### 12. Produits offerts avec peinture (Partenariat Covea) 🟠 ⭐ **NOUVEAU**
+
+**Problème** : Dans le cadre du partenariat avec Covea, nous voulons offrir automatiquement un kit de démarrage (1× ouvre-pot + 2× rouleaux) aux clients assurés qui commandent ≥1 peinture via l'app.
+
+**Solution** : Approche hybride (2 méthodes selon le parcours)
+
+**Parcours 1 : "Commander maintenant"** (Checkout storefront)
+- Méthode : Discounts automatiques Shopify (Buy X Get Y)
+- Configuration : 2 discounts créés (ouvre-pot + rouleaux)
+- Admissibilité : Segment "Clients tagués covea"
+
+**Parcours 2 : "Recevoir estimation"** (Draft order)
+- Méthode : Remises manuelles (appliedDiscount 100%)
+- Raison : Les discounts automatiques ne fonctionnent pas dans les draft orders
+
+**Développement requis** :
+- Tagging automatique des clients "covea" (30 min)
+- Affichage UI "🎁 OFFERT" dans l'interface (1h)
+- Remises manuelles dans draft orders (1h)
+- Tests complets (30 min)
+
+**Fichiers concernés** :
+- `/lib/shopify-customers.ts` (tagging)
+- `/app/api/sinistre/checkout/route.ts` (remises draft orders)
+- `/app/sinistre/options/page.tsx` (UI "OFFERT")
+- `/app/sinistre/panier/page.tsx` (UI "OFFERT")
+
+**Configuration Shopify** : ✅ Déjà faite (discounts + segment créés le 1er février 2026)
+
+**Estimation** : 3 heures
+
+**Labels** : `enhancement`, `v1.8.0`, `covea`, `shopify`, `discounts`
+
+**Issue GitHub** : [#22](https://github.com/Owl-Agency-Organisation/colibri-assurances/issues/22)
+
+**ADR** : [003-produits-offerts-draft-orders-vs-discounts.md](docs/architecture/decisions/003-produits-offerts-draft-orders-vs-discounts.md)
+
+---
+
 ## 🔧 Optimisations Techniques
 
-### 12. Nettoyer la compatibilité ascendante des attributs de panier 🟢
+### 13. Nettoyer la compatibilité ascendante des attributs de panier 🟢
 
 **Contexte** : Suite à la migration vers les attributs préfixés `_` (masqués au checkout Shopify), une compatibilité ascendante a été ajoutée pour supporter les paniers existants avec anciens attributs (sans `_`).
 
@@ -285,7 +334,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ---
 
-### 13. Mettre en cache les tokens OAuth 🟠
+### 14. Mettre en cache les tokens OAuth 🟠
 
 **Problème** : Les tokens OAuth sont générés à chaque appel, ce qui est inefficace (valides 24h).
 
@@ -303,7 +352,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ---
 
-### 13. Optimiser les requêtes GraphQL 🟢
+### 15. Optimiser les requêtes GraphQL 🟢
 
 **Problème** : Les requêtes GraphQL pourraient être optimisées pour réduire la latence.
 
@@ -325,7 +374,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ## 📝 Documentation
 
-### 14. Ajouter de la documentation technique 🟠
+### 16. Ajouter de la documentation technique 🟠
 
 **Problème** : Manque de documentation technique sur les nouvelles fonctionnalités.
 
@@ -341,11 +390,12 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ---
 
-### 15. Créer un ADR pour les décisions architecturales 🟢
+### 17. Créer un ADR pour les décisions architecturales 🟢
 
 **Problème** : Les décisions architecturales importantes ne sont pas documentées.
 
 **ADR à créer** :
+- ✅ ADR 003 : Produits offerts (Draft Orders vs Discounts) - **FAIT** ✨
 - ADR : Choix de l'API Admin Shopify vs Storefront API
 - ADR : Choix de l'OAuth Client Credentials Grant
 - ADR : Choix de la normalisation des téléphones au format E.164
@@ -358,7 +408,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ## 🚀 Fonctionnalités Futures
 
-### 16. Ajouter un système de retry automatique 🟢
+### 18. Ajouter un système de retry automatique 🟢
 
 **Problème** : Pas de retry automatique en cas d'échec temporaire des appels Shopify.
 
@@ -373,7 +423,7 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ---
 
-### 17. Ajouter un webhook Shopify pour les draft orders 🟢
+### 19. Ajouter un webhook Shopify pour les draft orders 🟢
 
 **Problème** : Pas de notification côté application quand un draft order est payé.
 
@@ -393,9 +443,9 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 | Priorité | Nombre d'améliorations | Estimation totale |
 |----------|------------------------|-------------------|
 | 🔴 Haute | 2 | 10-13 heures |
-| 🟠 Moyenne | 10 | 31-41 heures |
+| 🟠 Moyenne | 11 | 34-44 heures |
 | 🟢 Basse | 6 | 13.5-17.5 heures |
-| **Total** | **18** | **54.5-71.5 heures** |
+| **Total** | **19** | **57.5-74.5 heures** |
 
 ---
 
@@ -415,19 +465,20 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 ### Sprint 3 (UX et Optimisations) - 14-19 heures
 8. Améliorer la gestion des erreurs côté client
 9. Ajouter un indicateur de chargement global
-10. **Implémenter un Guided Tour (onboarding)** ⭐ **NOUVEAU**
+10. **Implémenter un Guided Tour (onboarding)**
 11. Mettre en cache les tokens OAuth
 12. Ajouter de la documentation technique
 
-### Sprint 4 (Optimisations et Fonctionnalités) - 16-21 heures
-13. Optimiser les requêtes GraphQL
-14. Ajouter des métriques de performance
-15. Créer un ADR pour les décisions architecturales
-16. Ajouter un système de retry automatique
-17. Ajouter un webhook Shopify pour les draft orders
+### Sprint 4 (Partenariats et Fonctionnalités) - 16-21 heures ⭐ **MIS À JOUR**
+13. **🎁 Produits offerts avec peinture (Partenariat Covea)** ⭐ **NOUVEAU** (3h)
+14. Optimiser les requêtes GraphQL
+15. Ajouter des métriques de performance
+16. Créer un ADR pour les décisions architecturales
+17. Ajouter un système de retry automatique
+18. Ajouter un webhook Shopify pour les draft orders
 
 ---
 
 **Dernière mise à jour** : 1er février 2026  
 **Auteur** : Manus + @shopify-product-engineer  
-**Version** : 1.3
+**Version** : 1.4
