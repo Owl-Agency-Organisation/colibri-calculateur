@@ -331,7 +331,7 @@ export function mapCalculToCartLines(
  * Extrait le type de produit depuis les attributs d'une ligne de panier
  */
 export function getLineType(attributes: Array<{ key: string; value: string }>): string {
-  const typeAttr = attributes.find(a => a.key === '_type');
+  const typeAttr = attributes.find(a => a.key === '_type') || attributes.find(a => a.key === 'type');
   return typeAttr?.value || 'unknown';
 }
 
