@@ -5,6 +5,33 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [1.7.4] - 2026-02-01
+
+### Modifié
+- **Affichage du panier (étape 6)** : Masquage du sous-titre "Default Title" pour les produits sans variant nommé.
+  - "Default Title" apparaît dans Shopify pour les produits ayant un seul variant sans options (Taille, Couleur, etc.).
+  - Ce sous-titre est maintenant masqué pour améliorer la lisibilité du panier.
+  - Les variants avec des titres significatifs (ex: "Taille 0", "12L Brillant") continuent d'être affichés normalement.
+
+### Interface (UI)
+- **Avant** : Tous les produits affichaient leur titre de variant, même "Default Title" (inutile et confusant).
+- **Après** : Seuls les variants avec des titres significatifs sont affichés.
+
+### Exemple
+**Produit sans variant** :
+- Avant : "Ouvre pot" + "Default Title" ❌
+- Après : "Ouvre pot" (pas de sous-titre) ✅
+
+**Produit avec variant** :
+- Avant : "Pinceau à réchampir - taille 0" + "Taille 0" ✅
+- Après : "Pinceau à réchampir - taille 0" + "Taille 0" ✅ (inchangé)
+
+### Technique
+- Modification de `/app/sinistre/panier/page.tsx` (lignes 506-510).
+- Ajout d'une condition d'affichage : `{node.merchandise.title !== 'Default Title' && (...)}`
+- Aucun impact sur la logique métier ou les attributes du panier.
+- Modification isolée et à faible risque.
+
 ## [1.7.3] - 2026-02-01
 
 ### Supprimé
