@@ -182,7 +182,7 @@ export default function PanierPage() {
       setCart(updatedCart);
 
       // Synchroniser avec localStorage pour l'étape 5
-      const lineType = attributes.find(a => a.key === 'type')?.value;
+      const lineType = attributes.find(a => a.key === '_type')?.value;
       const STORAGE_KEY_OPTIONS = 'colibri-sinistre-options';
       
       if (lineType === 'kit' || lineType === 'renovation') {
@@ -193,7 +193,7 @@ export default function PanierPage() {
           
           if (lineType === 'kit') {
             // Retirer le composant de la liste des composants kit
-            const composantHandle = attributes.find(a => a.key === 'composant')?.value;
+            const composantHandle = attributes.find(a => a.key === '_composant')?.value;
             if (composantHandle && options.composantsKit) {
               options.composantsKit = options.composantsKit.filter((h: string) => h !== composantHandle);
               
@@ -204,7 +204,7 @@ export default function PanierPage() {
             }
           } else if (lineType === 'renovation') {
             // Retirer le produit de la liste des produits rénovation
-            const produitHandle = attributes.find(a => a.key === 'produit')?.value;
+            const produitHandle = attributes.find(a => a.key === '_produit')?.value;
             if (produitHandle && options.produitsRenovation) {
               options.produitsRenovation = options.produitsRenovation.filter((h: string) => h !== produitHandle);
               
@@ -420,7 +420,7 @@ export default function PanierPage() {
 
   // Vérifier si tous les composants du kit sont présents
   const kitType = lignesParType.kit.length > 0
-    ? lignesParType.kit[0].attributes.find(a => a.key === 'kit_type')?.value
+    ? lignesParType.kit[0].attributes.find(a => a.key === '_kit_type')?.value
     : null;
 
   let estKitComplet = false;
@@ -430,7 +430,7 @@ export default function PanierPage() {
     const kitConfig = KITS_CONFIG[kitType as keyof typeof KITS_CONFIG];
     if (kitConfig) {
       const composantsPresents = lignesParType.kit.map(node =>
-        node.attributes.find(a => a.key === 'composant')?.value
+        node.attributes.find(a => a.key === '_composant')?.value
       );
 
       estKitComplet = kitConfig.composants.every(c =>
@@ -445,7 +445,7 @@ export default function PanierPage() {
 
   // Composant pour afficher une ligne produit
   const LigneProductJSX = ({ node }: { node: CartLineNode }) => {
-    const surfaceOriginaleAttr = node.attributes.find(a => a.key === 'surface_originale');
+    const surfaceOriginaleAttr = node.attributes.find(a => a.key === '_surface_originale');
     const surfaceOriginale = surfaceOriginaleAttr ? parseFloat(surfaceOriginaleAttr.value) : 0;
     const lineType = getLineType(node.attributes);
     let lineTotal = parseFloat(node.merchandise.price.amount) * node.quantity;

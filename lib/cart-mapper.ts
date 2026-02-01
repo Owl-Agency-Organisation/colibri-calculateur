@@ -116,12 +116,12 @@ function mapPeinturesToCartLines(
         merchandiseId: variant.id,
         quantity: contenant.quantite,
         attributes: [
-          { key: 'type', value: 'peinture' },
-          { key: 'couleur', value: peinture.couleur.titre },
-          { key: 'finition', value: peinture.couleur.finition || '' },
-          { key: 'surface_originale', value: `${peinture.surfaceTotale.toFixed(1)}` },
-	          { key: 'surface_display', value: `${peinture.surfaceTotale.toFixed(1)}m²` },
-          { key: 'contenance', value: contenant.contenance },
+          { key: '_type', value: 'peinture' },
+          { key: '_couleur', value: peinture.couleur.titre },
+          { key: '_finition', value: peinture.couleur.finition || '' },
+          { key: '_surface_originale', value: `${peinture.surfaceTotale.toFixed(1)}` },
+          { key: '_surface_display', value: `${peinture.surfaceTotale.toFixed(1)}m²` },
+          { key: '_contenance', value: contenant.contenance },
         ],
       });
     });
@@ -159,9 +159,9 @@ function mapSousCouchesToCartLines(
         merchandiseId: variant.id,
         quantity: contenant.quantite,
         attributes: [
-          { key: 'type', value: 'sous-couche' },
-          { key: 'sous_couche_type', value: sousCouche.type },
-          { key: 'contenance', value: contenant.contenance },
+          { key: '_type', value: 'sous-couche' },
+          { key: '_sous_couche_type', value: sousCouche.type },
+          { key: '_contenance', value: contenant.contenance },
         ],
       });
     });
@@ -236,10 +236,10 @@ function mapKitToCartLines(
       merchandiseId: variant.id,
       quantity: 1,
       attributes: [
-        { key: 'type', value: 'kit' },
-        { key: 'kit_type', value: kitType },
-        { key: 'composant', value: composant.handle },
-        { key: 'composant_nom', value: composant.nom },
+        { key: '_type', value: 'kit' },
+        { key: '_kit_type', value: kitType },
+        { key: '_composant', value: composant.handle },
+        { key: '_composant_nom', value: composant.nom },
       ],
     });
   });
@@ -275,9 +275,9 @@ function mapRenovationToCartLines(
       merchandiseId: variant.id,
       quantity: 1,
       attributes: [
-        { key: 'type', value: 'renovation' },
-        { key: 'produit', value: produit.handle },
-        { key: 'produit_nom', value: produit.titre },
+        { key: '_type', value: 'renovation' },
+        { key: '_produit', value: produit.handle },
+        { key: '_produit_nom', value: produit.titre },
       ],
     });
   });
@@ -331,7 +331,7 @@ export function mapCalculToCartLines(
  * Extrait le type de produit depuis les attributs d'une ligne de panier
  */
 export function getLineType(attributes: Array<{ key: string; value: string }>): string {
-  const typeAttr = attributes.find(a => a.key === 'type');
+  const typeAttr = attributes.find(a => a.key === '_type');
   return typeAttr?.value || 'unknown';
 }
 
