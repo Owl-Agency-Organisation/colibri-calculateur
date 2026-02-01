@@ -5,6 +5,60 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [1.7.3] - 2026-02-01
+
+### Supprimé
+- **Toast de notification de changement de kit** : Suppression du toast vert "Votre surface a changé. Le kit X a été remplacé par Y".
+  - Le toast était confusant et sans valeur pour l'utilisateur.
+  - Le kit change toujours automatiquement selon la surface, mais sans notification.
+  - Le panier est toujours recréé automatiquement si nécessaire.
+
+### Ajouté
+- **Guided Tour dans le BACKLOG** : Ajout de l'implémentation d'un guided tour (onboarding) pour les nouveaux utilisateurs dans le backlog pour une version future.
+  - Tour guidé étape par étape avec `react-joyride`.
+  - 7 steps expliquant le workflow complet.
+  - Affichage uniquement à la première visite (localStorage).
+  - Estimation : 4-6 heures (Sprint 3).
+
+### Technique
+- Suppression du bloc `toast.success()` dans `/app/sinistre/options/page.tsx` (lignes 117-131).
+- Ajout de l'entrée #11 dans `/BACKLOG.md` (section UX et Interface).
+- Conservation de la logique de détection de changement de kit et de recréation du panier.
+- BACKLOG mis à jour en version 1.2 (17 améliorations, 54-71 heures).
+
+## [1.7.2] - 2026-01-31
+
+### Modifié
+- **Kit matériel coché par défaut à l'étape 5 (Options)** : Le kit matériel est maintenant coché et visible par défaut dès le premier chargement.
+  - Checkbox "Souhaitez-vous inclure le kit matériel ?" cochée automatiquement.
+  - Liste complète des 6 composants affichée immédiatement (images, noms, boutons de suppression).
+  - Cohérence parfaite avec l'étape 6 (Panier) où le kit est ajouté automatiquement.
+  - Initialisation automatique des composants du kit dans `composantsKit` state.
+  - Sauvegarde immédiate des options par défaut dans localStorage.
+
+### Corrigé
+- **Incohérence étape 5 ↔ étape 6** : Avant, le kit était décoché à l'étape 5 mais ajouté au panier à l'étape 6, ce qui surprenait l'utilisateur.
+
+### Technique
+- Modification de `/app/sinistre/options/page.tsx` :
+  - `useState(true)` pour `optionKit` (ligne 39).
+  - Default `true` si options sauvegardées non définies (ligne 143).
+  - Initialisation automatique avec tous les composants du kit au premier chargement (lignes 159-165).
+  - Fonction `saveOptions()` appelée immédiatement pour persister l'état par défaut.
+
+## [1.7.1] - 2026-01-31
+
+### Supprimé
+- **Tuile "Boiseries" dans le récapitulatif** : Suppression de la section "Boiseries" de la page récapitulatif (étape 4).
+  - Les boiseries continuent d'être gérées techniquement et apparaissent dans le panier.
+  - Simplification de l'interface utilisateur pour éviter la surcharge visuelle.
+  - Cohérence avec la suppression de la tuile "Sous-couche" (déjà effectuée en v1.6.0).
+
+### Technique
+- Suppression du bloc conditionnel `{totalBoiseries > 0 && ...}` dans `/app/sinistre/recapitulatif/page.tsx`.
+- Conservation de la logique de calcul des boiseries dans `lib/calcul/index.ts`.
+- Les boiseries restent affichées dans le panier et le PDF final.
+
 ## [1.7.0] - 2026-01-31
 
 ### Ajouté
