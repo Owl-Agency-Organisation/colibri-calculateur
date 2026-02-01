@@ -479,9 +479,11 @@ export default function PanierPage() {
           <h4 className="font-medium text-gray-900">
             {node.merchandise.product.title}
           </h4>
-          <p className="text-sm text-gray-500">
-            {node.merchandise.title}
-          </p>
+          {node.merchandise.title !== 'Default Title' && (
+            <p className="text-sm text-gray-500">
+              {node.merchandise.title}
+            </p>
+          )}
           {lineType === 'peinture' && surfaceOriginale > 0 && (
             <p className="mt-1 text-xs text-gray-500">
               Surface réelle : {surfaceOriginale} m² (soit {surfaceOriginale * 2} m² pour 2 couches)
