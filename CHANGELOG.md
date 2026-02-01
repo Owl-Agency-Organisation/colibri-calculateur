@@ -5,6 +5,51 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [1.7.5] - 2026-02-01
+
+### Modifié
+- **Affichage mobile du panier (étape 6)** : Optimisation du layout pour les petits écrans en empilant verticalement la quantité et le bouton de suppression.
+  - **Mobile (<640px)** : Quantité et bouton corbeille affichés verticalement sous le prix pour éviter le débordement horizontal.
+  - **Desktop (≥640px)** : Layout horizontal conservé (image | info | prix | quantité | corbeille).
+  - Aucune troncature de texte : noms de produits complets et lisibles.
+  - Aucune réduction d'image : images conservent leur taille (16×16 pixels).
+  - Meilleure utilisation de l'espace vertical sur mobile.
+
+### Interface (UI)
+**Avant (mobile)** :
+```
+[Img] Titre du produit              Prix  ×1  🗑️
+      Sous-titre                     (déborde →)
+```
+❌ Débordement horizontal sur petits écrans, éléments coupés
+
+**Après (mobile)** :
+```
+[Img] Titre du produit              Prix
+      Sous-titre                     ×1
+                                     🗑️
+```
+✅ Tout rentre dans l'écran, lisibilité parfaite
+
+**Desktop (inchangé)** :
+```
+[Img] Titre du produit              ×1    Prix    🗑️
+      Sous-titre
+```
+✅ Layout horizontal conservé
+
+### Technique
+- Modification de `/app/sinistre/panier/page.tsx` :
+  - Container principal (ligne 479) : Ajout de `flex-wrap` et `items-start` pour permettre le retour à la ligne sur mobile.
+  - Bloc Prix + Quantité + Corbeille (lignes 520-549) : Restructuration responsive avec `flex-col sm:flex-row`.
+- Classes Tailwind responsive :
+  - `flex-wrap` : Permet le retour à la ligne sur mobile.
+  - `flex-col sm:flex-row` : Empilage vertical sur mobile, horizontal sur desktop.
+  - `items-start` : Alignement en haut pour meilleur rendu visuel.
+  - `self-center` : Centrage du bouton de suppression.
+- Aucun impact sur la logique métier.
+- Modification isolée et à faible risque.
+
 ## [1.7.4] - 2026-02-01
 
 ### Modifié
