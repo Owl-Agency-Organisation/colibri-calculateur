@@ -168,6 +168,11 @@ export default function PanierPage() {
     }
   }, [resultat, shopifyData, initializeCart]);
 
+  // TODO [2026-03-01]: Nettoyer la compatibilité ascendante des attributs
+  // Supprimer tous les fallbacks `|| attributes.find(a => a.key === 'xxx')` (sans préfixe _)
+  // après expiration naturelle des paniers existants (~7 jours inactivité Shopify).
+  // Occurrences à nettoyer dans ce fichier : lignes ~185, ~196, ~207, ~423, ~433, ~448
+  
   // Supprimer une ligne du panier
   const handleRemoveLine = async (lineId: string, attributes: Array<{ key: string; value: string }>) => {
     if (!cart || !canRemoveLine(attributes)) {

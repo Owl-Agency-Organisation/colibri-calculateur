@@ -329,6 +329,11 @@ export function mapCalculToCartLines(
 
 /**
  * Extrait le type de produit depuis les attributs d'une ligne de panier
+ * 
+ * TODO [2026-03-01]: Supprimer le fallback `|| attributes.find(a => a.key === 'type')`
+ * après expiration des paniers existants (7 jours d'inactivité Shopify).
+ * Cette compatibilité ascendante permet la transition vers les attributs préfixés `_`
+ * qui sont masqués au checkout Shopify.
  */
 export function getLineType(attributes: Array<{ key: string; value: string }>): string {
   const typeAttr = attributes.find(a => a.key === '_type') || attributes.find(a => a.key === 'type');

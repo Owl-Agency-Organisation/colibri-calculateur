@@ -258,7 +258,34 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ## 🔧 Optimisations Techniques
 
-### 12. Mettre en cache les tokens OAuth 🟠
+### 12. Nettoyer la compatibilité ascendante des attributs de panier 🟢
+
+**Contexte** : Suite à la migration vers les attributs préfixés `_` (masqués au checkout Shopify), une compatibilité ascendante a été ajoutée pour supporter les paniers existants avec anciens attributs (sans `_`).
+
+**Problème** : Cette compatibilité crée une légère dette technique (7 fallbacks dans 2 fichiers) qui devrait être nettoyée après expiration naturelle des paniers existants.
+
+**Solution** :
+- Attendre 1-2 mois après le déploiement (les paniers Shopify expirent après ~7 jours d'inactivité)
+- Supprimer tous les fallbacks `|| attributes.find(a => a.key === 'xxx')` (sans préfixe `_`)
+- Simplifier le code pour ne garder que les attributs préfixés `_`
+
+**Fichiers concernés** :
+- `/lib/cart-mapper.ts` : fonction `getLineType()` (ligne ~339)
+- `/app/sinistre/panier/page.tsx` : 6 occurrences (lignes ~185, ~196, ~207, ~423, ~433, ~448)
+
+**TODOs dans le code** : Rechercher `TODO [2026-03-01]`
+
+**Date cible** : 1er mars 2026 (ou lors d'un sprint de maintenance)
+
+**Estimation** : 30 minutes
+
+**Labels** : `tech-debt`, `cleanup`, `low-priority`
+
+**Commit de référence** : `b69423a` (fix: add backward compatibility for cart attributes)
+
+---
+
+### 13. Mettre en cache les tokens OAuth 🟠
 
 **Problème** : Les tokens OAuth sont générés à chaque appel, ce qui est inefficace (valides 24h).
 
@@ -367,8 +394,8 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 |----------|------------------------|-------------------|
 | 🔴 Haute | 2 | 10-13 heures |
 | 🟠 Moyenne | 10 | 31-41 heures |
-| 🟢 Basse | 5 | 13-17 heures |
-| **Total** | **17** | **54-71 heures** |
+| 🟢 Basse | 6 | 13.5-17.5 heures |
+| **Total** | **18** | **54.5-71.5 heures** |
 
 ---
 
@@ -401,6 +428,6 @@ Ce document regroupe les améliorations identifiées lors de la revue de code qu
 
 ---
 
-**Dernière mise à jour** : 31 janvier 2026  
+**Dernière mise à jour** : 1er février 2026  
 **Auteur** : Manus + @shopify-product-engineer  
-**Version** : 1.2
+**Version** : 1.3
