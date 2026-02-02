@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 
 const inter = Inter({
@@ -26,7 +27,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr" className={`${inter.variable} ${playfair.variable}`}>
-      <body className="antialiased font-sans bg-background text-gray-900">{children}</body>
+      <body className="antialiased font-sans bg-background text-gray-900">
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }
