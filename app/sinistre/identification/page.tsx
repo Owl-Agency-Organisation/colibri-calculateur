@@ -228,7 +228,7 @@ const ASSUREUR_OPTIONS = [
 	      {/* Form card */}
 	      <Card>
 	        <CardHeader>
-	          <CardTitle>Identification de l'assuré</CardTitle>
+	          <CardTitle>Identification de l&apos;assuré</CardTitle>
 	          <p className="text-sm text-gray-500 mt-1">
 	            Renseignez vos coordonnées pour commencer le calcul de peinture
 	          </p>

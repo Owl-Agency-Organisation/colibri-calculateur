@@ -5,6 +5,28 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [Non publié]
+
+### Ajouté
+- **Phase 0 — Préparation du chantier "Colibri Calculateur"** (voir `PLAN.md`) :
+  - Branche d'archive `archive/assurances` créée depuis `main` (état final du tunnel
+    assurances, tag `v1.7.5-assurances` associé).
+  - Configuration ESLint minimale (`.eslintrc.json`, `next/core-web-vitals`) pour
+    rendre `pnpm lint` opérationnel.
+
+### Corrigé
+- **CI GitHub Actions** : le workflow utilisait `npm ci` avec un `package-lock.json`
+  obsolète (échec systématique depuis l'ajout de `@vercel/analytics` et
+  `react-hot-toast`). Passage à pnpm (standard du projet), suppression du
+  `package-lock.json` périmé, build CI alimenté par les placeholders de
+  `.env.local.example`.
+
+### Modifié
+- **`.env.local.example`** : `COVEA_DISCOUNT_CODE` remplacé par `DISCOUNT_CODE`
+  (code promo -15% du calculateur, lu côté serveur uniquement).
+- Échappement des apostrophes JSX (`&apos;`) dans 5 pages pour satisfaire
+  `react/no-unescaped-entities` (aucun changement de texte visible).
+
 ## [1.7.5] - 2026-02-01
 
 ### Modifié

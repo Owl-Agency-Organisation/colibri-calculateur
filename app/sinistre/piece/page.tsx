@@ -169,7 +169,7 @@ export default function SelectionPiecePage() {
           <div>
             <h4 className="text-sm font-medium text-blue-800">Plusieurs pièces ?</h4>
             <p className="text-sm text-blue-700 mt-1">
-              Vous pourrez ajouter d'autres pièces après avoir saisi les surfaces de celle-ci.
+              Vous pourrez ajouter d&apos;autres pièces après avoir saisi les surfaces de celle-ci.
             </p>
           </div>
         </div>
