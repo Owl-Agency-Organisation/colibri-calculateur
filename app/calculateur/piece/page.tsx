@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
+import { StepIndicator, CALCULATEUR_STEPS } from '@/components/ui/StepIndicator';
 import { useStepperNavigation } from '@/hooks/useStepperNavigation';
-import { getStoredPieces } from '@/lib/store/sinistreStore';
+import { getStoredPieces } from '@/lib/store/projetStore';
 import type { TypePiece } from '@/lib/types';
 
 // Types de pièces disponibles avec leurs images
@@ -63,23 +63,23 @@ export default function SelectionPiecePage() {
     // Stocker le type de pièce temporairement
     sessionStorage.setItem('colibri-temp-piece-type', typePiece);
     // Naviguer vers la saisie des surfaces
-    router.push('/sinistre/surfaces');
+    router.push('/calculateur/surfaces');
   };
 
   const handleBack = () => {
-    router.push('/sinistre');
+    router.push('/calculateur');
   };
 
   const handleContinue = () => {
     // Si des pièces existent, aller directement au récapitulatif
-    router.push('/sinistre/recapitulatif');
+    router.push('/calculateur/recapitulatif');
   };
 
   return (
     <div className="space-y-6">
       {/* Step indicator */}
       <StepIndicator 
-        steps={SINISTRE_STEPS} 
+        steps={CALCULATEUR_STEPS} 
         currentStep={2} 
         onStepClick={handleStepClick}
         isStepDisabled={isStepDisabled}
@@ -88,7 +88,7 @@ export default function SelectionPiecePage() {
       {/* Title */}
       <div className="text-center">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-          Type de pièce sinistrée
+          Type de pièce à repeindre
         </h1>
         <p className="text-gray-600">
           {hasPieces 

@@ -60,7 +60,7 @@ export async function createCustomer(customerData: CustomerInput): Promise<Shopi
       lastName: customerData.lastName,
       phone: customerData.phone,
       addresses: customerData.addresses,
-      tags: customerData.tags || ['covea'], // Tag par défaut
+      tags: customerData.tags || ['calculateur'], // Tag par défaut
     },
   };
 

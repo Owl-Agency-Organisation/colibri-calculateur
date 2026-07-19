@@ -4,15 +4,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
+import { StepIndicator, CALCULATEUR_STEPS } from '@/components/ui/StepIndicator';
 import { useStepperNavigation } from '@/hooks/useStepperNavigation';
-import { getStoredPieces, getStoredAssure, STORAGE_KEYS } from '@/lib/store/sinistreStore';
+import { getStoredPieces, getStoredClient, STORAGE_KEYS } from '@/lib/store/projetStore';
 import { createCart, removeCartLines, getCart, updateCartBuyerIdentity, type ShopifyCart, type CartLineNode, type BuyerInfo, type UserData } from '@/lib/shopify-cart';
 import { normalizeFrenchPhone } from '@/lib/utils/phone';
 import { mapCalculToCartLines, canRemoveLine, getLineType, PRODUITS_RENOVATION } from '@/lib/cart-mapper';
 import { determinerKit, KITS_CONFIG } from '@/lib/kits-config';
 import type { ResultatCalcul } from '@/lib/calcul';
-import type { Piece, Assure } from '@/lib/types';
+import type { Piece, Client } from '@/lib/types';
 
 // Clés localStorage pour persister l'ID du panier Shopify et détecter les changements
 const CART_ID_KEY = 'SHOPIFY_CART_ID';
@@ -41,7 +41,7 @@ export default function PanierPage() {
   const { handleStepClick, isStepDisabled } = useStepperNavigation();
   
   // États pour les données du formulaire
-  const [assure, setAssure] = useState<Assure | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [resultat, setResultat] = useState<ResultatCalcul | null>(null);
   const [options, setOptions] = useState({ sousCouche: true, kit: true, renovation: false });
@@ -60,18 +60,18 @@ export default function PanierPage() {
 
   // Charger les données initiales
   useEffect(() => {
-    const storedAssure = getStoredAssure();
+    const storedClient = getStoredClient();
     const storedPieces = getStoredPieces();
     const storedCalcul = localStorage.getItem(STORAGE_KEYS.CALCUL);
     const storedOptions = localStorage.getItem(STORAGE_KEYS.OPTIONS);
     const storedShopifyData = localStorage.getItem(STORAGE_KEYS.SHOPIFY_DATA);
 
     if (!storedCalcul || storedPieces.length === 0) {
-      router.push('/sinistre/piece');
+      router.push('/calculateur/piece');
       return;
     }
 
-    setAssure(storedAssure);
+    setClient(storedClient);
     setPieces(storedPieces);
     setResultat(JSON.parse(storedCalcul));
     
@@ -134,8 +134,8 @@ export default function PanierPage() {
       // Préparer les informations de l'acheteur pour pré-remplir le checkout
       const userData = JSON.parse(localStorage.getItem('USER_DATA') || '{}');
       const normalizedPhone = normalizeFrenchPhone(userData.telephone);
-      const buyerInfo = assure?.email ? {
-        email: assure.email,
+      const buyerInfo = client?.email ? {
+        email: client.email,
         phone: normalizedPhone || undefined,
         firstName: userData.prenom,
         lastName: userData.nom,
@@ -159,7 +159,7 @@ export default function PanierPage() {
       setIsLoading(false);
       setIsCreatingCart(false);
     }
-  }, [resultat, shopifyData, options, assure?.email]);
+  }, [resultat, shopifyData, options, client?.email]);
 
   // Initialiser le panier quand les données sont prêtes
   useEffect(() => {
@@ -188,7 +188,7 @@ export default function PanierPage() {
 
       // Synchroniser avec localStorage pour l'étape 5
       const lineType = attributes.find(a => a.key === '_type')?.value || attributes.find(a => a.key === 'type')?.value;
-      const STORAGE_KEY_OPTIONS = 'colibri-sinistre-options';
+      const STORAGE_KEY_OPTIONS = STORAGE_KEYS.OPTIONS;
       
       if (lineType === 'kit' || lineType === 'renovation') {
         // Charger les options actuelles
@@ -279,7 +279,7 @@ export default function PanierPage() {
       }
       
       // Appeler l'API checkout en mode direct (pour tracking/logs)
-      const response = await fetch('/api/sinistre/checkout', {
+      const response = await fetch('/api/calculateur/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -327,7 +327,7 @@ export default function PanierPage() {
       }
       
       // Appeler l'API checkout en mode save
-      const response = await fetch('/api/sinistre/checkout', {
+      const response = await fetch('/api/calculateur/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -354,11 +354,11 @@ export default function PanierPage() {
   }
 
   const handleBack = () => {
-    router.push('/sinistre/options');
+    router.push('/calculateur/options');
   };
 
   // Affichage du loader
-  if (isLoading || isCreatingCart || !resultat || !assure) {
+  if (isLoading || isCreatingCart || !resultat || !client) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -374,7 +374,7 @@ export default function PanierPage() {
     return (
       <div className="space-y-6">
         <StepIndicator 
-          steps={SINISTRE_STEPS} 
+          steps={CALCULATEUR_STEPS} 
           currentStep={6} 
           onStepClick={handleStepClick}
           isStepDisabled={isStepDisabled}
@@ -540,7 +540,7 @@ export default function PanierPage() {
     <div className="space-y-6">
       {/* Step indicator */}
       <StepIndicator 
-        steps={SINISTRE_STEPS} 
+        steps={CALCULATEUR_STEPS} 
         currentStep={6} 
         onStepClick={handleStepClick}
         isStepDisabled={isStepDisabled}
@@ -598,19 +598,6 @@ export default function PanierPage() {
         </CardContent>
       </Card>
 
-      {/* Bannière économies assureur */}
-      {assure.assureur && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
-          <svg className="w-6 h-6 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <p className="text-base text-green-800">
-            Votre assureur <strong>{assure.assureur}</strong> vous a fait économiser{' '}
-            <strong>{(totalFull - total).toFixed(2)} €</strong>
-          </p>
-        </div>
-      )}
-
       {/* Vos informations */}
       <Card>
         <CardHeader>
@@ -621,24 +608,24 @@ export default function PanierPage() {
             <div>
               <p className="text-sm text-gray-500">Nom complet</p>
               <p className="font-medium text-gray-900">
-                {assure.civilite} {assure.prenom} {assure.nom}
+                {client.civilite} {client.prenom} {client.nom}
               </p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Email</p>
-              <p className="font-medium text-gray-900">{assure.email}</p>
+              <p className="font-medium text-gray-900">{client.email}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Téléphone</p>
-              <p className="font-medium text-gray-900">{assure.telephone}</p>
+              <p className="font-medium text-gray-900">{client.telephone}</p>
             </div>
-            {assure.adresse && (
+            {client.adresse && (
               <div>
                 <p className="text-sm text-gray-500">Adresse</p>
                 <p className="font-medium text-gray-900">
-                  {assure.adresse}
-                  {assure.codePostal && `, ${assure.codePostal}`}
-                  {assure.ville && ` ${assure.ville}`}
+                  {client.adresse}
+                  {client.codePostal && `, ${client.codePostal}`}
+                  {client.ville && ` ${client.ville}`}
                 </p>
               </div>
             )}

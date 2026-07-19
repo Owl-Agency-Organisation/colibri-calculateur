@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
+import { StepIndicator, CALCULATEUR_STEPS } from '@/components/ui/StepIndicator';
 import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { CouleurModal } from '@/components/modals/CouleurModal';
-import { getStoredPieces, setStoredPieces } from '@/lib/store/sinistreStore';
+import { getStoredPieces, setStoredPieces } from '@/lib/store/projetStore';
 import type { Piece, Couleur, TypePiece, Mur } from '@/lib/types';
 import { REGLES_FINITION } from '@/lib/calcul';
 
@@ -66,13 +66,13 @@ export default function SaisieSurfacesPage() {
         setSurfacePlafond(pieceToEdit.surfacePlafond?.toString() || '');
         setCouleurPlafond(pieceToEdit.couleurPlafond || null);
       } else {
-        router.push('/sinistre/piece');
+        router.push('/calculateur/piece');
       }
     } else {
       // Mode création
       const type = sessionStorage.getItem('colibri-temp-piece-type') as TypePiece;
       if (!type) {
-        router.push('/sinistre/piece');
+        router.push('/calculateur/piece');
         return;
       }
       setTypePiece(type);
@@ -223,21 +223,21 @@ export default function SaisieSurfacesPage() {
     setStoredPieces(pieces);
 
     // Naviguer vers le récapitulatif
-    router.push('/sinistre/recapitulatif');
+    router.push('/calculateur/recapitulatif');
   };
 
   const handleBack = () => {
     // Nettoyer les données temporaires
     sessionStorage.removeItem('colibri-edit-piece-id');
     sessionStorage.removeItem('colibri-temp-piece-type');
-    router.push('/sinistre/piece');
+    router.push('/calculateur/piece');
   };
 
   const handleSkipToRecap = () => {
     // Nettoyer les données temporaires et aller au récapitulatif
     sessionStorage.removeItem('colibri-edit-piece-id');
     sessionStorage.removeItem('colibri-temp-piece-type');
-    router.push('/sinistre/recapitulatif');
+    router.push('/calculateur/recapitulatif');
   };
 
   if (!typePiece) {
@@ -252,7 +252,7 @@ export default function SaisieSurfacesPage() {
     <div className="space-y-6">
       {/* Step indicator */}
       <StepIndicator 
-        steps={SINISTRE_STEPS} 
+        steps={CALCULATEUR_STEPS} 
         currentStep={3} 
         onStepClick={handleStepClick}
         isStepDisabled={isStepDisabled}

@@ -7,6 +7,41 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Phase 1 — Rebranding (Colibri Assurances → Colibri Calculateur)
+
+#### Modifié
+- **Routes** : `/sinistre/*` → `/calculateur/*` ; `/api/sinistre/checkout` →
+  `/api/calculateur/checkout` ; `/calculateur` redirige vers `/`.
+- **Page d'accueil** : la page "Bienvenue" (Démarrer / Reprendre mon projet) devient
+  `app/page.tsx` ; header (baseline "Votre calculateur de peinture" + téléphone) et
+  footer mutualisés dans le layout racine ; metadata sans mention assurance.
+- **Store** : `lib/store/sinistreStore.ts` → `projetStore.ts` ; type `Assure` →
+  `Client` (champ `assureur` supprimé) ; clés localStorage `colibri-sinistre-*` →
+  `colibri-projet-*` (les brouillons en cours sont perdus, assumé).
+- `SINISTRE_STEPS` → `CALCULATEUR_STEPS`.
+- **Identification** : champ/validation "Assureur" et message de remise assureur
+  supprimés ; titre "Vos coordonnées".
+- **Tags Shopify** : clients créés avec le tag `calculateur` (au lieu de `covea`) ;
+  draft orders tagués `projet-sauvegarde, calculateur`.
+- **Textes du tunnel** : toutes les formulations sinistre/assureur reformulées grand
+  public (pièce, panier, confirmation, PDF).
+- **Docs** : README purgé des mentions assurance ; `ARCHITECTURE.md`,
+  `DOCS_FINITIONS.md`, `docs/MULTI_MURS_FEATURE.md` reformulés ;
+  `package.json` renommé `colibri-calculateur`.
+
+#### Supprimé
+- Ancienne landing marketing assurance (`app/page.tsx` + `landing.css` +
+  `public/images-reassurance/`) — la landing publique est gérée hors app.
+- Bannière "Votre assureur X vous a fait économiser…" du panier (la mention de la
+  remise réelle revient en Phase 2).
+- Docs obsolètes du contexte assurance : `ANALYSE_PRIX.md`, `BACKLOG.md`,
+  `ROLLBACK.md`, `docs/TODO_CLIENT_FEEDBACK.md`, ADR 003 (produits offerts Covea)
+  — conservées dans la branche `archive/assurances`.
+
+#### Connu / à suivre
+- 7 images CDN Shopify du choix de pièce gardent leur nom historique
+  `ColibriAssurances_P0x_*.png` (renommage côté boutique à planifier).
+
 ### Ajouté
 - **Phase 0 — Préparation du chantier "Colibri Calculateur"** (voir `PLAN.md`) :
   - Branche d'archive `archive/assurances` créée depuis `main` (état final du tunnel

@@ -1,10 +1,10 @@
-# 🎨 Colibri Assurances - Application Sinistres Covea
+# 🎨 Colibri Calculateur
 
-Application standalone de calcul automatique de peinture pour sinistres - Colibri x Covea
+Calculateur de peinture en ligne pour la boutique [colibripeinture.com](https://www.colibripeinture.com)
 
 ## 📋 Description
 
-Application Next.js 15 permettant aux assurés Covea de calculer automatiquement les besoins en peinture pour des sinistres, avec optimisation des contenants et génération de commandes Shopify.
+Application Next.js 15 permettant de calculer automatiquement les besoins en peinture d'un projet de rénovation, avec optimisation des contenants et génération de commandes Shopify.
 
 ## 🚀 Technologies
 
@@ -18,7 +18,7 @@ Application Next.js 15 permettant aux assurés Covea de calculer automatiquement
 ## 📁 Structure du projet
 
 ```
-/colibri-assurances
+/colibri-calculateur
 ├── /app                     # Next.js App Router
 │   ├── layout.tsx           # Layout global
 │   ├── page.tsx             # Page d'accueil
@@ -50,8 +50,8 @@ Application Next.js 15 permettant aux assurés Covea de calculer automatiquement
 1. **Cloner le repository**
 
 ```bash
-git clone https://github.com/Owl-Agency-Organisation/colibri-assurances.git
-cd colibri-assurances
+git clone https://github.com/Owl-Agency-Organisation/colibri-calculateur.git
+cd colibri-calculateur
 ```
 
 2. **Installer les dépendances**
@@ -83,8 +83,8 @@ NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN=your_token_here
 SHOPIFY_ADMIN_ACCESS_TOKEN=shpat_your_admin_token_here
 SHOPIFY_API_VERSION=2025-01
 
-# Code réduction Covea
-COVEA_DISCOUNT_CODE=COVEA20
+# Code promo -15% du calculateur (lu côté serveur)
+DISCOUNT_CODE=PROMO-APP-CALCULATEUR
 ```
 
 4. **Lancer le serveur de développement**
@@ -105,12 +105,12 @@ Voir [ARCHITECTURE.md](./ARCHITECTURE.md) pour la documentation complète de l'a
 
 ### Flux utilisateur (7 étapes)
 
-1. **Identification** : Capture coordonnées assuré + Sélection de l'assureur (MAAF, MMA, GMF, BPCE, Karma, ALLIANZ)
+1. **Identification** : Capture des coordonnées du client
 2. **Sélection pièce** : Choix type de pièce (7 types disponibles)
 3. **Saisie surfaces** : Plafond + murs (jusqu'à 4 murs avec couleurs distinctes) + boiseries
 4. **Multi-pièces** : Ajout/modification/suppression de pièces
 5. **Options** : Interface harmonisée avec tuiles identiques pour Kit matériel et Préparation des surfaces. Affichage type panier avec vignettes produits (images Shopify), possibilité de supprimer des composants individuellement et boutons "Réinitialiser". La sous-couche est **obligatoire** et n'est plus affichée à cette étape.
-6. **Récapitulatif** : Panier organisé en 4 sections (Peintures, Sous-couches, Kit, Rénovation) avec quantités optimisées, **remise de 15% appliquée**, prix barrés, coût au m², bannière d'économies assureur et badge "✓ Kit complet" si applicable. **Synchronisation bidirectionnelle** avec l'étape 5 : les suppressions sont répercutées dans les deux sens.
+6. **Récapitulatif** : Panier organisé en 4 sections (Peintures, Sous-couches, Kit, Rénovation) avec quantités optimisées, **remise de 15% appliquée**, prix barrés, coût au m² et badge "✓ Kit complet" si applicable. **Synchronisation bidirectionnelle** avec l'étape 5 : les suppressions sont répercutées dans les deux sens.
 7. **Confirmation** : Création Draft Order Shopify + email automatique
 
 ### Algorithme de calcul
@@ -139,7 +139,7 @@ Voir [ARCHITECTURE.md](./ARCHITECTURE.md) pour la documentation complète de l'a
 
 - `SHOPIFY_ADMIN_ACCESS_TOKEN` : Token Admin API (pour Draft Orders)
 - `SHOPIFY_API_VERSION` : Version de l'API Shopify (ex: 2025-01)
-- `COVEA_DISCOUNT_CODE` : Code réduction Covea
+- `DISCOUNT_CODE` : Code promo -15% appliqué par le calculateur
 
 ## 📦 Scripts disponibles
 
@@ -170,8 +170,8 @@ npm run type-check
 
 ### Environnements
 
-- **Production** : branch `main` → https://sinistre.colibri.fr
-- **Staging** : branch `develop` → https://colibri-assurances-staging.vercel.app
+- **Production** : branch `main` (projet Vercel `colibri-calculateur`)
+- **Preview** : chaque Pull Request (deployment Vercel dédié)
 
 ## 🧪 Tests
 
@@ -197,7 +197,7 @@ npm run type-check
 ## 👥 Équipe
 
 - **Développement** : Owl Agency
-- **Client** : Colibri x Covea
+- **Client** : Colibri Peinture
 
 ## 📄 License
 

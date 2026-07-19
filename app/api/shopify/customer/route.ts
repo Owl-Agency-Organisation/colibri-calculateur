@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         lastName,
         phone: phone || undefined,
         addresses: addresses.length > 0 ? addresses : undefined,
-        tags: ['covea'],
+        tags: ['calculateur'],
       });
 
       if (!customer) {

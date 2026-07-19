@@ -1,22 +1,22 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { STORAGE_KEYS } from '@/lib/store/sinistreStore';
-import type { Assure, Piece } from '@/lib/types';
+import { STORAGE_KEYS } from '@/lib/store/projetStore';
+import type { Client, Piece } from '@/lib/types';
 
 export function useStepperNavigation() {
   const router = useRouter();
 
   const getStepPath = (stepId: number): string => {
     switch (stepId) {
-      case 1: return '/sinistre/identification';
-      case 2: return '/sinistre/piece';
-      case 3: return '/sinistre/surfaces';
-      case 4: return '/sinistre/recapitulatif';
-      case 5: return '/sinistre/options';
-      case 6: return '/sinistre/panier';
-      case 7: return '/sinistre/confirmation';
-      default: return '/sinistre';
+      case 1: return '/calculateur/identification';
+      case 2: return '/calculateur/piece';
+      case 3: return '/calculateur/surfaces';
+      case 4: return '/calculateur/recapitulatif';
+      case 5: return '/calculateur/options';
+      case 6: return '/calculateur/panier';
+      case 7: return '/calculateur/confirmation';
+      default: return '/';
     }
   };
 
@@ -28,10 +28,10 @@ export function useStepperNavigation() {
       if (stepId === 1) return false;
 
       // Étape 2 (Pièce) : Nécessite l'identification
-      const storedAssure = localStorage.getItem(STORAGE_KEYS.ASSURE);
-      const assure: Assure | null = storedAssure ? JSON.parse(storedAssure) : null;
-      const isIdentified = assure && assure.nom && assure.prenom && assure.email;
-      
+      const storedClient = localStorage.getItem(STORAGE_KEYS.CLIENT);
+      const client: Client | null = storedClient ? JSON.parse(storedClient) : null;
+      const isIdentified = client && client.nom && client.prenom && client.email;
+
       if (stepId === 2) return !isIdentified;
 
       // Étape 3 (Surfaces) : Nécessite au moins une pièce
@@ -43,7 +43,7 @@ export function useStepperNavigation() {
 
       // Étape 4 (Récapitulatif) : Nécessite que les surfaces soient configurées
       // On vérifie si au moins un mur a une couleur
-      const hasConfiguredSurfaces = pieces.some(p => 
+      const hasConfiguredSurfaces = pieces.some(p =>
         p.murs.some(m => m.couleur) || p.couleurPlafond || p.couleurBoiseries
       );
 

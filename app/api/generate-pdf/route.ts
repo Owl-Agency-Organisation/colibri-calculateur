@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { Assure, Piece } from '@/lib/types';
+import type { Client, Piece } from '@/lib/types';
 import type { ResultatCalcul } from '@/lib/calcul';
 
 // REMARQUE : Les prix sont désormais calculés dynamiquement depuis Shopify
@@ -17,7 +17,7 @@ interface LignePanier {
 }
 
 interface PdfRequestBody {
-  assure: Assure;
+  client: Client;
   pieces: Piece[];
   resultat: ResultatCalcul;
   options: {
@@ -30,16 +30,16 @@ interface PdfRequestBody {
 }
 
 /**
- * Génère un PDF de commande avec les détails du sinistre
+ * Génère un PDF de commande avec les détails du projet
  * Retourne un fichier PDF téléchargeable
  */
 export async function POST(request: NextRequest) {
   try {
     const body: PdfRequestBody = await request.json();
-    const { assure, pieces, resultat, options, lignesPanier, total } = body;
+    const { client, pieces, resultat, options, lignesPanier, total } = body;
 
     // Générer le HTML du PDF
-    const html = generatePdfHtml(assure, pieces, resultat, options, lignesPanier, total);
+    const html = generatePdfHtml(client, pieces, resultat, options, lignesPanier, total);
 
     // Retourner le HTML comme "PDF" (le navigateur le téléchargera)
     // Note: Pour un vrai PDF, on utiliserait puppeteer ou une API comme html2pdf
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 }
 
 function generatePdfHtml(
-  assure: Assure,
+  client: Client,
   pieces: Piece[],
   resultat: ResultatCalcul,
   options: { sousCouche: boolean; kit: boolean; renovation?: boolean },
@@ -307,20 +307,20 @@ function generatePdfHtml(
     <div class="info-grid">
       <div class="info-item">
         <label>Nom complet</label>
-        <p>${assure.civilite} ${assure.prenom} ${assure.nom}</p>
+        <p>${client.civilite} ${client.prenom} ${client.nom}</p>
       </div>
       <div class="info-item">
         <label>Email</label>
-        <p>${assure.email}</p>
+        <p>${client.email}</p>
       </div>
       <div class="info-item">
         <label>Téléphone</label>
-        <p>${assure.telephone}</p>
+        <p>${client.telephone}</p>
       </div>
-      ${assure.adresse ? `
+      ${client.adresse ? `
       <div class="info-item">
         <label>Adresse</label>
-        <p>${assure.adresse}${assure.codePostal ? `, ${assure.codePostal}` : ''}${assure.ville ? ` ${assure.ville}` : ''}</p>
+        <p>${client.adresse}${client.codePostal ? `, ${client.codePostal}` : ''}${client.ville ? ` ${client.ville}` : ''}</p>
       </div>
       ` : ''}
     </div>

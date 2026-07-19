@@ -4,40 +4,40 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
+import { StepIndicator, CALCULATEUR_STEPS } from '@/components/ui/StepIndicator';
 import { useStepperNavigation } from '@/hooks/useStepperNavigation';
-import { getStoredAssure, clearAllData } from '@/lib/store/sinistreStore';
-import type { Assure } from '@/lib/types';
+import { getStoredClient, clearAllData } from '@/lib/store/projetStore';
+import type { Client } from '@/lib/types';
 
 export default function ConfirmationPage() {
   const router = useRouter();
   const { handleStepClick, isStepDisabled } = useStepperNavigation();
-  const [assure, setAssure] = useState<Assure | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
   const [numeroCommande, setNumeroCommande] = useState('');
 
   useEffect(() => {
-    const storedAssure = getStoredAssure();
-    if (!storedAssure) {
-      router.push('/sinistre');
+    const storedClient = getStoredClient();
+    if (!storedClient) {
+      router.push('/calculateur');
       return;
     }
-    setAssure(storedAssure);
+    setClient(storedClient);
     
     // Générer un numéro de commande
     setNumeroCommande(`COL-${Date.now().toString(36).toUpperCase()}`);
   }, [router]);
 
   const handleBackToPanier = () => {
-    router.push('/sinistre/panier');
+    router.push('/calculateur/panier');
   };
 
   const handleNewCommand = () => {
     // Effacer toutes les données et recommencer
     clearAllData();
-    router.push('/sinistre');
+    router.push('/calculateur');
   };
 
-  if (!assure) {
+  if (!client) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -49,7 +49,7 @@ export default function ConfirmationPage() {
     <div className="space-y-6">
       {/* Step indicator */}
       <StepIndicator 
-        steps={SINISTRE_STEPS} 
+        steps={CALCULATEUR_STEPS} 
         currentStep={7} 
         onStepClick={handleStepClick}
         isStepDisabled={isStepDisabled}
@@ -66,7 +66,7 @@ export default function ConfirmationPage() {
           PDF téléchargé avec succès !
         </h1>
         <p className="text-gray-600 max-w-md mx-auto">
-          Votre récapitulatif de commande a été téléchargé. Vous pouvez le transmettre à votre assureur.
+          Votre récapitulatif de commande a été téléchargé. Conservez-le pour votre projet.
         </p>
       </div>
 
@@ -93,9 +93,9 @@ export default function ConfirmationPage() {
           <div className="border-t border-gray-200 pt-4">
             <p className="text-sm text-gray-500 mb-1">Bénéficiaire</p>
             <p className="font-medium text-gray-900">
-              {assure.civilite} {assure.prenom} {assure.nom}
+              {client.civilite} {client.prenom} {client.nom}
             </p>
-            <p className="text-sm text-gray-600">{assure.email}</p>
+            <p className="text-sm text-gray-600">{client.email}</p>
           </div>
         </CardContent>
       </Card>
@@ -121,9 +121,9 @@ export default function ConfirmationPage() {
                 <span className="text-primary-600 font-semibold text-sm">2</span>
               </div>
               <div>
-                <p className="font-medium text-gray-900">Transmettez à votre assureur</p>
+                <p className="font-medium text-gray-900">Vérifiez votre estimation</p>
                 <p className="text-sm text-gray-600">
-                  Envoyez le récapitulatif à votre assureur pour validation dans le cadre de votre sinistre.
+                  Relisez le récapitulatif : quantités, couleurs et options de votre projet.
                 </p>
               </div>
             </div>
@@ -134,7 +134,7 @@ export default function ConfirmationPage() {
               <div>
                 <p className="font-medium text-gray-900">Passez commande</p>
                 <p className="text-sm text-gray-600">
-                  Une fois validé par votre assureur, passez commande sur notre boutique en ligne.
+                  Quand vous êtes prêt, passez commande sur notre boutique en ligne.
                 </p>
               </div>
             </div>

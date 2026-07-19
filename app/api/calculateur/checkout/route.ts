@@ -20,7 +20,7 @@ interface CheckoutRequestBody {
 }
 
 /**
- * POST /api/sinistre/checkout
+ * POST /api/calculateur/checkout
  * 
  * Gère la finalisation du panier en 2 modes :
  * - Mode 'direct' : Redirection vers checkout Shopify classique
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         email: userData.email,
         phone: userData.telephone,
         note: 'Projet sauvegardé par le client - À finaliser ultérieurement',
-        tags: ['projet-sauvegarde', 'covea'],
+        tags: ['projet-sauvegarde', 'calculateur'],
       });
 
       if (!draftOrder) {
