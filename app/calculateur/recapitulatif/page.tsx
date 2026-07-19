@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
+import { StepIndicator, CALCULATEUR_STEPS } from '@/components/ui/StepIndicator';
 import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
-import { getStoredPieces, setStoredPieces } from '@/lib/store/sinistreStore';
+import { getStoredPieces, setStoredPieces } from '@/lib/store/projetStore';
 import type { Piece, TypePiece } from '@/lib/types';
 import { REGLES_FINITION } from '@/lib/calcul';
 
@@ -32,7 +32,7 @@ export default function RecapitulatifPage() {
   useEffect(() => {
     const stored = getStoredPieces();
     if (stored.length === 0) {
-      router.push('/sinistre/piece');
+      router.push('/calculateur/piece');
       return;
     }
     setPieces(stored);
@@ -40,13 +40,13 @@ export default function RecapitulatifPage() {
   }, [router]);
 
   const handleAddPiece = () => {
-    router.push('/sinistre/piece');
+    router.push('/calculateur/piece');
   };
 
   const handleEditPiece = (pieceId: string) => {
     // Stocker l'ID de la pièce à éditer
     sessionStorage.setItem('colibri-edit-piece-id', pieceId);
-    router.push('/sinistre/surfaces');
+    router.push('/calculateur/surfaces');
   };
 
   const handleDeleteClick = (pieceId: string) => {
@@ -66,7 +66,7 @@ export default function RecapitulatifPage() {
     
     // Si plus de pièces, retourner à la sélection
     if (updatedPieces.length === 0) {
-      router.push('/sinistre/piece');
+      router.push('/calculateur/piece');
     }
   };
 
@@ -76,12 +76,12 @@ export default function RecapitulatifPage() {
   };
 
   const handleContinue = () => {
-    router.push('/sinistre/options');
+    router.push('/calculateur/options');
   };
 
   const handleBack = () => {
     // Retourner à l'étape 2 (choix de pièce), pas à l'étape 1
-    router.push('/sinistre/piece');
+    router.push('/calculateur/piece');
   };
 
   const calculateTotalSurface = (piece: Piece): number => {
@@ -109,7 +109,7 @@ export default function RecapitulatifPage() {
     <div className="space-y-6">
       {/* Step indicator */}
       <StepIndicator 
-        steps={SINISTRE_STEPS} 
+        steps={CALCULATEUR_STEPS} 
         currentStep={4} 
         onStepClick={handleStepClick}
         isStepDisabled={isStepDisabled}

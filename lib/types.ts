@@ -1,9 +1,9 @@
 /**
- * Types TypeScript pour l'application Colibri Assurances
+ * Types TypeScript pour l'application Colibri Calculateur
  */
 
-// ========== ASSURÉ ==========
-export interface Assure {
+// ========== CLIENT ==========
+export interface Client {
   civilite: 'M' | 'Mme';
   nom: string;
   prenom: string;
@@ -12,7 +12,6 @@ export interface Assure {
   adresse?: string;
   codePostal?: string;
   ville?: string;
-  assureur?: string;
 }
 
 // ========== PIÈCE ==========

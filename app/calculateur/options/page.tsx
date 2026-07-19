@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { StepIndicator, SINISTRE_STEPS } from '@/components/ui/StepIndicator';
+import { StepIndicator, CALCULATEUR_STEPS } from '@/components/ui/StepIndicator';
 import { useStepperNavigation } from '@/hooks/useStepperNavigation';
-import { getStoredPieces, STORAGE_KEYS } from '@/lib/store/sinistreStore';
+import { getStoredPieces, STORAGE_KEYS } from '@/lib/store/projetStore';
 import { calculerQuantites, type ResultatCalcul } from '@/lib/calcul';
 import { determinerKit, KITS_CONFIG } from '@/lib/kits-config';
 import type { Piece } from '@/lib/types';
@@ -41,7 +41,7 @@ export default function OptionsPage() {
     const init = async () => {
       const stored = getStoredPieces();
       if (stored.length === 0) {
-        router.push('/sinistre/piece');
+        router.push('/calculateur/piece');
         return;
       }
       setPieces(stored);
@@ -234,11 +234,11 @@ export default function OptionsPage() {
   };
 
   const handleContinue = () => {
-    router.push('/sinistre/panier');
+    router.push('/calculateur/panier');
   };
 
   const handleBack = () => {
-    router.push('/sinistre/recapitulatif');
+    router.push('/calculateur/recapitulatif');
   };
 
   if (!isLoaded || !resultat) {
@@ -256,7 +256,7 @@ export default function OptionsPage() {
     <div className="space-y-6">
       {/* Step indicator */}
       <StepIndicator 
-        steps={SINISTRE_STEPS} 
+        steps={CALCULATEUR_STEPS} 
         currentStep={5} 
         onStepClick={handleStepClick}
         isStepDisabled={isStepDisabled}

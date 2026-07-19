@@ -1,8 +1,8 @@
-# 🏗️ Architecture - Colibri Assurances
+# 🏗️ Architecture - Colibri Calculateur
 
 ## Vue d'ensemble
 
-Application standalone Next.js 15 avec intégration native Shopify pour le calcul automatique de peinture pour sinistres.
+Application standalone Next.js 15 avec intégration native Shopify pour le calcul automatique de peinture (projets de rénovation).
 
 ---
 
@@ -37,8 +37,8 @@ Application standalone Next.js 15 avec intégration native Shopify pour le calcu
 ### Entités principales
 
 ```typescript
-// 1. ASSURÉ (Client Shopify)
-interface Assure {
+// 1. CLIENT (Client Shopify)
+interface Client {
   civilite: "M" | "Mme"
   nom: string
   prenom: string
@@ -47,7 +47,7 @@ interface Assure {
   adresse: string
   codePostal: string
   ville: string
-  assureur: string     // MAAF, MMA, GMF, BPCE, Karma, ALLIANZ
+
 }
 
 // 2. PIÈCE (multi-pièces possible)
@@ -86,7 +86,7 @@ interface Couleur {
 
 ```
 ┌─────────────────────────────────────────────┐
-│  UTILISATEUR (Assuré Covea)                │
+│  UTILISATEUR (Client particulier)                │
 │  Interface web moderne et intuitive         │
 └──────────────────┬──────────────────────────┘
                    │
@@ -244,7 +244,7 @@ if (kitActuel !== kitPrecedent) {
 }
 ```
 
-**Synchronisation bidirectionnelle** : Les suppressions de composants dans le panier (étape 6) sont répercutées dans l'étape 5 (Options), et vice-versa, via `localStorage` (`colibri-sinistre-options`).
+**Synchronisation bidirectionnelle** : Les suppressions de composants dans le panier (étape 6) sont répercutées dans l'étape 5 (Options), et vice-versa, via `localStorage` (`colibri-projet-options`).
 
 ---
 
@@ -281,7 +281,6 @@ Le panier est organisé en **4 sections thématiques** pour une meilleure lisibi
    - Possibilité de supprimer des composants individuellement
 4. **Préparation des surfaces** : Affiche les produits de rénovation si l'option a été cochée.
 
-Une **bannière d'économies** est affichée sous le récapitulatif pour valoriser le gain financier apporté par l'assureur partenaire (ex: "Votre assureur MAAF vous a fait économiser 86.54€").
 
 ### Interface de l'étape 5 (Options)
 
@@ -306,7 +305,7 @@ NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN
 
 # ❌ PRIVÉES (JAMAIS exposées côté client)
 SHOPIFY_ADMIN_ACCESS_TOKEN
-COVEA_DISCOUNT_CODE
+DISCOUNT_CODE
 ```
 
 ---
@@ -326,8 +325,8 @@ COVEA_DISCOUNT_CODE
 
 ### CI/CD (Vercel)
 
-- **Production** : `main` branch → https://sinistre.colibri.fr
-- **Staging** : `develop` branch → https://colibri-assurances-staging.vercel.app
+- **Production** : `main` branch → (projet Vercel colibri-calculateur)
+- **Staging** : `develop` branch → (preview Vercel)
 - **Preview** : Pull Requests → URL unique par PR
 
 ---

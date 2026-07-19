@@ -47,34 +47,40 @@
 ## Phase 1 — Rebranding (branche : `feat/phase-1-rebranding`)
 
 Renommages structurels :
-- [ ] `app/sinistre/*` → `app/calculateur/*` ; `app/api/sinistre/checkout` →
+- [x] `app/sinistre/*` → `app/calculateur/*` ; `app/api/sinistre/checkout` →
       `app/api/calculateur/checkout` ; mettre à jour tous les `router.push` et `Link`
-- [ ] `lib/store/sinistreStore.ts` → `projetStore.ts` ; type `Assure` → `Client` ;
+- [x] `lib/store/sinistreStore.ts` → `projetStore.ts` ; type `Assure` → `Client` ;
       clés localStorage `colibri-sinistre-*` → `colibri-projet-*` (pas de migration,
       perte des brouillons acceptée)
-- [ ] `SINISTRE_STEPS` → `CALCULATEUR_STEPS` (`StepIndicator.tsx`, `useStepperNavigation.ts`)
+- [x] `SINISTRE_STEPS` → `CALCULATEUR_STEPS` (`StepIndicator.tsx`, `useStepperNavigation.ts`)
 
 Contenus :
-- [ ] Page d'accueil : conserver la structure (Bienvenue + Démarrer/Reprendre),
+- [x] Page d'accueil : conserver la structure (Bienvenue + Démarrer/Reprendre),
       purger textes assurance (dont l'ancienne mention de remise assureur)
-- [ ] `app/layout.tsx` : metadata title/description sans mention assurance
-- [ ] Identification : supprimer champ `assureur`, `ASSUREUR_OPTIONS`, validation,
+      — la page "Bienvenue" (ex-`/sinistre`) devient `app/page.tsx` ; l'ancienne
+      landing marketing assurance (hors périmètre) et `landing.css` sont supprimées ;
+      header/footer mutualisés dans le layout racine ; `/calculateur` redirige vers `/`
+- [x] `app/layout.tsx` : metadata title/description sans mention assurance
+- [x] Identification : supprimer champ `assureur`, `ASSUREUR_OPTIONS`, validation,
       message "Grâce à [assureur]..." (la refonte du flux vient en Phase 4)
-- [ ] `lib/types.ts` : retirer `assureur?`
-- [ ] Tags Shopify `['covea']` → `['calculateur']` : `lib/shopify-customers.ts`,
+- [x] `lib/types.ts` : retirer `assureur?`
+- [x] Tags Shopify `['covea']` → `['calculateur']` : `lib/shopify-customers.ts`,
       `app/api/shopify/customer/route.ts`, route checkout (conserver `projet-sauvegarde`)
-- [ ] `app/api/generate-pdf/route.ts` : textes/branding sans mention assurance
-- [ ] Header : remplacer la baseline "Partenaire de votre assureur" (proposer 2-3
-      options avant d'implémenter) ; conserver "Besoin d'aide ? 05 62 14 16 46"
-- [ ] Reformuler tous les textes évoquant le sinistre dans le tunnel
-- [ ] Nettoyer `landing.css` / classes orphelines
-- [ ] Doc du repo : purger le README des mentions assurance (réécriture complète
-      en Phase 5) ; supprimer de `main` les docs obsolètes du contexte assurance
-      (`ANALYSE_PRIX.md`, `docs/TODO_CLIENT_FEEDBACK.md`, autres docs/ sans objet —
-      elles restent dans `archive/assurances`) ; conserver les ADR encore
-      pertinentes en les reformulant
-- [ ] Vérification finale : `grep -rni "covea\|assureur\|assurance\|sinistre"
-      app/ components/ lib/ hooks/` → 0 résultat (coller la preuve dans la PR)
+- [x] `app/api/generate-pdf/route.ts` : textes/branding sans mention assurance
+- [x] Header : baseline "Votre calculateur de peinture" (option validée le 19/07
+      parmi 3 propositions) ; "Besoin d'aide ? 05 62 14 16 46" conservé
+- [x] Reformuler tous les textes évoquant le sinistre dans le tunnel
+- [x] Nettoyer `landing.css` / classes orphelines (supprimés avec la landing)
+- [x] Doc du repo : README purgé (réécriture complète en Phase 5) ; supprimés de
+      `main` : `ANALYSE_PRIX.md`, `BACKLOG.md`, `ROLLBACK.md`,
+      `docs/TODO_CLIENT_FEEDBACK.md`, ADR 003 (produits offerts Covea, sans objet) —
+      tout reste dans `archive/assurances` ; `ARCHITECTURE.md`, `DOCS_FINITIONS.md`
+      et `docs/MULTI_MURS_FEATURE.md` conservés et reformulés
+- [x] Vérification finale : `grep -rni "covea\|assureur\|assurance\|sinistre"
+      app/ components/ lib/ hooks/` → 0 résultat (preuve dans la PR)
+      ⚠️ Exception documentée : 7 URLs d'images CDN Shopify `ColibriAssurances_P0x_*.png`
+      (choix de pièce) conservées telles quelles — décision du 19/07, renommage côté
+      boutique à faire plus tard (connecteur Shopify branché sur une autre boutique)
 
 ## Phase 2 — Remise réelle 15% + prix boutique (branche : `feat/phase-2-remise`)
 

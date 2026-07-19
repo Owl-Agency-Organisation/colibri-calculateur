@@ -55,7 +55,7 @@ export interface Piece {
 
 ### Interface utilisateur
 
-La page de saisie des surfaces (`app/sinistre/surfaces/page.tsx`) a été complètement refactorisée pour supporter la gestion dynamique des murs.
+La page de saisie des surfaces (`app/calculateur/surfaces/page.tsx`) a été complètement refactorisée pour supporter la gestion dynamique des murs.
 
 #### Fonctionnalités UI
 
@@ -156,7 +156,7 @@ Blanc Cassé : 22m² (10 + 12)
 
 ### Migration automatique des données
 
-Pour assurer une transition transparente, une fonction de migration automatique a été implémentée dans le store (`lib/store/sinistreStore.ts`).
+Pour assurer une transition transparente, une fonction de migration automatique a été implémentée dans le store (`lib/store/projetStore.ts`).
 
 #### Fonctionnement
 
@@ -198,7 +198,7 @@ function migratePieceToNewFormat(oldPiece: OldPiece): Piece {
 
 ### Affichage dans le récapitulatif
 
-La page récapitulatif (`app/sinistre/recapitulatif/page.tsx`) affiche maintenant tous les murs individuellement avec leur numéro, surface et couleur.
+La page récapitulatif (`app/calculateur/recapitulatif/page.tsx`) affiche maintenant tous les murs individuellement avec leur numéro, surface et couleur.
 
 **Avant :**
 ```
@@ -232,25 +232,25 @@ Le PDF généré (`app/api/generate-pdf/route.ts`) affiche également tous les m
 | Fichier | Type de modification | Description |
 |---------|---------------------|-------------|
 | `lib/types.ts` | Ajout + Modification | Ajout interface `Mur`, modification interface `Piece` |
-| `app/sinistre/surfaces/page.tsx` | Refonte complète | Nouvelle UI pour gérer les murs multiples |
+| `app/calculateur/surfaces/page.tsx` | Refonte complète | Nouvelle UI pour gérer les murs multiples |
 | `lib/calcul/index.ts` | Modification | Adaptation de l'agrégation et des calculs |
-| `app/sinistre/recapitulatif/page.tsx` | Modification | Affichage de tous les murs |
+| `app/calculateur/recapitulatif/page.tsx` | Modification | Affichage de tous les murs |
 | `app/api/generate-pdf/route.ts` | Modification | PDF avec tous les murs |
-| `lib/store/sinistreStore.ts` | Ajout | Migration automatique des données |
+| `lib/store/projetStore.ts` | Ajout | Migration automatique des données |
 
 ### Commits
 
 **Commit 1 :** `feat: Implémentation de la fonctionnalité multi-murs (jusqu'à 4 murs avec couleurs distinctes)`
 - SHA: `09117e9`
-- Fichiers : `lib/types.ts`, `app/sinistre/surfaces/page.tsx`, `lib/calcul/index.ts`
+- Fichiers : `lib/types.ts`, `app/calculateur/surfaces/page.tsx`, `lib/calcul/index.ts`
 
 **Commit 2 :** `fix: Correction du PDF et ajout de la migration automatique des données`
 - SHA: `d5de7cd`
-- Fichiers : `app/api/generate-pdf/route.ts`, `lib/store/sinistreStore.ts`
+- Fichiers : `app/api/generate-pdf/route.ts`, `lib/store/projetStore.ts`
 
 **Commit 3 :** `fix: Correction de la page récapitulatif pour le nouveau modèle multi-murs`
 - SHA: `d4403e3`
-- Fichiers : `app/sinistre/recapitulatif/page.tsx`
+- Fichiers : `app/calculateur/recapitulatif/page.tsx`
 
 ## Tests et validation
 
@@ -305,4 +305,4 @@ Pour toute question ou problème lié à cette fonctionnalité, veuillez consult
 
 **Date de mise en œuvre :** 21 janvier 2025  
 **Version :** 1.1.0 (non publiée)  
-**Auteur :** Équipe de développement Colibri x Covea
+**Auteur :** Équipe de développement Colibri

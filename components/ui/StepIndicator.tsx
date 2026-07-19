@@ -103,8 +103,8 @@ export function StepIndicator({
   );
 }
 
-// Étapes du parcours sinistre
-export const SINISTRE_STEPS: Step[] = [
+// Étapes du parcours calculateur
+export const CALCULATEUR_STEPS: Step[] = [
   { id: 1, title: 'Identification' },
   { id: 2, title: 'Pièce' },
   { id: 3, title: 'Surfaces' },

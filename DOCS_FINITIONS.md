@@ -20,7 +20,7 @@ L'agrégation des surfaces a été modifiée pour éviter la fusion incorrecte d
 - **Résultat** : "Tanin Velours" et "Tanin Satin" apparaissent désormais comme deux lignes distinctes dans le panier avec leurs propres litrages.
 
 ## 4. Persistance des Données
-La propriété `finition` est maintenant une partie intégrante de l'interface `Couleur` (voir `lib/types.ts`). Elle est extraite dynamiquement lors de la sélection et persiste dans le `localStorage` via le `sinistreStore`.
+La propriété `finition` est maintenant une partie intégrante de l'interface `Couleur` (voir `lib/types.ts`). Elle est extraite dynamiquement lors de la sélection et persiste dans le `localStorage` via le `projetStore`.
 
 ## Points de Vigilance pour DUST
 - **Casse et Normalisation** : Toujours utiliser `.toLowerCase()` lors des comparaisons de finitions pour éviter les bugs entre "Mat" et "mat".
