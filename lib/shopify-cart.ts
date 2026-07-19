@@ -38,6 +38,20 @@ export interface CartLineNode {
       altText?: string;
     };
   };
+  // Coûts calculés par Shopify pour cette ligne.
+  // `subtotalAmount` = prix catalogue (avant remise) ; `totalAmount` = prix après
+  // application du code promo -15%. On affiche ces montants tels quels pour garantir
+  // l'égalité au centime près entre le panier de l'app et le checkout.
+  cost?: {
+    subtotalAmount: {
+      amount: string;
+      currencyCode: string;
+    };
+    totalAmount: {
+      amount: string;
+      currencyCode: string;
+    };
+  };
 }
 
 export interface ShopifyCart {
@@ -102,6 +116,16 @@ const CART_FRAGMENT = `
                 url
                 altText
               }
+            }
+          }
+          cost {
+            subtotalAmount {
+              amount
+              currencyCode
+            }
+            totalAmount {
+              amount
+              currencyCode
             }
           }
         }
@@ -169,6 +193,15 @@ export async function createCart(
       lines,
     },
   };
+
+  // Remise -15% réelle : injecter le code promo (variable d'environnement serveur,
+  // jamais côté client, jamais affiché). `createCart` n'est appelée que depuis la
+  // route serveur `app/api/calculateur/cart` : `process.env.DISCOUNT_CODE` y est bien
+  // résolu. Shopify applique alors la remise au panier ET au checkout associé.
+  const discountCode = process.env.DISCOUNT_CODE;
+  if (discountCode) {
+    variables.input.discountCodes = [discountCode];
+  }
 
   // Construire buyerIdentity avec les informations de base
   if (buyerInfo) {

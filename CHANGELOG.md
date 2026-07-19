@@ -7,6 +7,41 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Phase 2 — Remise réelle 15% + prix boutique
+
+#### Ajouté
+- **Route serveur `POST /api/calculateur/cart`** : crée le panier Shopify côté serveur
+  afin d'injecter le code promo -15% (`process.env.DISCOUNT_CODE`) dans `cartCreate`
+  sans jamais l'exposer au client (le code n'est ni saisi, ni affiché, ni envoyé au
+  navigateur). La remise est ainsi réellement appliquée par Shopify et se répercute
+  automatiquement sur le checkout du panier.
+- **Mention panier** : badge « -15% appliqués automatiquement · vous économisez X € »
+  (montant économisé affiché, jamais le code).
+
+#### Modifié
+- **`lib/shopify-cart.ts`** : `discountCodes: [DISCOUNT_CODE]` ajouté à l'input de
+  `cartCreate` ; le fragment GraphQL récupère désormais `cost.subtotalAmount`
+  (catalogue) et `cost.totalAmount` (après remise) par ligne.
+- **`app/api/calculateur/checkout/route.ts`** (mode `save`) : le draft order de
+  l'estimation par e-mail applique `appliedDiscount` PERCENTAGE 15 (« Remise
+  calculateur ») — même remise réelle que le flux direct.
+- **`app/calculateur/panier/page.tsx`** : suppression totale de `DISCOUNT_FACTOR`
+  (ancienne remise fictive). Le prix barré = prix catalogue réel Shopify, le prix
+  affiché = montant remisé calculé par Shopify (`cost.totalAmount`). Total, coût/m²,
+  lignes produit et sous-total kit alignés sur ces montants réels ; la création du
+  panier passe par la route serveur.
+- **`lib/shopify.ts`** : cache Storefront `revalidate` abaissé de 3600 s à 900 s
+  (15 min) pour refléter plus vite les changements de prix boutique.
+
+#### Notes
+- **Aucun prix codé en dur** : le fallback `PRIX_PAR_CONTENANT` (jadis dans
+  `ANALYSE_PRIX.md`, supprimé en Phase 1) n'existe plus ; le PDF ne source que des
+  prix Shopify.
+- **Égalité au centime près** garantie par construction : panier de l'app et checkout
+  consomment le même panier Shopify, et le montant remisé affiché EST le montant
+  calculé par Shopify (pas de recalcul `× 0,85` en JS susceptible de dériver à
+  l'arrondi).
+
 ### Phase 1 — Rebranding (Colibri Assurances → Colibri Calculateur)
 
 #### Modifié

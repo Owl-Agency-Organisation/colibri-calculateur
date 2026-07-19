@@ -57,7 +57,10 @@ export async function POST(request: NextRequest) {
 
     // MODE B : Sauvegarder projet (Draft Order)
     if (mode === 'save') {
-      // Créer le Draft Order (les prix sont déjà réduits dans les line items)
+      // Créer le Draft Order avec la remise -15% RÉELLE appliquée par Shopify.
+      // Les line items portent le prix catalogue plein ; `appliedDiscount` PERCENTAGE 15
+      // applique la même remise que le code promo du flux direct, garantissant un total
+      // identique au panier de l'app et au checkout.
       const draftOrder = await createDraftOrder({
         customerId,
         lineItems,
@@ -74,6 +77,11 @@ export async function POST(request: NextRequest) {
         phone: userData.telephone,
         note: 'Projet sauvegardé par le client - À finaliser ultérieurement',
         tags: ['projet-sauvegarde', 'calculateur'],
+        appliedDiscount: {
+          description: 'Remise calculateur',
+          value: 15,
+          valueType: 'PERCENTAGE',
+        },
       });
 
       if (!draftOrder) {

@@ -39,8 +39,9 @@ export async function shopifyFetch<T>({
         query,
         variables,
       }),
-      // Cache pour améliorer les performances
-      next: { revalidate: 3600 }, // 1 heure
+      // Cache pour améliorer les performances (prix boutique = source de vérité,
+      // fraîcheur relevée à 15 min pour refléter plus vite les changements de prix)
+      next: { revalidate: 900 }, // 15 minutes
     });
 
     if (!response.ok) {

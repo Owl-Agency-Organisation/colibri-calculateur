@@ -84,16 +84,26 @@ Contenus :
 
 ## Phase 2 — Remise réelle 15% + prix boutique (branche : `feat/phase-2-remise`)
 
-- [ ] `lib/shopify-cart.ts` : `discountCodes: [process.env.DISCOUNT_CODE]` dans
+- [x] `lib/shopify-cart.ts` : `discountCodes: [process.env.DISCOUNT_CODE]` dans
       l'input de `cartCreate` (et lors des recréations de panier)
-- [ ] Route checkout, mode `save` : transmettre
+      — ⚠️ `createCart` était appelée **côté client** : `process.env.DISCOUNT_CODE`
+      (serveur-only, pas `NEXT_PUBLIC_`) y valait `undefined`. Création du panier
+      déplacée derrière la route serveur `app/api/calculateur/cart` qui appelle
+      `createCart` ; le code promo est ainsi lu et injecté côté serveur, jamais exposé.
+- [x] Route checkout, mode `save` : transmettre
       `appliedDiscount: { description: 'Remise calculateur', value: 15, valueType: 'PERCENTAGE' }`
-- [ ] Panier : supprimer TOUTES les occurrences de `DISCOUNT_FACTOR` ; prix barré =
+- [x] Panier : supprimer TOUTES les occurrences de `DISCOUNT_FACTOR` ; prix barré =
       prix catalogue réel, prix remisé = catalogue × 0,85 ; mention
       "-15% appliqués automatiquement" + montant économisé (jamais le code affiché)
-- [ ] `app/api/generate-pdf/route.ts` : supprimer le fallback `PRIX_PAR_CONTENANT`
-- [ ] `lib/shopify.ts` : `revalidate` 3600 → 900
-- [ ] Contrôle documenté dans la PR : total panier app = total checkout au centime près
+      — les montants remisés affichés proviennent de Shopify (`cost.totalAmount` par
+      ligne, remise réellement appliquée), pas d'un `× 0,85` recalculé en JS, pour
+      garantir l'égalité au centime près avec le checkout du même panier.
+- [x] `app/api/generate-pdf/route.ts` : supprimer le fallback `PRIX_PAR_CONTENANT`
+      — déjà absent : cette table de prix vivait dans `ANALYSE_PRIX.md` (supprimé en
+      Phase 1). Le PDF ne source que des prix Shopify (`resultat`/`lignesPanier`) et
+      n'est plus branché à aucun appelant. Aucun prix codé en dur.
+- [x] `lib/shopify.ts` : `revalidate` 3600 → 900
+- [x] Contrôle documenté dans la PR : total panier app = total checkout au centime près
 
 ## Phase 3 — Kits tout-ou-rien dynamiques (branche : `feat/phase-3-kits`)
 
