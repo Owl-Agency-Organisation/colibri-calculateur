@@ -24,7 +24,7 @@ export default function SinistreSasPage() {
           Bienvenue dans votre espace dédié
         </h1>
         <p className="text-lg text-gray-600">
-          Choisissez l'option qui vous convient pour continuer votre projet de rénovation.
+          Choisissez l&apos;option qui vous convient pour continuer votre projet de rénovation.
         </p>
       </div>
 
@@ -85,7 +85,7 @@ export default function SinistreSasPage() {
 
       <div className="mt-12 text-center">
         <p className="text-sm text-gray-500">
-          Besoin d'assistance ? Notre équipe est là pour vous aider au <a href="tel:+33562141646" className="text-primary-600 font-medium">05 62 14 16 46</a>
+          Besoin d&apos;assistance ? Notre équipe est là pour vous aider au <a href="tel:+33562141646" className="text-primary-600 font-medium">05 62 14 16 46</a>
         </p>
       </div>
     </div>

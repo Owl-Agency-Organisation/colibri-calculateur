@@ -30,10 +30,14 @@
 
 ## Phase 0 — Préparation (branche : `chore/phase-0-setup`)
 
-- [ ] Créer le tag `v1.7.5-assurances` et la branche `archive/assurances` depuis `main`
-- [ ] `.env.local.example` : retirer `COVEA_DISCOUNT_CODE`, ajouter `DISCOUNT_CODE`
+- [x] Créer le tag `v1.7.5-assurances` et la branche `archive/assurances` depuis `main`
+      — branche poussée le 19/07 ; ⚠️ tag créé localement mais push de tags bloqué
+      par l'environnement distant : exécuter `git push origin v1.7.5-assurances`
+      depuis un poste local (ou créer une release GitHub sur ce nom depuis `main`)
+- [x] `.env.local.example` : retirer `COVEA_DISCOUNT_CODE`, ajouter `DISCOUNT_CODE`
       (code promo -15% `PROMO-APP-CALCULATEUR`, lu côté serveur et injecté dans `cartCreate` et le permalink)
-- [ ] Vérifier `pnpm install`, `pnpm type-check`, `pnpm build` passent
+- [x] Vérifier `pnpm install`, `pnpm type-check`, `pnpm build` passent — OK le 19/07
+      (config ESLint minimale ajoutée au passage, `pnpm lint` passe aussi)
 - [x] (Humain) ✅ Repo renommé `colibri-calculateur` + projet Vercel renommé,
       intégration Git vérifiée (19/07). Repo repassé en privé.
 - [x] (Humain) ✅ Code promo -15% `PROMO-APP-CALCULATEUR` créé dans Shopify

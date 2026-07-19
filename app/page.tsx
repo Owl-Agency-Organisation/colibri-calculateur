@@ -65,7 +65,7 @@ export default function LandingPage() {
           <div className="tab-content">
             <div className="step-number">4</div>
             <h3>Vous recevez votre peinture chez vous</h3>
-            <p>La peinture arrive prête à l'emploi, livrée directement à domicile.</p>
+            <p>La peinture arrive prête à l&apos;emploi, livrée directement à domicile.</p>
           </div>
         </div>
       </section>
@@ -142,7 +142,7 @@ export default function LandingPage() {
           <div className="reassurance-item">
             <img src="/images-reassurance/livraison-rapide.webp" alt="Livraison rapide" />
             <h3>Livraison rapide</h3>
-            <p>Livraison offerte en point relais dès 90€ d'achat.</p>
+            <p>Livraison offerte en point relais dès 90€ d&apos;achat.</p>
           </div>
           <div className="reassurance-item">
             <img src="/images-reassurance/sav-reactif.webp" alt="SAV réactif" />
