@@ -189,3 +189,11 @@ Contenus :
       anonymes) : `calcul_demarre`, `piece_validee`, `surfaces_saisies`,
       `options_validees`, `panier_atteint`, `sortie_choisie`
       (checkout / permalink / estimation)
+- [x] (Évolution 23/07, branche `feat/optimisation-contenants`) Optimisation des
+      contenants par le prix : composition la moins chère couvrant le besoin
+      (énumération exacte), garde-fou pots (plafond dur : 3 pots max du plus
+      petit format disponible), justification à l'écran uniquement quand la
+      composition retenue est réellement moins chère, repli glouton sans prix.
+      Voie de sélection de variante unifiée (`selectionnerVariantContenance`)
+      entre table de prix, prix affiché et ligne panier — zéro divergence
+      possible. 25 tests ajoutés, les 37 existants inchangés

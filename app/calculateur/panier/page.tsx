@@ -424,6 +424,8 @@ export default function PanierPage() {
   const LigneProductJSX = ({ node }: { node: CartLineNode }) => {
     const surfaceOriginaleAttr = node.attributes.find(a => a.key === '_surface_originale') || node.attributes.find(a => a.key === 'surface_originale');
     const surfaceOriginale = surfaceOriginaleAttr ? parseFloat(surfaceOriginaleAttr.value) : 0;
+    // Justification d'une composition dépassant le besoin par choix de prix
+    const justification = node.attributes.find(a => a.key === '_justification')?.value;
     const lineType = getLineType(node.attributes);
     const ligneCatalogue = lignePrixCatalogue(node);
     const ligneRemise = lignePrixRemise(node);
@@ -465,6 +467,11 @@ export default function PanierPage() {
           {lineType === 'peinture' && surfaceOriginale > 0 && (
             <p className="mt-1 text-xs text-gray-500">
               Surface réelle : {surfaceOriginale} m² (soit {surfaceOriginale * 2} m² pour 2 couches)
+            </p>
+          )}
+          {justification && (
+            <p className="mt-1 text-xs text-primary-700">
+              💡 {justification}
             </p>
           )}
         </div>
