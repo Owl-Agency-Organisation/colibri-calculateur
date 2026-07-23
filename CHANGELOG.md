@@ -7,6 +7,33 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Évolution — Événement Klaviyo sur estimation
+
+#### Ajouté
+- **`lib/klaviyo.ts`** (serveur uniquement) : envoi d'événements à l'API Klaviyo
+  Events (`POST https://a.klaviyo.com/api/events`, révision `2026-07-15` vérifiée
+  contre le spec OpenAPI officiel, corps JSON:API, succès 202). Timeout 5 s.
+- **Événement `Estimation calculateur demandée`** émis par
+  `POST /api/calculateur/estimation` après création du draft order et envoi de
+  l'invoice : les relances Klaviyo se déclenchent sur cet événement (et non sur
+  l'appartenance à une liste). Profil identifié par e-mail (+ prénom/nom si
+  fournis). Propriétés : `invoice_url` (lien de finalisation du devis),
+  `total_ttc`, `total_avant_remise`, `remise`, `surface_totale`,
+  `nombre_pieces`, `line_items` (libellé/quantité/prix unitaire, ancrés sur le
+  draft order Shopify), `draft_order_id`, `consentement_marketing`. `value` =
+  total TTC (convention revenu Klaviyo), `unique_id` = ID du draft order
+  (déduplication des retries).
+- **Variable d'environnement `KLAVIYO_PRIVATE_API_KEY`** (serveur uniquement,
+  jamais `NEXT_PUBLIC_`), ajoutée à `.env.local.example`. Absente : l'envoi est
+  ignoré avec un warning — les previews sans clé fonctionnent normalement.
+
+#### Notes
+- **Fail-soft absolu** : clé invalide, API indisponible ou timeout → log
+  d'erreur serveur uniquement ; le draft order, l'e-mail Shopify et la réponse
+  de succès à l'utilisateur ne sont jamais affectés.
+- La modale d'estimation transmet désormais le contexte projet
+  (`surface_totale`, `nombre_pieces`) à titre informatif pour les templates.
+
 ### Phase 4 — Tunnel réordonné + triple sortie
 
 #### Ajouté

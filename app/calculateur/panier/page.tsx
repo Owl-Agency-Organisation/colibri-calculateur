@@ -764,6 +764,10 @@ export default function PanierPage() {
         isOpen={showEstimationModal}
         onClose={() => setShowEstimationModal(false)}
         lineItems={getCartLineItems()}
+        projet={{
+          surfaceTotale: resultat.surfaceTotale,
+          nombrePieces: resultat.resume.nombrePieces,
+        }}
         onSuccess={handleEstimationSuccess}
       />
     </div>

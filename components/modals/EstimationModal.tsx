@@ -14,6 +14,8 @@ interface EstimationModalProps {
   onClose: () => void;
   /** Lignes du panier Shopify à reprendre dans le draft order */
   lineItems: Array<{ variantId: string; quantity: number }>;
+  /** Contexte projet, repris dans les relances Klaviyo (informatif) */
+  projet?: { surfaceTotale: number; nombrePieces: number };
   /** Appelé après envoi réussi de l'estimation */
   onSuccess: () => void;
 }
@@ -27,7 +29,7 @@ interface FormState {
 
 const emptyForm: FormState = { email: '', prenom: '', nom: '', telephone: '' };
 
-export function EstimationModal({ isOpen, onClose, lineItems, onSuccess }: EstimationModalProps) {
+export function EstimationModal({ isOpen, onClose, lineItems, projet, onSuccess }: EstimationModalProps) {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [consentement, setConsentement] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
@@ -95,6 +97,7 @@ export function EstimationModal({ isOpen, onClose, lineItems, onSuccess }: Estim
           telephone: form.telephone.trim() || undefined,
           consentementMarketing: consentement,
           lineItems,
+          projet,
         }),
       });
 
