@@ -7,6 +7,7 @@
 
 import type { CartLineInput } from './shopify-cart';
 import type { ResultatCalcul, CalculPeinture, CalculSousCouche, CalculKit } from './calcul';
+import { selectionnerVariantGammeStandard } from './calcul';
 import { determinerKit, KITS_CONFIG, type ComposantKit } from './kits-config';
 
 /**
@@ -67,12 +68,15 @@ function findVariant(
 ): ShopifyProductData['variants'][0] | undefined {
   if (!variants || variants.length === 0) return undefined;
 
-  // Chercher avec contenance + finition
+  // Chercher avec contenance + finition, puis verrouiller la gamme standard (Biosourcée)
+  // parmi les candidats — même logique que `calculerPrixTotal` pour que le prix envoyé
+  // à Shopify ne diverge jamais du prix affiché.
   if (finition) {
-    const variant = variants.find(v => {
+    const candidats = variants.filter(v => {
       const title = (v.title || '').toLowerCase();
       return title.includes(contenance.toLowerCase()) && title.includes(finition.toLowerCase());
     });
+    const variant = selectionnerVariantGammeStandard(candidats);
     if (variant) return variant;
   }
 

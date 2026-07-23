@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { StepIndicator, CALCULATEUR_STEPS } from '@/components/ui/StepIndicator';
 import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { getStoredPieces, getStoredClient, STORAGE_KEYS } from '@/lib/store/projetStore';
-import { createCart, removeCartLines, getCart, updateCartBuyerIdentity, type ShopifyCart, type CartLineNode, type BuyerInfo, type UserData } from '@/lib/shopify-cart';
+import { removeCartLines, getCart, updateCartBuyerIdentity, type ShopifyCart, type CartLineNode, type UserData } from '@/lib/shopify-cart';
 import { normalizeFrenchPhone } from '@/lib/utils/phone';
 import { mapCalculToCartLines, canRemoveLine, getLineType, PRODUITS_RENOVATION } from '@/lib/cart-mapper';
 import { determinerKit, KITS_CONFIG } from '@/lib/kits-config';
@@ -145,8 +145,22 @@ export default function PanierPage() {
         country: 'FR',
       } : undefined;
 
-      const newCart = await createCart(cartLines, buyerInfo);
-      
+      // Création côté serveur : le code promo -15% est injecté sur le serveur
+      // (`process.env.DISCOUNT_CODE`) sans jamais transiter côté client.
+      const cartResponse = await fetch('/api/calculateur/cart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lines: cartLines, buyerInfo }),
+      });
+
+      const cartResult = await cartResponse.json();
+
+      if (!cartResponse.ok || !cartResult.cart) {
+        throw new Error(cartResult.error || 'Erreur lors de la création du panier');
+      }
+
+      const newCart: ShopifyCart = cartResult.cart;
+
       // Sauvegarder l'ID du panier et le hash des données
       localStorage.setItem(CART_ID_KEY, newCart.id);
       localStorage.setItem(CART_DATA_HASH_KEY, currentHash);
@@ -391,21 +405,58 @@ export default function PanierPage() {
     );
   }
 
-  // Calculer le total manuellement (somme des produits, sans frais de port)
-  // Les frais de port seront calculés uniquement au checkout
-  const total = cart?.lines.edges.reduce((sum, edge) => {
-    return sum + (parseFloat(edge.node.merchandise.price.amount) * edge.node.quantity);
-  }, 0) || 0;
-  const DISCOUNT_FACTOR = 0.85;
-  const totalFull = total / DISCOUNT_FACTOR;
+  // Prix catalogue d'une ligne : `cost.subtotalAmount` renvoyé par Shopify (avant remise).
+  // La remise du code promo n'apparaît PAS dans `cost.totalAmount` des lignes : Shopify
+  // l'expose dans `discountAllocations` — au niveau ligne pour un code "montant sur des
+  // produits", au niveau panier pour un code "montant sur la commande". On somme donc
+  // ces allocations (montants exacts calculés par Shopify) pour l'économie et le total.
+  const lignePrixCatalogue = (node: CartLineNode) =>
+    node.cost
+      ? parseFloat(node.cost.subtotalAmount.amount)
+      : parseFloat(node.merchandise.price.amount) * node.quantity;
+  const ligneAllocations = (node: CartLineNode) =>
+    (node.discountAllocations ?? []).reduce(
+      (sum, a) => sum + parseFloat(a.discountedAmount.amount),
+      0
+    );
+
+  // Sous-total catalogue (produits, hors frais de port — calculés au checkout).
+  const totalCatalogue = cart?.lines.edges.reduce(
+    (sum, edge) => sum + lignePrixCatalogue(edge.node),
+    0
+  ) || 0;
+  // Économie réelle = somme de TOUTES les allocations de remise Shopify (lignes +
+  // panier). C'est le montant exact que le checkout déduira, au centime près.
+  const economie =
+    (cart?.lines.edges.reduce((sum, edge) => sum + ligneAllocations(edge.node), 0) || 0) +
+    (cart?.discountAllocations ?? []).reduce(
+      (sum, a) => sum + parseFloat(a.discountedAmount.amount),
+      0
+    );
+  const remiseAppliquee = economie > 0.005;
+  // Total remisé ancré sur les montants Shopify — jamais une somme d'arrondis locaux.
+  const total = totalCatalogue - economie;
+
+  // Prix remisé affiché pour une ligne : allocations de la ligne si Shopify les ventile
+  // (exact), sinon catalogue × 0,85 à titre indicatif (code appliqué au niveau commande :
+  // Shopify ne répartit pas par ligne ; le total, lui, reste exact via `economie`).
+  // Aucun montant remisé n'est affiché si le code n'est pas réellement appliqué.
+  const lignePrixRemise = (node: CartLineNode) => {
+    const catalogue = lignePrixCatalogue(node);
+    const alloc = ligneAllocations(node);
+    if (alloc > 0.005) return catalogue - alloc;
+    return remiseAppliquee ? catalogue * 0.85 : catalogue;
+  };
 
   // Calculer le coût au m² selon la formule Colibri
   // Coût au m² = (Prix peintures + Prix sous-couches) / (Surface réelle × 3)
   // Surface × 3 = 1 couche sous-couche + 2 couches finition
+  // Les prix `resultat.*.prixTotal` sont les prix catalogue Shopify (avant remise) ;
+  // le coût remisé est l'indicateur au m² après -15%.
   const prixPeintures = resultat.peintures.reduce((sum, p) => sum + p.prixTotal, 0);
   const prixSousCouches = resultat.sousCouches.reduce((sum, s) => sum + s.prixTotal, 0);
-  const coutAuM2 = (prixPeintures + prixSousCouches) / (resultat.surfaceTotale * 3);
-  const coutAuM2Full = coutAuM2 / DISCOUNT_FACTOR;
+  const coutAuM2Catalogue = (prixPeintures + prixSousCouches) / (resultat.surfaceTotale * 3);
+  const coutAuM2 = remiseAppliquee ? coutAuM2Catalogue * 0.85 : coutAuM2Catalogue;
 
   // Grouper les lignes du panier par type
   const lignesParType = {
@@ -453,7 +504,8 @@ export default function PanierPage() {
     const surfaceOriginaleAttr = node.attributes.find(a => a.key === '_surface_originale') || node.attributes.find(a => a.key === 'surface_originale');
     const surfaceOriginale = surfaceOriginaleAttr ? parseFloat(surfaceOriginaleAttr.value) : 0;
     const lineType = getLineType(node.attributes);
-    let lineTotal = parseFloat(node.merchandise.price.amount) * node.quantity;
+    const ligneCatalogue = lignePrixCatalogue(node);
+    const ligneRemise = lignePrixRemise(node);
 
     const canRemove = canRemoveLine(node.attributes);
     const isRemoving = isRemovingLine === node.id;
@@ -500,8 +552,10 @@ export default function PanierPage() {
         <div className="flex items-start gap-4 sm:ml-auto">
           {/* Prix */}
           <div className="text-right">
-            <p className="text-sm text-gray-500 line-through">{(lineTotal / DISCOUNT_FACTOR).toFixed(2)} €</p>
-            <p className="text-lg font-semibold text-gray-900">{lineTotal.toFixed(2)} €</p>
+            {remiseAppliquee && (
+              <p className="text-sm text-gray-500 line-through">{ligneCatalogue.toFixed(2)} €</p>
+            )}
+            <p className="text-lg font-semibold text-gray-900">{ligneRemise.toFixed(2)} €</p>
           </div>
 
           {/* Quantité + Corbeille (stacked on mobile, horizontal on desktop) */}
@@ -582,7 +636,9 @@ export default function PanierPage() {
               <p className="text-xs text-primary-800">Surface totale</p>
             </div>
             <div className="text-center">
-              <p className="text-sm text-gray-500 line-through">{coutAuM2Full.toFixed(2)} €</p>
+              {remiseAppliquee && (
+                <p className="text-sm text-gray-500 line-through">{coutAuM2Catalogue.toFixed(2)} €</p>
+              )}
               <p className="text-xl font-bold text-primary-600">
                 {coutAuM2.toFixed(2)} €
               </p>
@@ -590,7 +646,9 @@ export default function PanierPage() {
               <p className="text-[10px] text-primary-700">(sous-couche + 2 couches)</p>
             </div>
             <div className="text-center sm:border-l sm:border-primary-300 sm:pl-4">
-              <p className="text-xl font-bold text-gray-500 line-through">{totalFull.toFixed(2)} €</p>
+              {remiseAppliquee && (
+                <p className="text-xl font-bold text-gray-500 line-through">{totalCatalogue.toFixed(2)} €</p>
+              )}
               <p className="text-2xl font-bold text-primary-600">{total.toFixed(2)} €</p>
               <p className="text-xs text-primary-800">Total</p>
             </div>
@@ -692,14 +750,16 @@ export default function PanierPage() {
                   <div className="flex justify-between text-sm">
                     <span className="font-medium">Sous-total matériel</span>
                     <div className="text-right">
-                      <p className="text-gray-500 line-through">
-                        {lignesParType.kit.reduce((sum, node) =>
-                          sum + (parseFloat(node.merchandise.price.amount) * node.quantity / DISCOUNT_FACTOR), 0
-                        ).toFixed(2)} €
-                      </p>
+                      {remiseAppliquee && (
+                        <p className="text-gray-500 line-through">
+                          {lignesParType.kit.reduce((sum, node) =>
+                            sum + lignePrixCatalogue(node), 0
+                          ).toFixed(2)} €
+                        </p>
+                      )}
                       <p className="font-semibold text-primary-600">
                         {lignesParType.kit.reduce((sum, node) =>
-                          sum + (parseFloat(node.merchandise.price.amount) * node.quantity), 0
+                          sum + lignePrixRemise(node), 0
                         ).toFixed(2)} €
                       </p>
                     </div>
@@ -724,15 +784,36 @@ export default function PanierPage() {
             )}
           </div>
 
-          {/* Total */}
+          {/* Synthèse en miroir du checkout : sous-total catalogue, remise exacte
+              Shopify, total. Les trois montants viennent de Shopify (economie = somme
+              des discountAllocations) : l'addition tombe juste au centime. */}
           <div className="mt-4 pt-4 border-t-2 border-gray-200">
-            <div className="flex justify-between items-center">
-              <span className="text-lg font-semibold text-gray-900">Total</span>
-              <div className="flex flex-col items-end">
-                <span className="text-lg text-gray-500 line-through">{totalFull.toFixed(2)} €</span>
+            {remiseAppliquee ? (
+              <div className="space-y-1">
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Sous-total</span>
+                  <span>{totalCatalogue.toFixed(2)} €</span>
+                </div>
+                <div className="flex justify-between text-sm font-medium text-green-700">
+                  <span>Remise −15 % appliquée automatiquement</span>
+                  <span>−{economie.toFixed(2)} €</span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                  <span className="text-lg font-semibold text-gray-900">Total</span>
+                  <span className="text-2xl font-bold text-primary-600">{total.toFixed(2)} €</span>
+                </div>
+                <div className="flex justify-end pt-1">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-700">
+                    🎉 Vous économisez {economie.toFixed(2)} €
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-semibold text-gray-900">Total</span>
                 <span className="text-2xl font-bold text-primary-600">{total.toFixed(2)} €</span>
               </div>
-            </div>
+            )}
           </div>
         </CardContent>
       </Card>
