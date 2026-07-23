@@ -178,6 +178,90 @@ export async function getProduct(handle: string) {
 }
 
 /**
+ * Composant d'un bundle Shopify natif ("Produits en lot"), au format renvoyé
+ * par la route variants pour l'affichage informatif du contenu d'un kit.
+ */
+export interface BundleComponent {
+  id: string;
+  titre: string;
+  quantite: number;
+  imageUrl?: string;
+  imageAlt?: string;
+}
+
+/**
+ * Récupère les composants du bundle d'un produit (kits matériel).
+ * `ProductVariant.components` — Storefront API ≥ 2024-07 (fixed bundles) ;
+ * les kits n'ont qu'un variant, on ne lit que le premier.
+ * Retourne [] si le produit n'est pas un bundle ou n'a pas de composants
+ * (l'appelant doit alors se rabattre sur la description produit).
+ */
+export async function getProductBundleComponents(handle: string): Promise<BundleComponent[]> {
+  const query = `
+    query GetBundleComponents($handle: String!) {
+      product(handle: $handle) {
+        id
+        variants(first: 1) {
+          edges {
+            node {
+              requiresComponents
+              components(first: 20) {
+                nodes {
+                  quantity
+                  productVariant {
+                    id
+                    title
+                    product {
+                      title
+                      handle
+                      featuredImage {
+                        url
+                        altText
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  try {
+    const { data } = await shopifyFetch<any>({
+      query,
+      variables: { handle },
+    });
+
+    const nodes = data?.product?.variants?.edges?.[0]?.node?.components?.nodes;
+    if (!Array.isArray(nodes)) return [];
+
+    return nodes
+      .filter((node: any) => node?.productVariant?.product?.title)
+      .map((node: any) => {
+        const variant = node.productVariant;
+        // Libellé : titre produit, précisé du titre de variante quand le
+        // composant est une déclinaison (ex. ruban 38mm vs 50mm)
+        const variantTitle =
+          variant.title && variant.title !== 'Default Title' ? ` — ${variant.title}` : '';
+        return {
+          id: variant.id,
+          titre: `${variant.product.title}${variantTitle}`,
+          quantite: typeof node.quantity === 'number' && node.quantity > 0 ? node.quantity : 1,
+          imageUrl: variant.product.featuredImage?.url,
+          imageAlt: variant.product.featuredImage?.altText || undefined,
+        };
+      });
+  } catch (error) {
+    // Fail-soft : l'affichage du kit retombe sur la description produit
+    console.error(`Erreur chargement composants bundle "${handle}":`, error);
+    return [];
+  }
+}
+
+/**
  * Récupère les produits complémentaires (sous-couches)
  * Via le metafield shopify.discovery.product_recommendation.complementary_products
  */

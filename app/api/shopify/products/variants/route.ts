@@ -1,17 +1,26 @@
 import { NextResponse } from 'next/server';
-import { getProduct } from '@/lib/shopify';
+import { getProduct, getProductBundleComponents, type BundleComponent } from '@/lib/shopify';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const handle = searchParams.get('handle');
+  // `bundle=1` : charger aussi les composants du bundle Shopify (kits matériel).
+  // Requête séparée, demandée explicitement pour ne pas alourdir les produits
+  // peinture (jusqu'à 50 variants chacun).
+  const includeBundle = searchParams.get('bundle') === '1';
 
   if (!handle) {
     return NextResponse.json({ error: 'Handle is required' }, { status: 400 });
   }
 
   try {
-    const { product } = await getProduct(handle);
-    
+    const [{ product }, bundleComponents] = await Promise.all([
+      getProduct(handle),
+      includeBundle
+        ? getProductBundleComponents(handle)
+        : Promise.resolve<BundleComponent[]>([]),
+    ]);
+
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
@@ -34,6 +43,7 @@ export async function GET(request: Request) {
       handle: product.handle,
       title: product.title,
       description: product.description,
+      ...(includeBundle ? { bundleComponents } : {}),
       variants,
       featuredImage: product.featuredImage ? {
         url: product.featuredImage.url,
