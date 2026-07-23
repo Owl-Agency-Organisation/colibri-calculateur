@@ -17,6 +17,18 @@ interface CustomerInput {
     country?: string;
   }[];
   tags?: string[];
+  // Consentement marketing (case cochée dans la modale estimation).
+  // Single opt-in : nécessaire pour que le contact entre dans les flux Klaviyo.
+  emailMarketingConsent?: boolean;
+}
+
+// Consentement e-mail marketing au format Admin API (single opt-in)
+function buildEmailMarketingConsent() {
+  return {
+    marketingState: 'SUBSCRIBED',
+    marketingOptInLevel: 'SINGLE_OPT_IN',
+    consentUpdatedAt: new Date().toISOString(),
+  };
 }
 
 interface ShopifyCustomer {
@@ -61,6 +73,9 @@ export async function createCustomer(customerData: CustomerInput): Promise<Shopi
       phone: customerData.phone,
       addresses: customerData.addresses,
       tags: customerData.tags || ['calculateur'], // Tag par défaut
+      ...(customerData.emailMarketingConsent
+        ? { emailMarketingConsent: buildEmailMarketingConsent() }
+        : {}),
     },
   };
 
@@ -77,6 +92,52 @@ export async function createCustomer(customerData: CustomerInput): Promise<Shopi
   } catch (error) {
     console.error('Error creating customer:', error);
     return null;
+  }
+}
+
+/**
+ * Enregistre le consentement e-mail marketing (single opt-in) d'un client existant.
+ * Utilisé quand un client déjà connu coche la case de consentement dans la modale
+ * estimation — sinon son consentement ne serait jamais enregistré.
+ * @returns true si succès, false si erreur (non bloquant pour l'estimation)
+ */
+export async function subscribeCustomerEmailMarketing(customerId: string): Promise<boolean> {
+  const mutation = `
+    mutation customerEmailMarketingConsentUpdate($input: CustomerEmailMarketingConsentUpdateInput!) {
+      customerEmailMarketingConsentUpdate(input: $input) {
+        customer {
+          id
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+  `;
+
+  const variables = {
+    input: {
+      customerId,
+      emailMarketingConsent: buildEmailMarketingConsent(),
+    },
+  };
+
+  try {
+    const data = await callAdminAPI(mutation, variables);
+
+    if (data.customerEmailMarketingConsentUpdate.userErrors.length > 0) {
+      console.error(
+        'Customer marketing consent errors:',
+        data.customerEmailMarketingConsentUpdate.userErrors
+      );
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error updating customer marketing consent:', error);
+    return false;
   }
 }
 

@@ -13,28 +13,26 @@ export default function ConfirmationPage() {
   const router = useRouter();
   const { handleStepClick, isStepDisabled } = useStepperNavigation();
   const [client, setClient] = useState<Client | null>(null);
-  const [numeroCommande, setNumeroCommande] = useState('');
 
   useEffect(() => {
+    // Cette page confirme l'envoi d'une estimation : sans coordonnées
+    // enregistrées, on renvoie au début du tunnel.
     const storedClient = getStoredClient();
     if (!storedClient) {
-      router.push('/calculateur');
+      router.push('/');
       return;
     }
     setClient(storedClient);
-    
-    // Générer un numéro de commande
-    setNumeroCommande(`COL-${Date.now().toString(36).toUpperCase()}`);
   }, [router]);
 
   const handleBackToPanier = () => {
     router.push('/calculateur/panier');
   };
 
-  const handleNewCommand = () => {
+  const handleNewProject = () => {
     // Effacer toutes les données et recommencer
     clearAllData();
-    router.push('/calculateur');
+    router.push('/');
   };
 
   if (!client) {
@@ -48,9 +46,9 @@ export default function ConfirmationPage() {
   return (
     <div className="space-y-6">
       {/* Step indicator */}
-      <StepIndicator 
-        steps={CALCULATEUR_STEPS} 
-        currentStep={7} 
+      <StepIndicator
+        steps={CALCULATEUR_STEPS}
+        currentStep={6}
         onStepClick={handleStepClick}
         isStepDisabled={isStepDisabled}
       />
@@ -63,42 +61,14 @@ export default function ConfirmationPage() {
           </svg>
         </div>
         <h1 className="text-3xl sm:text-4xl font-serif font-bold text-primary-600 mb-2">
-          PDF téléchargé avec succès !
+          Votre estimation est en route !
         </h1>
         <p className="text-gray-600 max-w-md mx-auto">
-          Votre récapitulatif de commande a été téléchargé. Conservez-le pour votre projet.
+          Nous venons de vous envoyer votre estimation détaillée à{' '}
+          <span className="font-medium text-gray-900">{client.email}</span>,
+          avec la remise de 15 % déjà appliquée.
         </p>
       </div>
-
-      {/* Récapitulatif */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Référence</p>
-              <p className="text-lg font-serif font-bold text-primary-600">{numeroCommande}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Date</p>
-              <p className="font-serif font-bold text-primary-600">
-                {new Date().toLocaleDateString('fr-FR', {
-                  day: '2-digit',
-                  month: 'long',
-                  year: 'numeric',
-                })}
-              </p>
-            </div>
-          </div>
-          
-          <div className="border-t border-gray-200 pt-4">
-            <p className="text-sm text-gray-500 mb-1">Bénéficiaire</p>
-            <p className="font-medium text-gray-900">
-              {client.civilite} {client.prenom} {client.nom}
-            </p>
-            <p className="text-sm text-gray-600">{client.email}</p>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Prochaines étapes */}
       <Card>
@@ -110,9 +80,9 @@ export default function ConfirmationPage() {
                 <span className="text-primary-600 font-semibold text-sm">1</span>
               </div>
               <div>
-                <p className="font-medium text-gray-900">Retrouvez le PDF dans vos téléchargements</p>
+                <p className="font-medium text-gray-900">Ouvrez l&apos;e-mail que nous venons de vous envoyer</p>
                 <p className="text-sm text-gray-600">
-                  Le fichier a été téléchargé automatiquement sur votre appareil.
+                  Pensez à vérifier vos courriers indésirables s&apos;il n&apos;apparaît pas d&apos;ici quelques minutes.
                 </p>
               </div>
             </div>
@@ -132,9 +102,10 @@ export default function ConfirmationPage() {
                 <span className="text-primary-600 font-semibold text-sm">3</span>
               </div>
               <div>
-                <p className="font-medium text-gray-900">Passez commande</p>
+                <p className="font-medium text-gray-900">Commandez quand vous êtes prêt</p>
                 <p className="text-sm text-gray-600">
-                  Quand vous êtes prêt, passez commande sur notre boutique en ligne.
+                  Le lien de l&apos;e-mail vous permet de finaliser votre commande en quelques clics,
+                  remise comprise.
                 </p>
               </div>
             </div>
@@ -155,24 +126,22 @@ export default function ConfirmationPage() {
           Retour au panier
         </Button>
         <Button
-          onClick={handleNewCommand}
+          onClick={handleNewProject}
           className="flex items-center gap-2"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
-          Nouvelle estimation
+          Nouveau projet
         </Button>
       </div>
-
-
 
       {/* Contact */}
       <div className="text-center text-sm text-gray-500 pt-2">
         <p>
-          Une question ? Contactez-nous à{' '}
-          <a href="mailto:contact@colibri-peintures.fr" className="text-primary-600 hover:underline">
-            contact@colibri-peintures.fr
+          Une question ? Appelez-nous au{' '}
+          <a href="tel:+33562141646" className="text-primary-600 hover:underline">
+            05 62 14 16 46
           </a>
         </p>
       </div>

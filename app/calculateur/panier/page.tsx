@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/Button';
 import { StepIndicator, CALCULATEUR_STEPS } from '@/components/ui/StepIndicator';
 import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { getStoredPieces, getStoredClient, STORAGE_KEYS } from '@/lib/store/projetStore';
-import { removeCartLines, getCart, updateCartBuyerIdentity, type ShopifyCart, type CartLineNode, type UserData } from '@/lib/shopify-cart';
+import { removeCartLines, getCart, type ShopifyCart, type CartLineNode } from '@/lib/shopify-cart';
 import { normalizeFrenchPhone } from '@/lib/utils/phone';
-import { mapCalculToCartLines, canRemoveLine, getLineType, PRODUITS_RENOVATION } from '@/lib/cart-mapper';
+import { mapCalculToCartLines, canRemoveLine, getLineType } from '@/lib/cart-mapper';
+import { EstimationModal } from '@/components/modals/EstimationModal';
 import type { ResultatCalcul } from '@/lib/calcul';
 import type { Piece, Client } from '@/lib/types';
 
@@ -45,17 +46,17 @@ export default function PanierPage() {
   const [resultat, setResultat] = useState<ResultatCalcul | null>(null);
   const [options, setOptions] = useState({ sousCouche: true, kit: true, renovation: false });
   const [shopifyData, setShopifyData] = useState<Record<string, any>>({});
-  
+
   // États pour le panier Shopify
   const [cart, setCart] = useState<ShopifyCart | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreatingCart, setIsCreatingCart] = useState(false);
   const [isRemovingLine, setIsRemovingLine] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  
-  // États pour les actions
+
+  // États pour les actions (sorties du panier)
   const [isProcessing, setIsProcessing] = useState(false);
-  const [message, setMessage] = useState('');
+  const [showEstimationModal, setShowEstimationModal] = useState(false);
 
   // Charger les données initiales
   useEffect(() => {
@@ -130,17 +131,14 @@ export default function PanierPage() {
         return;
       }
 
-      // Préparer les informations de l'acheteur pour pré-remplir le checkout
-      const userData = JSON.parse(localStorage.getItem('USER_DATA') || '{}');
-      const normalizedPhone = normalizeFrenchPhone(userData.telephone);
+      // buyerIdentity optionnel : renseigné uniquement si on connaît déjà les
+      // coordonnées (posées par une estimation précédente) ; sinon le checkout
+      // Shopify les collecte lui-même.
       const buyerInfo = client?.email ? {
         email: client.email,
-        phone: normalizedPhone || undefined,
-        firstName: userData.prenom,
-        lastName: userData.nom,
-        address1: userData.adresse,
-        city: userData.ville,
-        zip: userData.codePostal,
+        phone: normalizeFrenchPhone(client.telephone) || undefined,
+        firstName: client.prenom,
+        lastName: client.nom,
         country: 'FR',
       } : undefined;
 
@@ -172,7 +170,7 @@ export default function PanierPage() {
       setIsLoading(false);
       setIsCreatingCart(false);
     }
-  }, [resultat, shopifyData, options, client?.email]);
+  }, [resultat, shopifyData, options, client]);
 
   // Initialiser le panier quand les données sont prêtes
   useEffect(() => {
@@ -243,119 +241,63 @@ export default function PanierPage() {
 
 
 
-  // Fonction helper pour préparer les données de checkout
-  const prepareCheckoutData = () => {
-    const userData = JSON.parse(localStorage.getItem('USER_DATA') || '{}');
-    const customerId = localStorage.getItem('CUSTOMER_ID');
-    const lineItems = cart?.lines.edges.map((edge: any) => ({
+  // Lignes du panier au format attendu par les sorties (permalink, estimation)
+  const getCartLineItems = () =>
+    cart?.lines.edges.map((edge) => ({
       variantId: edge.node.merchandise.id,
       quantity: edge.node.quantity,
     })) || [];
-    
-    return { userData, customerId, lineItems };
-  };
 
-  // Fonction pour "Commander maintenant" (checkout direct)
-  async function handleCommanderMaintenant() {
-    if (!cart?.checkoutUrl || !cart?.id) {
-      alert('Erreur : Panier non disponible');
+  // Sortie 1 — "🛒 Régler ma commande" : checkout Shopify du panier.
+  // La remise -15% et l'éventuel buyerIdentity sont déjà posés sur le panier à sa
+  // création ; sinon le checkout collecte les coordonnées lui-même.
+  function handleReglerCommande() {
+    if (!cart?.checkoutUrl) {
+      setError('Panier non disponible. Merci de recharger la page.');
       return;
     }
-    
     setIsProcessing(true);
-    
+    window.location.href = cart.checkoutUrl;
+  }
+
+  // Sortie 2 — "🛍️ Continuer mes achats" : cart permalink boutique construit
+  // côté serveur (le code promo n'atteint jamais le bundle client).
+  async function handleContinuerAchats() {
+    const lines = getCartLineItems();
+    if (lines.length === 0) {
+      setError('Panier non disponible. Merci de recharger la page.');
+      return;
+    }
+
+    setIsProcessing(true);
+    setError(null);
+
     try {
-      const { userData, customerId, lineItems } = prepareCheckoutData();
-      
-      if (!customerId) {
-        console.warn('No customer ID found');
-      }
-      
-      // NOUVEAU : Pré-remplir le checkout avec les données utilisateur
-      if (userData.email) {
-        console.log('Updating cart buyer identity...');
-        const updatedCart = await updateCartBuyerIdentity(cart.id, userData);
-        
-        if (updatedCart) {
-          console.log('Buyer identity updated successfully');
-        } else {
-          console.warn('Failed to update buyer identity, checkout may not be pre-filled');
-        }
-      }
-      
-      // Appeler l'API checkout en mode direct (pour tracking/logs)
-      const response = await fetch('/api/calculateur/checkout', {
+      const response = await fetch('/api/calculateur/permalink', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: 'direct',
-          customerId,
-          lineItems,
-          userData,
-          cartCheckoutUrl: cart.checkoutUrl,
-        }),
+        body: JSON.stringify({ lines: lines.map(l => ({ merchandiseId: l.variantId, quantity: l.quantity })) }),
       });
-      
+
       const result = await response.json();
-      
-      if (result.success && result.checkoutUrl) {
-        // Rediriger vers le checkout Shopify (maintenant pré-rempli)
-        window.location.href = result.checkoutUrl;
-      } else {
-        alert('Erreur lors de la préparation du checkout');
-        setIsProcessing(false);
+
+      if (!response.ok || !result.url) {
+        throw new Error(result.error || "Impossible d'ouvrir la boutique. Merci de réessayer.");
       }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Une erreur est survenue');
+
+      window.location.href = result.url;
+    } catch (err) {
+      console.error('Erreur permalink:', err);
+      setError(err instanceof Error ? err.message : "Impossible d'ouvrir la boutique. Merci de réessayer.");
       setIsProcessing(false);
     }
   }
 
-  // Fonction pour "Sauvegarder mon projet" (draft order)
-  async function handleSauvegarderProjet() {
-    if (!cart) {
-      alert('Erreur : Panier non disponible');
-      return;
-    }
-    
-    setIsProcessing(true);
-    setMessage('');
-    
-    try {
-      const { userData, customerId, lineItems } = prepareCheckoutData();
-      
-      if (!customerId) {
-        alert('Erreur : Client non créé. Veuillez recharger la page.');
-        setIsProcessing(false);
-        return;
-      }
-      
-      // Appeler l'API checkout en mode save
-      const response = await fetch('/api/calculateur/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: 'save',
-          customerId,
-          lineItems,
-          userData,
-        }),
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setMessage(result.message);
-      } else {
-        alert('Erreur lors de la sauvegarde du projet : ' + (result.error || 'Erreur inconnue'));
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Une erreur est survenue');
-    } finally {
-      setIsProcessing(false);
-    }
+  // Sortie 3 — "✉️ Recevoir mon estimation par e-mail" : la modale collecte les
+  // coordonnées et appelle la route serveur (client + draft order remisé + invoice).
+  function handleEstimationSuccess() {
+    setShowEstimationModal(false);
+    router.push('/calculateur/confirmation');
   }
 
   const handleBack = () => {
@@ -363,7 +305,7 @@ export default function PanierPage() {
   };
 
   // Affichage du loader
-  if (isLoading || isCreatingCart || !resultat || !client) {
+  if (isLoading || isCreatingCart || !resultat) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -380,7 +322,7 @@ export default function PanierPage() {
       <div className="space-y-6">
         <StepIndicator 
           steps={CALCULATEUR_STEPS} 
-          currentStep={6} 
+          currentStep={5} 
           onStepClick={handleStepClick}
           isStepDisabled={isStepDisabled}
         />
@@ -567,7 +509,7 @@ export default function PanierPage() {
       {/* Step indicator */}
       <StepIndicator 
         steps={CALCULATEUR_STEPS} 
-        currentStep={6} 
+        currentStep={5} 
         onStepClick={handleStepClick}
         isStepDisabled={isStepDisabled}
       />
@@ -624,41 +566,6 @@ export default function PanierPage() {
               <p className="text-2xl font-bold text-primary-600">{total.toFixed(2)} €</p>
               <p className="text-xs text-primary-800">Total</p>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Vos informations */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Vos informations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-500">Nom complet</p>
-              <p className="font-medium text-gray-900">
-                {client.civilite} {client.prenom} {client.nom}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Email</p>
-              <p className="font-medium text-gray-900">{client.email}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Téléphone</p>
-              <p className="font-medium text-gray-900">{client.telephone}</p>
-            </div>
-            {client.adresse && (
-              <div>
-                <p className="text-sm text-gray-500">Adresse</p>
-                <p className="font-medium text-gray-900">
-                  {client.adresse}
-                  {client.codePostal && `, ${client.codePostal}`}
-                  {client.ville && ` ${client.ville}`}
-                </p>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>
@@ -786,27 +693,34 @@ export default function PanierPage() {
         </CardContent>
       </Card>
 
-      {/* Actions */}
+      {/* Actions — triple sortie du panier */}
       <div className="space-y-6 pt-4">
         <div className="flex flex-col gap-4 max-w-2xl mx-auto">
-          {/* Message de confirmation si projet sauvegardé */}
-          {message && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-800">{message}</p>
-            </div>
-          )}
-
-          {/* Bouton 1 : Valider le panier */}
+          {/* Sortie 1 : Régler ma commande */}
           <div className="text-center space-y-2">
             <button
-              onClick={handleCommanderMaintenant}
+              onClick={handleReglerCommande}
               disabled={isProcessing}
               className="w-full bg-primary-700 text-white py-4 px-6 rounded-lg font-semibold hover:bg-primary-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-lg"
             >
-              {isProcessing ? 'Chargement...' : '⚡ Valider le panier'}
+              {isProcessing ? 'Chargement...' : '🛒 Régler ma commande'}
             </button>
             <p className="text-sm text-gray-600">
               ⚡ Expédition 1 jour ouvré après commande
+            </p>
+          </div>
+
+          {/* Sortie 2 : Continuer mes achats */}
+          <div className="text-center space-y-2">
+            <button
+              onClick={handleContinuerAchats}
+              disabled={isProcessing}
+              className="w-full bg-white border-2 border-primary-200 text-primary-700 py-4 px-6 rounded-lg font-semibold hover:bg-primary-50 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors text-lg"
+            >
+              🛍️ Continuer mes achats
+            </button>
+            <p className="text-sm text-gray-600">
+              Votre sélection vous suit sur la boutique, remise comprise
             </p>
           </div>
 
@@ -819,14 +733,14 @@ export default function PanierPage() {
             </div>
           </div>
 
-          {/* Bouton 2 : Recevoir mon estimation par e-mail */}
+          {/* Sortie 3 : Recevoir mon estimation par e-mail */}
           <div className="text-center space-y-2">
             <button
-              onClick={handleSauvegarderProjet}
+              onClick={() => setShowEstimationModal(true)}
               disabled={isProcessing}
               className="w-full bg-white border-2 border-primary-200 text-primary-700 py-4 px-6 rounded-lg font-semibold hover:bg-primary-50 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors text-lg"
             >
-              {isProcessing ? 'Envoi en cours...' : 'Recevoir mon estimation par e-mail'}
+              ✉️ Recevoir mon estimation par e-mail
             </button>
             <p className="text-sm text-gray-600">
               ⏳ Je peux commander plus tard
@@ -844,6 +758,14 @@ export default function PanierPage() {
           </Button>
         </div>
       </div>
+
+      {/* Modale estimation par e-mail */}
+      <EstimationModal
+        isOpen={showEstimationModal}
+        onClose={() => setShowEstimationModal(false)}
+        lineItems={getCartLineItems()}
+        onSuccess={handleEstimationSuccess}
+      />
     </div>
   );
 }
