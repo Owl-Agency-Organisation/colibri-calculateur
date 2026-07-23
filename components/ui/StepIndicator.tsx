@@ -103,13 +103,12 @@ export function StepIndicator({
   );
 }
 
-// Étapes du parcours calculateur
+// Étapes du parcours calculateur — le tunnel démarre directement au choix des pièces
 export const CALCULATEUR_STEPS: Step[] = [
-  { id: 1, title: 'Identification' },
-  { id: 2, title: 'Pièce' },
-  { id: 3, title: 'Surfaces' },
-  { id: 4, title: 'Récapitulatif' },
-  { id: 5, title: 'Options' },
-  { id: 6, title: 'Panier' },
-  { id: 7, title: 'Confirmation' },
+  { id: 1, title: 'Pièce' },
+  { id: 2, title: 'Surfaces' },
+  { id: 3, title: 'Récapitulatif' },
+  { id: 4, title: 'Options' },
+  { id: 5, title: 'Panier' },
+  { id: 6, title: 'Confirmation' },
 ];

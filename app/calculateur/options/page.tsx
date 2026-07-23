@@ -216,7 +216,7 @@ export default function OptionsPage() {
       {/* Step indicator */}
       <StepIndicator 
         steps={CALCULATEUR_STEPS} 
-        currentStep={5} 
+        currentStep={4} 
         onStepClick={handleStepClick}
         isStepDisabled={isStepDisabled}
       />

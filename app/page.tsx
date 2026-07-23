@@ -13,8 +13,8 @@ export default function AccueilPage() {
     e.preventDefault();
     // Réinitialisation complète des données stockées
     clearAllData();
-    // Redirection vers l'identification
-    router.push('/calculateur/identification');
+    // Le tunnel démarre directement au choix des pièces
+    router.push('/calculateur/piece');
   };
 
   return (
@@ -60,7 +60,7 @@ export default function AccueilPage() {
 
         {/* Option 2: Reprendre un projet */}
         <Card className="hover:border-primary-500 transition-colors cursor-pointer group opacity-75 hover:opacity-100">
-          <Link href="/calculateur/identification" className="block p-2">
+          <Link href="/calculateur/piece" className="block p-2">
             <CardContent className="p-6 flex items-center gap-6">
               <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-gray-100 transition-colors">
                 <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

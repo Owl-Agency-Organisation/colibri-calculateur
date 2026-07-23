@@ -80,7 +80,7 @@ export default function SelectionPiecePage() {
       {/* Step indicator */}
       <StepIndicator 
         steps={CALCULATEUR_STEPS} 
-        currentStep={2} 
+        currentStep={1} 
         onStepClick={handleStepClick}
         isStepDisabled={isStepDisabled}
       />
