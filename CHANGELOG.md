@@ -7,6 +7,51 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Évolution — Optimisation des contenants par le prix
+
+#### Modifié
+- **`optimiserContenantsParPrix`** (`lib/calcul`) : la composition de contenants
+  retenue est désormais la **moins chère** parmi celles qui couvrent le litrage
+  nécessaire (programmation dynamique type rendu de monnaie sur les litres,
+  coûts en centimes entiers), au lieu du glouton par contenance décroissante qui
+  ignorait les prix — entre 8 et 11 L de besoin, un 12L avantageux n'était
+  jamais envisagé (`restant >= 12` jamais vrai). Départage : garde-fou pots
+  (à moins de **5 %** d'écart de prix, la composition avec le moins de pots
+  gagne — évite les 11×1L "optimaux" en cas de promo sur les petits formats),
+  puis moins cher, puis moindre excès de litres.
+- **Voie de sélection de variante unifiée** : nouvelle fonction
+  `selectionnerVariantContenance` (contenance + finition + verrou gamme
+  Biosourcée, insensible à la casse, repli contenance seule) — consommée par la
+  **table de prix de l'optimiseur**, par `calculerPrixTotal` (prix affiché) et
+  par `cart-mapper.findVariant` (ligne panier). Le prix qui guide le choix, le
+  prix montré et le produit commandé proviennent du même variant par
+  construction. Corrige au passage un défaut latent : le repli contenance seule
+  de `findVariant` ne verrouillait pas la gamme.
+- **Justification à l'écran** : quand la composition retenue dépasse le besoin
+  par choix de prix (ex. 12 L pour 9 L nécessaires), le panier affiche
+  « 💡 Le format 12 L revient moins cher que 3×3 L. » — transportée par
+  l'attribut de ligne `_justification`. Aucun message quand la composition est
+  celle du glouton historique.
+
+#### Garde-fous
+- Couvre toujours au moins le litrage nécessaire (structurel : le balayage
+  démarre au besoin).
+- **Repli glouton** : sans prix exploitables (variants absents, API en échec),
+  la composition est strictement celle de l'algorithme historique — jamais de
+  panier vide ni de prix inventé.
+- Contenances manquantes (ex. couleur sans 12L) : l'optimisation ne travaille
+  que sur les formats réellement disponibles.
+- ⚠️ Conséquence documentée du garde-fou pots : à 11 L sur une couleur sans
+  12L, 4×3L (4 pots) remplace 3×3L + 2×1L (5 pots, écart +4,8 % < 5 %),
+  justification affichée.
+
+#### Tests
+- 24 nouveaux tests (`lib/calcul/optimiser-prix.test.ts`) : cas 45/48/50/52 m²
+  avec et sans 12L, départages, fenêtre de tolérance (dedans/dehors), replis,
+  propriétés invariantes (couverture ≥ besoin, coût ≤ 105 % du glouton),
+  anti-divergence prix affiché / table DP / ligne panier (gamme Dépolluante en
+  tête d'ordre API). Les 37 tests existants passent sans modification.
+
 ### Phase 5 — Qualité & mise en production
 
 #### Ajouté
