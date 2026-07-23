@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { StepIndicator, CALCULATEUR_STEPS } from '@/components/ui/StepIndicator';
 import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { CouleurModal } from '@/components/modals/CouleurModal';
+import { InfoTooltip, TOOLTIP_FINITION } from '@/components/ui/InfoTooltip';
 import { getStoredPieces, setStoredPieces } from '@/lib/store/projetStore';
 import type { Piece, Couleur, TypePiece, Mur } from '@/lib/types';
 import { REGLES_FINITION } from '@/lib/calcul';
@@ -253,7 +254,7 @@ export default function SaisieSurfacesPage() {
       {/* Step indicator */}
       <StepIndicator 
         steps={CALCULATEUR_STEPS} 
-        currentStep={3} 
+        currentStep={2} 
         onStepClick={handleStepClick}
         isStepDisabled={isStepDisabled}
       />
@@ -298,9 +299,12 @@ export default function SaisieSurfacesPage() {
                         </span>
                         <h4 className="text-sm font-serif font-bold text-primary-700">Mur {index + 1}</h4>
                         {typePiece && (
-                          <span className="px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 text-[10px] font-bold uppercase tracking-wider">
-                            {mur.couleur?.finition || REGLES_FINITION[typePiece]?.murs}
-                          </span>
+                          <>
+                            <span className="px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 text-[10px] font-bold uppercase tracking-wider">
+                              {mur.couleur?.finition || REGLES_FINITION[typePiece]?.murs}
+                            </span>
+                            <InfoTooltip text={TOOLTIP_FINITION} ariaLabel="Pourquoi cette finition ?" />
+                          </>
                         )}
                       </div>
                       {murs.length > 1 && (
@@ -385,9 +389,12 @@ export default function SaisieSurfacesPage() {
               <div className="flex items-center gap-3">
                 <h3 className="font-serif font-bold text-gray-700">Plafond (optionnel)</h3>
                 {typePiece && (
-                  <span className="px-2 py-0.5 rounded-full bg-gray-200 text-gray-700 text-[10px] font-bold uppercase tracking-wider">
-                    {couleurPlafond?.finition || REGLES_FINITION[typePiece]?.plafond}
-                  </span>
+                  <>
+                    <span className="px-2 py-0.5 rounded-full bg-gray-200 text-gray-700 text-[10px] font-bold uppercase tracking-wider">
+                      {couleurPlafond?.finition || REGLES_FINITION[typePiece]?.plafond}
+                    </span>
+                    <InfoTooltip text={TOOLTIP_FINITION} ariaLabel="Pourquoi cette finition ?" />
+                  </>
                 )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
