@@ -1,204 +1,145 @@
 # 🎨 Colibri Calculateur
 
-Calculateur de peinture en ligne pour la boutique [colibripeinture.com](https://www.colibripeinture.com)
+Calculateur de peinture en ligne de la boutique [colibripeinture.com](https://www.colibripeinture.com) : l'utilisateur décrit ses pièces et surfaces, l'application calcule les quantités de peinture et sous-couche nécessaires, propose le kit matériel adapté et débouche sur une commande Shopify remisée de 15 %.
 
-## 📋 Description
+**Production** : [calculateur.colibripeinture.com](https://calculateur.colibripeinture.com)
 
-Application Next.js 15 permettant de calculer automatiquement les besoins en peinture d'un projet de rénovation, avec optimisation des contenants et génération de commandes Shopify.
+## Principes
 
-## 🚀 Technologies
+- **La boutique Shopify est la seule source de vérité tarifaire.** Aucun prix n'est codé en dur : tout montant affiché provient de la Storefront API, et les totaux remisés sont ceux calculés par Shopify (égalité au centime près avec le checkout).
+- **Remise −15 % réelle** : code promo injecté côté serveur dans `cartCreate` (flux direct) et `appliedDiscount` PERCENTAGE 15 sur les draft orders (estimation). Le code n'est jamais affiché ni exposé au client.
+- **Secrets côté serveur uniquement** : Admin API et clé Klaviyo ne transitent jamais dans le bundle client ; toute mutation passe par une route `app/api/*`.
 
-- **Framework** : Next.js 15 (App Router)
-- **Language** : TypeScript
-- **Styling** : Tailwind CSS
-- **API** : Shopify Storefront API + Admin API
-- **Hosting** : Vercel
-- **Store** : Shopify (vztmja-iy.myshopify.com)
+## Stack
 
-## 📁 Structure du projet
+- **Next.js 15** (App Router) · **React 19** · **TypeScript strict** · **Tailwind CSS 3**
+- **Shopify** : Storefront API (catalogue, prix, panier, bundles) + Admin API (clients, draft orders)
+- **Klaviyo** : événement `Estimation calculateur demandée` (relances e-mail)
+- **Vercel** : hébergement, previews par PR, Analytics (événements de parcours anonymes)
+- **Vitest** : tests unitaires de l'algorithme de calcul
+- Gestionnaire de paquets : **pnpm**
+
+## Parcours utilisateur (6 étapes)
+
+1. **Pièce** — choix du type de pièce (7 types, finitions automatiques selon la pièce)
+2. **Surfaces** — murs (jusqu'à 4, couleurs distinctes), plafond, boiseries
+3. **Récapitulatif** — multi-pièces : ajout, modification, suppression
+4. **Options** — kit matériel (bundle Shopify tout-ou-rien, recommandé selon la surface : ≤ 30 m² petite surface, > 30 m² moyenne/grande) et produits de préparation des surfaces
+5. **Panier** — prix boutique, remise −15 % appliquée par Shopify, triple sortie :
+   - 🛒 **Régler ma commande** → checkout Shopify du panier
+   - 🛍️ **Continuer mes achats** → cart permalink vers la boutique (remise conservée)
+   - ✉️ **Recevoir mon estimation** → draft order remisé + e-mail invoice Shopify
+6. **Confirmation** — confirmation d'envoi de l'estimation
+
+## Algorithme de calcul (`lib/calcul`)
+
+1. **Agrégation des surfaces** par couleur + finition (clé stricte : deux finitions d'un même produit ne sont jamais fusionnées, leurs prix diffèrent)
+2. **Litrage** : surface × couches (2 pour la peinture, 1 pour la sous-couche) / rendement 10 m²/L, + 5 % de marge, arrondi au litre le plus proche
+3. **Optimisation des contenants** : glouton sur les contenances réellement disponibles chez Shopify (12L → 3L → 1L)
+4. **Sous-couche** : grise si la base couleur est `C`, blanche sinon
+5. **Sélection de variante durcie** : filtre contenance + finition, puis verrou de gamme (Biosourcée standard retenue face à la Dépolluante, quel que soit l'ordre de l'API) ; les kits sont des bundles à variant unique (verrou loggé si la boutique en ajoutait un)
+
+Ce module est couvert par des tests unitaires (`pnpm test`) — ne pas le modifier sans les faire évoluer.
+
+## Structure du projet
 
 ```
 /colibri-calculateur
-├── /app                     # Next.js App Router
-│   ├── layout.tsx           # Layout global
-│   ├── page.tsx             # Page d'accueil
-│   └── globals.css          # Styles globaux
-├── /components              # Composants réutilisables
-│   └── /ui                  # Composants UI de base
-│       ├── Button.tsx
-│       ├── Input.tsx
-│       └── Card.tsx
-├── /lib                     # Utilitaires
-│   ├── shopify.ts           # Client Shopify API
-│   ├── types.ts             # Types TypeScript
-│   └── utils.ts             # Fonctions utilitaires
-├── /public                  # Assets statiques
-├── .env.local.example       # Template variables env
-└── README.md
+├── /app
+│   ├── page.tsx                  # Accueil (Démarrer / Reprendre)
+│   ├── layout.tsx                # Layout global, metadata, Analytics
+│   ├── /calculateur              # Tunnel : piece, surfaces, recapitulatif,
+│   │                             #   options, panier, confirmation
+│   └── /api
+│       ├── /calculateur
+│       │   ├── /cart             # Création du panier Shopify (code promo serveur)
+│       │   ├── /permalink        # Cart permalink boutique (code promo serveur)
+│       │   └── /estimation       # Client + draft order remisé + invoice + Klaviyo
+│       └── /shopify              # Lectures Storefront (collections, produits, variants)
+├── /components
+│   ├── /ui                       # Button, Card, Input, Select, StepIndicator, InfoTooltip
+│   └── /modals                   # CouleurModal, ConfirmModal, EstimationModal
+├── /lib
+│   ├── /calcul                   # Algorithme de calcul (cœur métier, testé)
+│   ├── cart-mapper.ts            # ResultatCalcul → lignes de panier Shopify
+│   ├── shopify.ts                # Client Storefront API (catalogue, bundles)
+│   ├── shopify-cart.ts           # Panier Storefront (création côté serveur)
+│   ├── shopify-admin.ts          # Admin API (client credentials, serveur uniquement)
+│   ├── shopify-customers.ts      # Clients + consentement marketing
+│   ├── shopify-draft-orders.ts   # Draft orders + invoices
+│   ├── klaviyo.ts                # Événements Klaviyo (serveur uniquement)
+│   ├── kits-config.ts            # Handles et seuil des kits matériel
+│   └── /store                    # État localStorage (helpers maison, pas de lib)
+└── .env.local.example            # Modèle des variables d'environnement
 ```
 
-## 🔧 Installation
+## Installation
 
-### Prérequis
-
-- Node.js 18+ et npm/yarn/pnpm
-- Compte Shopify avec accès API
-- Compte Vercel (pour déploiement)
-
-### Étapes
-
-1. **Cloner le repository**
+Prérequis : Node.js 18.18+ et pnpm.
 
 ```bash
 git clone https://github.com/Owl-Agency-Organisation/colibri-calculateur.git
 cd colibri-calculateur
-```
-
-2. **Installer les dépendances**
-
-```bash
-npm install
-# ou
-yarn install
-# ou
 pnpm install
+cp .env.local.example .env.local   # puis remplir les valeurs
+pnpm dev                           # http://localhost:3000
 ```
 
-3. **Configurer les variables d'environnement**
-
-Copier `.env.local.example` vers `.env.local` et remplir les valeurs :
-
-```bash
-cp .env.local.example .env.local
-```
-
-Éditer `.env.local` :
-
-```env
-# Shopify Storefront API (public)
-NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN=vztmja-iy.myshopify.com
-NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN=your_token_here
-
-# Shopify Admin API (privé)
-SHOPIFY_ADMIN_ACCESS_TOKEN=shpat_your_admin_token_here
-SHOPIFY_API_VERSION=2025-01
-
-# Code promo -15% du calculateur (lu côté serveur)
-DISCOUNT_CODE=PROMO-APP-CALCULATEUR
-```
-
-4. **Lancer le serveur de développement**
-
-```bash
-npm run dev
-# ou
-yarn dev
-# ou
-pnpm dev
-```
-
-Ouvrir [http://localhost:3000](http://localhost:3000) dans votre navigateur.
-
-## 🏗️ Architecture
-
-Voir [ARCHITECTURE.md](./ARCHITECTURE.md) pour la documentation complète de l'architecture.
-
-### Flux utilisateur (7 étapes)
-
-1. **Identification** : Capture des coordonnées du client
-2. **Sélection pièce** : Choix type de pièce (7 types disponibles)
-3. **Saisie surfaces** : Plafond + murs (jusqu'à 4 murs avec couleurs distinctes) + boiseries
-4. **Multi-pièces** : Ajout/modification/suppression de pièces
-5. **Options** : Interface harmonisée avec tuiles identiques pour Kit matériel et Préparation des surfaces. Affichage type panier avec vignettes produits (images Shopify), possibilité de supprimer des composants individuellement et boutons "Réinitialiser". La sous-couche est **obligatoire** et n'est plus affichée à cette étape.
-6. **Récapitulatif** : Panier organisé en 4 sections (Peintures, Sous-couches, Kit, Rénovation) avec quantités optimisées, **remise de 15% appliquée**, prix barrés, coût au m² et badge "✓ Kit complet" si applicable. **Synchronisation bidirectionnelle** avec l'étape 5 : les suppressions sont répercutées dans les deux sens.
-7. **Confirmation** : Création Draft Order Shopify + email automatique
-
-### Algorithme de calcul
-
-1. **Cumul des surfaces** identiques (même couleur + finition + gamme)
-2. **Calcul litres** : (surface × 2 couches / 10) + 5% de marge, arrondi au litre supérieur
-3. **Optimisation contenants** : algorithme glouton basé sur les variants réels Shopify (12L, 3L, 1L)
-4. **Sous-couches** : Déterminées par le champ meta `base` du produit :
-   - Si `base` est `blanc`, `BLC` ou `B` → **Sous-couche blanche**
-   - Si `base` est `C` → **Sous-couche grise**
-5. **Kit matériel** : Détection automatique du type de kit selon surface totale :
-   - **Petite surface** (≤ 30 m²) : 5 composants (bac, rouleau 180mm, monture, pinceau, ruban 38mm)
-   - **Grande surface** (> 30 m²) : 5 composants (bac, rouleau 250mm, monture, pinceau, ruban 50mm)
-   - Notification toast automatique en cas de changement de kit
-   - Composants ajoutés individuellement au panier (personnalisables par l'utilisateur)
-
-## 🔑 Variables d'environnement
+## Variables d'environnement
 
 ### Publiques (exposées côté client)
 
-- `NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN` : Domaine du store Shopify
-- `NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN` : Token Storefront API
-- `NEXT_PUBLIC_APP_URL` : URL de l'application
+| Variable | Rôle |
+|---|---|
+| `NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN` | Domaine myshopify de la boutique |
+| `NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN` | Token Storefront API (lecture catalogue) |
 
-### Privées (côté serveur uniquement)
+### Privées (serveur uniquement — jamais `NEXT_PUBLIC_`)
 
-- `SHOPIFY_ADMIN_ACCESS_TOKEN` : Token Admin API (pour Draft Orders)
-- `SHOPIFY_API_VERSION` : Version de l'API Shopify (ex: 2025-01)
-- `DISCOUNT_CODE` : Code promo -15% appliqué par le calculateur
+| Variable | Rôle |
+|---|---|
+| `SHOPIFY_API_VERSION` | Version des API Shopify (ex. `2025-01`) |
+| `SHOPIFY_ADMIN_CLIENT_ID` / `SHOPIFY_ADMIN_CLIENT_SECRET` | Admin API en client credentials grant (clients, draft orders, invoices) |
+| `DISCOUNT_CODE` | Code promo −15 % injecté dans `cartCreate` et le cart permalink — jamais affiché à l'écran |
+| `KLAVIYO_PRIVATE_API_KEY` | Clé privée Klaviyo pour l'événement `Estimation calculateur demandée`. Absente : envoi ignoré avec warning, l'estimation aboutit quand même (previews sans clé fonctionnels) |
 
-## 📦 Scripts disponibles
+## Commandes
 
 ```bash
-# Développement
-npm run dev
-
-# Build production
-npm run build
-
-# Lancer en production
-npm start
-
-# Linter
-npm run lint
-
-# Vérification types TypeScript
-npm run type-check
+pnpm dev          # serveur de développement
+pnpm build        # build de production
+pnpm start        # serveur de production
+pnpm lint         # ESLint
+pnpm type-check   # tsc --noEmit
+pnpm test         # tests unitaires Vitest (lib/calcul, cart-mapper)
 ```
 
-## 🚢 Déploiement
+CI GitHub Actions (`.github/workflows/ci.yml`) : lint + type-check + tests + build sur chaque PR.
 
-### Vercel (recommandé)
+## Déploiement
 
-1. **Connecter le repository GitHub à Vercel**
-2. **Configurer les variables d'environnement** (Settings > Environment Variables)
-3. **Déploiement automatique** : chaque push sur `main` déclenche un déploiement
+Projet Vercel `colibri-calculateur` :
+- **Production** : branche `main`, domaine `calculateur.colibripeinture.com`
+- **Preview** : un déploiement par Pull Request
 
-### Environnements
+Configurer les variables d'environnement dans Vercel (Production + Preview). Chaque PR est validée sur son preview avant merge (`main` n'est jamais poussée directement).
 
-- **Production** : branch `main` (projet Vercel `colibri-calculateur`)
-- **Preview** : chaque Pull Request (deployment Vercel dédié)
+## Analytics de parcours
 
-## 🧪 Tests
+Événements Vercel Analytics anonymes (aucune donnée personnelle) : `calcul_demarre`, `piece_validee`, `surfaces_saisies`, `options_validees`, `panier_atteint`, `sortie_choisie` (`checkout` / `permalink` / `estimation`). Ils mesurent où les utilisateurs décrochent dans le tunnel.
 
-### Cas de test
+## Documentation
 
-**Micheline (référence)** :
-- Pièce de vie : 129m² (plafond 45m², murs 84m²)
-- Chambre : 54m² (plafond 12m², murs 42m²)
-- Couleurs : Blanc mat (plafonds), Blanc velours (murs)
-- Résultat attendu :
-  - Sous-couche blanche : 18.3L → 1×12L + 2×3L + 1×1L
-  - Peinture Blanc Mat : 11.4L → 1×12L
-  - Peinture Blanc Velours : 25.2L → 2×12L + 1×3L
-  - Kit 2 (surface ≥ 30m²)
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — architecture technique
+- [PLAN.md](./PLAN.md) — plan de transformation (historique du chantier)
+- [CHANGELOG.md](./CHANGELOG.md) — historique des modifications
+- [docs/MULTI_MURS_FEATURE.md](./docs/MULTI_MURS_FEATURE.md) — fonctionnalité multi-murs
 
-## 📝 Documentation
+## Équipe
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md) : Architecture technique complète
-- [CHANGELOG.md](./CHANGELOG.md) : Historique des versions et modifications
-- [docs/MULTI_MURS_FEATURE.md](./docs/MULTI_MURS_FEATURE.md) : Documentation de la fonctionnalité multi-murs
-- [.env.local.example](./.env.local.example) : Template variables d'environnement
-
-## 👥 Équipe
-
-- **Développement** : Owl Agency
+- **Développement** : [Owl Agency](https://owl-agency.io)
 - **Client** : Colibri Peinture
 
-## 📄 License
+## Licence
 
-Private - Owl Agency © 2026
+Privé — Owl Agency © 2026

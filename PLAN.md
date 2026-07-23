@@ -164,17 +164,28 @@ Contenus :
 
 ## Phase 5 — Qualité & mise en prod (branche : `test/phase-5-qualite`)
 
-- [ ] Installer Vitest (seule dépendance autorisée de cette phase) + script `pnpm test`
-- [ ] Tests `lib/calcul` : `calculerLitresNecessaires` (2 couches),
+- [x] Installer Vitest (seule dépendance autorisée de cette phase) + script `pnpm test`
+- [x] Tests `lib/calcul` : `calculerLitresNecessaires` (2 couches),
       `optimiserContenants`, `determinerTypeSousCouche`, `calculerPrixTotal` —
       dont le cas "même contenance, finitions différentes → prix différents"
       ET le cas "produit disposant des deux gammes (Biosourcée + Dépolluante,
       même contenance+finition) → la variante retenue est Biosourcée, prix conforme"
       (`selectionnerVariantGammeStandard`, verrou ajouté en Phase 2)
-- [ ] Ajouter `pnpm test` au CI (`.github/workflows/ci.yml`)
-- [ ] Fournir la matrice de recette manuelle (checklist) :
+      — 37 tests (`lib/calcul/index.test.ts`, `lib/cart-mapper.test.ts`), plus
+      `agregerSurfacesParCouleur` (exportée pour test, invariant couleur+finition),
+      verrou `selectionnerVariantKit` (kit à variant unique, anomalie loggée si la
+      boutique en ajoutait un, partagé entre prix et panier), verrou de gamme côté
+      panier (`mapCalculToCartLines`)
+- [x] Ajouter `pnpm test` au CI (`.github/workflows/ci.yml`)
+- [x] Fournir la matrice de recette manuelle (checklist) :
       {1 pièce, multi-pièces, multi-murs, ±kit, ±rénovation} ×
-      {commande directe, continuer achats, estimation email}
-- [ ] Domaine (après confirmation, proposition `calculateur.colibripeinture.com`) :
-      metadata/OG mises à jour
-- [ ] `README.md` réécrit (calculateur public, plus de mention assurance)
+      {commande directe, continuer achats, estimation email} — dans la PR Phase 5
+- [x] Domaine `calculateur.colibripeinture.com` (confirmé) : `metadataBase`,
+      title/description, Open Graph et Twitter card posés ; aucune URL de preview
+      en dur (vérifié par grep) — la bascule DNS + domaine Vercel reste à faire
+      côté humain
+- [x] `README.md` réécrit (calculateur public, plus aucune mention assurance)
+- [x] (Ajout validé le 23/07) Événements analytics de parcours (Vercel Analytics,
+      anonymes) : `calcul_demarre`, `piece_validee`, `surfaces_saisies`,
+      `options_validees`, `panier_atteint`, `sortie_choisie`
+      (checkout / permalink / estimation)
