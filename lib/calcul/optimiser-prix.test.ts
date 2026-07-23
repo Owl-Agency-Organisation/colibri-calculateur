@@ -91,11 +91,10 @@ describe('optimiserContenantsParPrix — couleur sans 12L (Silence)', () => {
   });
 
   it.each([50, 52])(
-    '%i m² (11 L) : le garde-fou pots retient 4×3L (un pot de moins, écart +4,8 %% < 5 %%)',
+    '%i m² (11 L) : 3×3L + 2×1L conservé (2×1L sous le plafond), comportement inchangé',
     (surface) => {
-      // Conséquence documentée de la tolérance 5 % : 4×3L (391,60 €, 4 pots)
-      // remplace 3×3L + 2×1L (373,50 €, 5 pots). L'empilement de 3L reste la
-      // règle (jamais de 12L inventé), avec justification affichée.
+      // Le plafond (3 pots max du plus petit format) n'écarte pas 2×1L : la
+      // composition la moins chère reste celle du glouton historique.
       const litres = calculerLitresNecessaires(surface, 2);
       const { contenants, justification } = optimiserContenantsParPrix(
         litres,
@@ -103,25 +102,26 @@ describe('optimiserContenantsParPrix — couleur sans 12L (Silence)', () => {
         VARIANTS_SANS_12L,
         'Mate'
       );
-      expect(contenants).toEqual([{ contenance: '3L', quantite: 4, litres: 12 }]);
-      expect(justification).toContain('nombre de pots');
+      expect(contenants).toEqual(optimiserContenants(litres, ['3L', '1L']));
+      expect(justification).toBeUndefined();
     }
   );
 });
 
 // ==================== DÉPARTAGE ET TOLÉRANCE ====================
 
-describe('optimiserContenantsParPrix — départage et garde-fou pots', () => {
-  it('à prix égal, moins de pots gagne (1×12L face à 3×3L)', () => {
+describe('optimiserContenantsParPrix — départage et plafond pots', () => {
+  it('à prix égal, le moindre excès de litres gagne (3×3L face à 1×12L)', () => {
     const variants = [variant('3L / Mate', '30.00'), variant('12L / Mate', '90.00')];
     const { contenants, justification } = optimiserContenantsParPrix(9, TOUTES, variants, 'Mate');
-    expect(contenants).toEqual([{ contenance: '12L', quantite: 1, litres: 12 }]);
-    expect(justification).toContain('même prix');
+    expect(contenants).toEqual([{ contenance: '3L', quantite: 3, litres: 9 }]);
+    // Composition = glouton → aucune mention
+    expect(justification).toBeUndefined();
   });
 
-  it('à prix et pots comparables, moins cher puis moindre excès départagent', () => {
-    // Besoin 4 L, 1L=10 €, 3L=30 € : 4×1L (40 €, 4 pots) vs 3L+1L (40 €, 2 pots)
-    // → même prix, moins de pots : 3L+1L
+  it('à prix et excès égaux, moins de contenants départage (3L+1L face à 4×1L)', () => {
+    // Besoin 4 L, 1L=10 €, 3L=30 € : 4×1L (40 €, 4 pots, écarté aussi par le
+    // plafond) vs 3L+1L (40 €, 2 pots) → 3L+1L
     const variants = [variant('1L / Mate', '10.00'), variant('3L / Mate', '30.00')];
     const { contenants } = optimiserContenantsParPrix(4, ['3L', '1L'], variants, 'Mate');
     expect(contenants).toEqual([
@@ -130,9 +130,11 @@ describe('optimiserContenantsParPrix — départage et garde-fou pots', () => {
     ]);
   });
 
-  it('GARDE-FOU : à moins de 5 % d\'écart, la composition avec le moins de pots gagne', () => {
-    // Promo absurde : 1L à 10 € → 11×1L = 110 € optimal ; 12L à 115 € (+4,5 %)
-    // → le 12L (1 pot) est préféré aux 11 pots
+  it('PLAFOND : une composition à 11×1L est écartée même si elle est la moins chère', () => {
+    // Promo absurde : 1L à 10 € → 11×1L = 110 € optimal mais 11 pots > plafond
+    // de 3 → écartée. La moins chère des compositions valides est retenue :
+    // 12L à 115 € (< 3×3L + 2×1L à 134 €), et la mention est légitime
+    // (réellement moins cher que le glouton 3×3L + 2×1L).
     const variants = [
       variant('1L / Mate', '10.00'),
       variant('3L / Mate', '38.00'),
@@ -140,14 +142,25 @@ describe('optimiserContenantsParPrix — départage et garde-fou pots', () => {
     ];
     const { contenants, justification } = optimiserContenantsParPrix(11, TOUTES, variants, 'Mate');
     expect(contenants).toEqual([{ contenance: '12L', quantite: 1, litres: 12 }]);
-    expect(justification).toBeDefined();
+    expect(justification).toContain('moins cher');
   });
 
-  it('au-delà de 5 % d\'écart, le vrai optimum est conservé même avec plus de pots', () => {
-    // 12L à 116 € = +5,45 % au-dessus de 11×1L (110 €) → hors fenêtre
+  it('AUCUNE mention 💡 quand le choix est dicté par le plafond et coûte plus cher', () => {
+    // Sans 3L : glouton = 11×1L (110 €), écarté par le plafond → 12L à 116 €
+    // retenu. Il coûte PLUS cher que le glouton : la mention « revient moins
+    // cher » serait mensongère → aucune justification affichée.
     const variants = [variant('1L / Mate', '10.00'), variant('12L / Mate', '116.00')];
-    const { contenants } = optimiserContenantsParPrix(11, ['12L', '1L'], variants, 'Mate');
-    expect(contenants).toEqual([{ contenance: '1L', quantite: 11, litres: 11 }]);
+    const { contenants, justification } = optimiserContenantsParPrix(11, ['12L', '1L'], variants, 'Mate');
+    expect(contenants).toEqual([{ contenance: '12L', quantite: 1, litres: 12 }]);
+    expect(justification).toBeUndefined();
+  });
+
+  it('repli ultime : produit mono-format 1L sur un gros besoin, le plafond est levé', () => {
+    // Toutes les compositions dépassent le plafond (seul le 1L existe) :
+    // mieux vaut 5×1L qu'un échec — le plafond est ignoré dans ce cas limite.
+    const variants = [variant('1L / Mate', '10.00')];
+    const { contenants } = optimiserContenantsParPrix(5, ['1L'], variants, 'Mate');
+    expect(contenants).toEqual([{ contenance: '1L', quantite: 5, litres: 5 }]);
   });
 });
 
@@ -177,7 +190,47 @@ describe('optimiserContenantsParPrix — repli sans prix', () => {
 // ==================== PROPRIÉTÉS ====================
 
 describe('optimiserContenantsParPrix — propriétés invariantes', () => {
-  it('couvre toujours au moins le besoin et ne coûte jamais plus de 105 % du glouton', () => {
+  // Énumérateur de référence indépendant : coût minimal (en centimes) parmi
+  // TOUTES les compositions couvrant le besoin et respectant le plafond de
+  // 3 pots du plus petit format disponible.
+  function meilleurCoutSousPlafond(
+    litres: number,
+    variants: Array<{ title: string; price: { amount: string } }>
+  ): number {
+    const tailles: Record<string, number> = { '1L': 1, '3L': 3, '12L': 12 };
+    const formats = extraireContenancesDisponibles(variants)
+      .map((c) => ({
+        contenance: c,
+        taille: tailles[c],
+        prix: Math.round(
+          parseFloat(selectionnerVariantContenance(variants, c, 'Mate')!.price.amount) * 100
+        ),
+      }))
+      .sort((a, b) => b.taille - a.taille);
+    const plusPetit = formats[formats.length - 1].contenance;
+    const tMax = litres + formats[0].taille;
+
+    let meilleur = Number.POSITIVE_INFINITY;
+    const explorer = (index: number, totalLitres: number, cout: number, potsPetit: number) => {
+      if (index === formats.length) {
+        if (totalLitres >= litres && potsPetit <= 3) meilleur = Math.min(meilleur, cout);
+        return;
+      }
+      const f = formats[index];
+      for (let q = 0; q * f.taille + totalLitres <= tMax; q++) {
+        explorer(
+          index + 1,
+          totalLitres + q * f.taille,
+          cout + q * f.prix,
+          f.contenance === plusPetit ? potsPetit + q : potsPetit
+        );
+      }
+    };
+    explorer(0, 0, 0, 0);
+    return meilleur;
+  }
+
+  it('couvre toujours le besoin et atteint le coût de la meilleure composition sous plafond', () => {
     const jeux = [VARIANTS_AIR, VARIANTS_SANS_12L, [variant('1L / Mate', '10.00'), variant('12L / Mate', '95.00')]];
     for (const variants of jeux) {
       // Contenances dérivées des variants, comme dans calculerQuantites
@@ -185,9 +238,9 @@ describe('optimiserContenantsParPrix — propriétés invariantes', () => {
       for (let litres = 1; litres <= 40; litres++) {
         const { contenants } = optimiserContenantsParPrix(litres, contenances, variants, 'Mate');
         expect(calculerLitresCommandes(contenants)).toBeGreaterThanOrEqual(litres);
-        const coutNouveau = coutAvec(contenants, variants);
-        const coutGlouton = coutAvec(optimiserContenants(litres, contenances), variants);
-        expect(coutNouveau).toBeLessThanOrEqual(coutGlouton * 1.05 + 0.001);
+        // Jamais plus cher que la meilleure composition respectant le plafond
+        const coutNouveauCentimes = Math.round(coutAvec(contenants, variants) * 100);
+        expect(coutNouveauCentimes).toBe(meilleurCoutSousPlafond(litres, variants));
       }
     }
   });

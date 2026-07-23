@@ -303,11 +303,11 @@ export interface OptimisationContenants {
   justification?: string;
 }
 
-// Tolérance du garde-fou "nombre de pots" : à moins de 5 % d'écart de prix,
-// la composition avec le moins de pots gagne (évite les 11×1L "optimaux"
-// mais absurdes si une promo rendait le litre en 1L moins cher).
-const TOLERANCE_POTS_NUM = 21; // coût ≤ C* × 21/20 ⇔ +5 %, en arithmétique entière
-const TOLERANCE_POTS_DEN = 20;
+// Garde-fou "nombre de pots" : plafond dur sur le nombre de pots du PLUS PETIT
+// format disponible (3 maximum). Écarte les compositions absurdes (11×1L si une
+// promo rendait le litre en 1L moins cher) sans jamais faire payer plus cher
+// qu'une composition valide : le prix garde la main dans tous les cas normaux.
+const PLAFOND_PLUS_PETIT_FORMAT = 3;
 
 const ORDRE_CONTENANCES: Record<'1L' | '3L' | '12L', number> = { '12L': 0, '3L': 1, '1L': 2 };
 
@@ -334,9 +334,15 @@ function coutComposition(
 
 /**
  * Optimise la sélection des contenants PAR LE PRIX : retient la combinaison la
- * moins chère parmi celles qui couvrent le litrage nécessaire (programmation
- * dynamique type rendu de monnaie sur les litres), avec garde-fou sur le
- * nombre de pots (à moins de 5 % d'écart, moins de pots gagne).
+ * moins chère parmi celles qui couvrent le litrage nécessaire, par énumération
+ * exhaustive des compositions candidates (exacte et bornée : ≤ quelques
+ * centaines de combinaisons). Départage à prix égal : moindre excès de litres,
+ * puis moins de contenants.
+ *
+ * Garde-fou pots : les compositions comptant plus de PLAFOND_PLUS_PETIT_FORMAT
+ * pots du plus petit format disponible sont écartées (parade aux 11×1L
+ * "optimaux" en cas de promo) — la moins chère des compositions restantes est
+ * retenue, le prix garde donc la main dans tous les cas normaux.
  *
  * L'optimiseur ne sélectionne JAMAIS de variante : il consomme une table de
  * prix par contenance construite via `selectionnerVariantContenance` — la même
@@ -368,86 +374,87 @@ export function optimiserContenantsParPrix(
     }
   }
 
-  const disponibles = contenancesDisponibles.filter((c) => prixCentimes[c] !== undefined);
+  // Formats exploitables, triés par taille décroissante
+  const disponibles = contenancesDisponibles
+    .filter((c) => prixCentimes[c] !== undefined)
+    .sort((a, b) => tailles[b] - tailles[a]);
   if (disponibles.length === 0) {
     // Aucun prix exploitable : comportement historique inchangé
     return { contenants: glouton };
   }
 
-  // DP exacte sur l'état (litres atteints, nombre de pots) → coût minimal.
-  // Bornes : tout optimum couvre < besoin + plus grande contenance (au-delà,
-  // retirer un pot couvre encore le besoin en coûtant moins cher).
-  const tailleMax = Math.max(...disponibles.map((c) => tailles[c]));
+  // Énumération exhaustive des compositions couvrant le besoin.
+  // Borne haute : tout optimum couvre ≤ besoin + plus grande contenance
+  // (au-delà, retirer le plus grand pot couvre encore le besoin pour moins cher,
+  // sans jamais augmenter le nombre de pots du plus petit format).
+  const tailleMax = tailles[disponibles[0]];
+  const plusPetitFormat = disponibles[disponibles.length - 1];
   const tMax = litresCibles + tailleMax;
-  const INFINI = Number.POSITIVE_INFINITY;
 
-  // cout[t][n] : coût minimal pour atteindre exactement t litres avec n pots
-  const cout: number[][] = Array.from({ length: tMax + 1 }, () => Array(tMax + 1).fill(INFINI));
-  const choix: ('1L' | '3L' | '12L' | null)[][] = Array.from({ length: tMax + 1 }, () =>
-    Array(tMax + 1).fill(null)
-  );
-  cout[0][0] = 0;
-
-  for (let t = 1; t <= tMax; t++) {
-    for (let n = 1; n <= t; n++) {
-      for (const contenance of disponibles) {
-        const taille = tailles[contenance];
-        if (t < taille) continue;
-        const precedent = cout[t - taille][n - 1];
-        if (precedent === INFINI) continue;
-        const candidat = precedent + (prixCentimes[contenance] as number);
-        if (candidat < cout[t][n]) {
-          cout[t][n] = candidat;
-          choix[t][n] = contenance;
-        }
-      }
-    }
+  interface Candidat {
+    quantites: Partial<Record<'1L' | '3L' | '12L', number>>;
+    litres: number;
+    cout: number;
+    pots: number;
+    respectePlafond: boolean;
   }
-
-  // Candidates : tous les états couvrant le besoin
-  interface Candidat { t: number; n: number; cout: number }
   const candidats: Candidat[] = [];
-  let coutMinimal = INFINI;
-  for (let t = litresCibles; t <= tMax; t++) {
-    for (let n = 0; n <= t; n++) {
-      if (cout[t][n] !== INFINI) {
-        candidats.push({ t, n, cout: cout[t][n] });
-        if (cout[t][n] < coutMinimal) coutMinimal = cout[t][n];
+
+  const enumerer = (
+    index: number,
+    quantites: Partial<Record<'1L' | '3L' | '12L', number>>,
+    litres: number,
+    cout: number,
+    pots: number
+  ) => {
+    if (index === disponibles.length) {
+      if (litres >= litresCibles) {
+        candidats.push({
+          quantites: { ...quantites },
+          litres,
+          cout,
+          pots,
+          respectePlafond: (quantites[plusPetitFormat] || 0) <= PLAFOND_PLUS_PETIT_FORMAT,
+        });
       }
+      return;
     }
-  }
+    const contenance = disponibles[index];
+    const taille = tailles[contenance];
+    const prix = prixCentimes[contenance] as number;
+    const maxQuantite = Math.floor((tMax - litres) / taille);
+    for (let q = 0; q <= maxQuantite; q++) {
+      if (q > 0) quantites[contenance] = q;
+      enumerer(index + 1, quantites, litres + q * taille, cout + q * prix, pots + q);
+    }
+    delete quantites[contenance];
+  };
+  enumerer(0, {}, 0, 0, 0);
+
   if (candidats.length === 0) return { contenants: glouton };
 
-  // Garde-fou pots : fenêtre de tolérance +5 % autour du coût minimal, puis
-  // moins de pots → moins cher → moindre excès de litres
-  const fenetre = candidats.filter(
-    (c) => c.cout * TOLERANCE_POTS_DEN <= coutMinimal * TOLERANCE_POTS_NUM
-  );
-  fenetre.sort((a, b) => a.n - b.n || a.cout - b.cout || a.t - b.t);
-  const retenu = fenetre[0];
+  // Plafond pots : écarter les compositions dépassant le plafond du plus petit
+  // format. Si TOUTES le dépassent (produit mono-format 1L sur un gros besoin),
+  // ignorer le plafond plutôt que d'échouer.
+  const valides = candidats.filter((c) => c.respectePlafond);
+  const retenus = valides.length > 0 ? valides : candidats;
 
-  // Reconstruction de la composition
-  const quantites: Partial<Record<'1L' | '3L' | '12L', number>> = {};
-  let t = retenu.t;
-  let n = retenu.n;
-  while (t > 0 && n > 0) {
-    const contenance = choix[t][n];
-    if (!contenance) break; // défensif : ne peut pas arriver sur un état atteignable
-    quantites[contenance] = (quantites[contenance] || 0) + 1;
-    t -= tailles[contenance];
-    n -= 1;
-  }
+  // Moins cher → moindre excès de litres → moins de contenants
+  retenus.sort((a, b) => a.cout - b.cout || a.litres - b.litres || a.pots - b.pots);
+  const retenu = retenus[0];
 
-  const contenants: CalculContenant[] = (Object.keys(quantites) as ('1L' | '3L' | '12L')[])
+  const contenants: CalculContenant[] = (Object.keys(retenu.quantites) as ('1L' | '3L' | '12L')[])
     .sort((a, b) => ORDRE_CONTENANCES[a] - ORDRE_CONTENANCES[b])
     .map((contenance) => ({
       contenance,
-      quantite: quantites[contenance] as number,
-      litres: (quantites[contenance] as number) * tailles[contenance],
+      quantite: retenu.quantites[contenance] as number,
+      litres: (retenu.quantites[contenance] as number) * tailles[contenance],
     }));
 
-  // Justification à l'écran : uniquement quand la composition diffère du
-  // glouton ET dépasse le besoin (sinon un 12 L pour 9 L passe pour un bug)
+  // Justification à l'écran : UNIQUEMENT quand la composition retenue est
+  // réellement moins chère que celle du glouton historique et dépasse le
+  // besoin (sinon un 12 L pour 9 L passe pour un bug). Jamais de mention sur
+  // un choix dicté par le plafond — il peut coûter plus cher que le glouton.
   const identiqueAuGlouton =
     contenants.length === glouton.length &&
     contenants.every((c) =>
@@ -457,14 +464,8 @@ export function optimiserContenantsParPrix(
   let justification: string | undefined;
   if (!identiqueAuGlouton && calculerLitresCommandes(contenants) > litresCibles) {
     const coutGlouton = coutComposition(glouton, prixCentimes);
-    if (coutGlouton !== undefined) {
-      if (retenu.cout < coutGlouton) {
-        justification = `Le format ${formaterComposition(contenants)} revient moins cher que ${formaterComposition(glouton)}.`;
-      } else if (retenu.cout === coutGlouton) {
-        justification = `Le format ${formaterComposition(contenants)} est au même prix que ${formaterComposition(glouton)}, en moins de pots.`;
-      } else {
-        justification = `Le format ${formaterComposition(contenants)} limite le nombre de pots pour un écart de prix inférieur à 5 %.`;
-      }
+    if (coutGlouton !== undefined && retenu.cout < coutGlouton) {
+      justification = `Le format ${formaterComposition(contenants)} revient moins cher que ${formaterComposition(glouton)}.`;
     }
   }
 

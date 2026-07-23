@@ -12,13 +12,15 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 #### Modifié
 - **`optimiserContenantsParPrix`** (`lib/calcul`) : la composition de contenants
   retenue est désormais la **moins chère** parmi celles qui couvrent le litrage
-  nécessaire (programmation dynamique type rendu de monnaie sur les litres,
-  coûts en centimes entiers), au lieu du glouton par contenance décroissante qui
-  ignorait les prix — entre 8 et 11 L de besoin, un 12L avantageux n'était
-  jamais envisagé (`restant >= 12` jamais vrai). Départage : garde-fou pots
-  (à moins de **5 %** d'écart de prix, la composition avec le moins de pots
-  gagne — évite les 11×1L "optimaux" en cas de promo sur les petits formats),
-  puis moins cher, puis moindre excès de litres.
+  nécessaire (énumération exhaustive exacte, coûts en centimes entiers), au lieu
+  du glouton par contenance décroissante qui ignorait les prix — entre 8 et 11 L
+  de besoin, un 12L avantageux n'était jamais envisagé (`restant >= 12` jamais
+  vrai). Départage à prix égal : moindre excès de litres, puis moins de
+  contenants. Garde-fou pots : **plafond dur de 3 pots du plus petit format
+  disponible** — les compositions au-delà (ex. 11×1L en cas de promo) sont
+  écartées et la moins chère des compositions valides est retenue ; le prix
+  garde la main dans tous les cas normaux, la règle ne peut jamais préférer un
+  panier plus cher qu'un panier valide moins cher.
 - **Voie de sélection de variante unifiée** : nouvelle fonction
   `selectionnerVariantContenance` (contenance + finition + verrou gamme
   Biosourcée, insensible à la casse, repli contenance seule) — consommée par la
@@ -28,10 +30,10 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
   construction. Corrige au passage un défaut latent : le repli contenance seule
   de `findVariant` ne verrouillait pas la gamme.
 - **Justification à l'écran** : quand la composition retenue dépasse le besoin
-  par choix de prix (ex. 12 L pour 9 L nécessaires), le panier affiche
-  « 💡 Le format 12 L revient moins cher que 3×3 L. » — transportée par
-  l'attribut de ligne `_justification`. Aucun message quand la composition est
-  celle du glouton historique.
+  ET est réellement moins chère que l'ancienne (ex. 12 L pour 9 L nécessaires),
+  le panier affiche « 💡 Le format 12 L revient moins cher que 3×3 L. » —
+  transportée par l'attribut de ligne `_justification`. Jamais de mention sur
+  un choix dicté par le plafond ni quand la composition est celle du glouton.
 
 #### Garde-fous
 - Couvre toujours au moins le litrage nécessaire (structurel : le balayage
@@ -40,17 +42,19 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
   la composition est strictement celle de l'algorithme historique — jamais de
   panier vide ni de prix inventé.
 - Contenances manquantes (ex. couleur sans 12L) : l'optimisation ne travaille
-  que sur les formats réellement disponibles.
-- ⚠️ Conséquence documentée du garde-fou pots : à 11 L sur une couleur sans
-  12L, 4×3L (4 pots) remplace 3×3L + 2×1L (5 pots, écart +4,8 % < 5 %),
-  justification affichée.
+  que sur les formats réellement disponibles — à 11 L sans 12L, la composition
+  reste 3×3L + 2×1L (2×1L sous le plafond), comportement inchangé.
+- Cas limite : produit mono-format 1L sur un besoin dépassant le plafond →
+  le plafond est levé plutôt que d'échouer.
 
 #### Tests
-- 24 nouveaux tests (`lib/calcul/optimiser-prix.test.ts`) : cas 45/48/50/52 m²
-  avec et sans 12L, départages, fenêtre de tolérance (dedans/dehors), replis,
-  propriétés invariantes (couverture ≥ besoin, coût ≤ 105 % du glouton),
-  anti-divergence prix affiché / table DP / ligne panier (gamme Dépolluante en
-  tête d'ordre API). Les 37 tests existants passent sans modification.
+- 25 nouveaux tests (`lib/calcul/optimiser-prix.test.ts`) : cas 45/48/50/52 m²
+  avec et sans 12L, départages (prix → excès → pots), plafond (11×1L écarté ;
+  choix dicté par le plafond sans mention 💡 ; levée du plafond en mono-format),
+  replis, propriétés invariantes (couverture ≥ besoin, coût = meilleure
+  composition sous plafond via un énumérateur de référence indépendant),
+  anti-divergence prix affiché / table de prix / ligne panier (gamme Dépolluante
+  en tête d'ordre API). Les 37 tests existants passent sans modification.
 
 ### Phase 5 — Qualité & mise en production
 
