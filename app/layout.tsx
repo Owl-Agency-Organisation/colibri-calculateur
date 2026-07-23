@@ -15,10 +15,36 @@ const playfair = Playfair_Display({
   display: 'swap',
 });
 
+const SITE_URL = 'https://calculateur.colibripeinture.com';
+const SITE_TITLE = 'Calculateur de peinture en ligne — Colibri Peinture';
+const SITE_DESCRIPTION =
+  'Calculez gratuitement la juste quantité de peinture pour votre projet : ' +
+  'pièces, surfaces, couleurs et finitions. Peintures biosourcées fabriquées en France, ' +
+  '-15% sur votre commande via le calculateur.';
+
 export const metadata: Metadata = {
-  title: 'Colibri Calculateur - Calcul de peinture en ligne',
-  description:
-    'Calculez automatiquement la juste quantité de peinture pour votre projet de rénovation - Colibri Peinture',
+  metadataBase: new URL(SITE_URL),
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    type: 'website',
+    url: SITE_URL,
+    siteName: 'Colibri Peinture — Calculateur',
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    locale: 'fr_FR',
+    images: [
+      {
+        url: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/logo-colibri-lettre-ligne-gris.png?v=1761219657',
+        alt: 'Colibri Peinture',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary',
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
 };
 
 export default function RootLayout({

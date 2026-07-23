@@ -33,6 +33,9 @@ jobs:
       - name: Type check
         run: pnpm type-check
 
+      - name: Tests unitaires
+        run: pnpm test
+
       - name: Build
         # Le build exige les variables Shopify au chargement des modules ;
         # les placeholders de l'exemple suffisent (aucun appel réseau au build).

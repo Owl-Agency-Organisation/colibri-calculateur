@@ -7,6 +7,42 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Phase 5 — Qualité & mise en production
+
+#### Ajouté
+- **Tests unitaires Vitest** (`pnpm test`, 37 tests) sur le cœur métier :
+  `calculerLitresNecessaires` (2 couches, rendement 10 m²/L, marge 5 %, arrondis),
+  `optimiserContenants` (combinaisons 1L/3L/12L, contenances manquantes,
+  couverture toujours ≥ litrage), `determinerTypeSousCouche`,
+  `agregerSurfacesParCouleur` (mutualisation multi-murs/multi-pièces, séparation
+  stricte couleur+finition — exportée pour test), `calculerPrixTotal` (cas
+  critique finitions différentes → prix différents ; verrou de gamme Biosourcée
+  vs Dépolluante, indépendant de l'ordre API), et le mapping panier
+  (`mapCalculToCartLines` : kit une seule ligne, verrou de gamme côté panier).
+- **Verrou `selectionnerVariantKit`** (`lib/calcul`) : les kits sont des bundles
+  à variant unique ; la sélection est centralisée entre le calcul du prix et le
+  mapping panier, et un kit qui gagnerait une variante supplémentaire est signalé
+  par un log d'erreur (testé) au lieu d'être choisi en silence.
+- **`pnpm test` ajouté au CI** (`.github/workflows/ci.yml`), entre type-check et build.
+- **Événements analytics de parcours** (Vercel Analytics, anonymes, aucune donnée
+  personnelle) : `calcul_demarre`, `piece_validee` (type de pièce),
+  `surfaces_saisies` (nombre de murs), `options_validees` (booléens kit/rénovation),
+  `panier_atteint`, `sortie_choisie` (`checkout` / `permalink` / `estimation`).
+- Dépendance ajoutée : `vitest` (devDependency — seule dépendance autorisée de la
+  Phase 5 par PLAN.md).
+
+#### Modifié
+- **Métadonnées production** (`app/layout.tsx`) : `metadataBase` sur
+  `https://calculateur.colibripeinture.com`, title/description grand public,
+  Open Graph et Twitter card. Aucune URL de preview Vercel en dur (vérifié).
+- **`README.md` réécrit** : description du calculateur public, stack, parcours,
+  algorithme, structure des dossiers, variables d'environnement (dont
+  `DISCOUNT_CODE`, `KLAVIYO_PRIVATE_API_KEY`, credentials Admin API), commandes,
+  déploiement. Plus aucune mention assurance.
+- `.env.local.example` : ajout de `SHOPIFY_ADMIN_CLIENT_ID` /
+  `SHOPIFY_ADMIN_CLIENT_SECRET` (requis par l'estimation, absents du modèle) ;
+  retrait de `NEXT_PUBLIC_APP_URL` (inutilisée dans le code).
+
 ### Évolution — Kit en cartes composants + tooltips finition contextualisés
 
 #### Modifié

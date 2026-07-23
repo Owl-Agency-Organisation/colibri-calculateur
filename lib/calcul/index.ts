@@ -65,6 +65,25 @@ export const KIT_HANDLES = {
   grandeSurface: 'kit-materiel-de-peinture-moyenne-et-grande-surface-1',
 };
 
+/**
+ * Sélectionne le variant d'un produit kit (bundle Shopify à variant unique).
+ * Verrou : les kits n'ont qu'un seul variant par construction. Si la boutique
+ * en ajoutait un deuxième (nouvelle déclinaison), la sélection deviendrait
+ * ambiguë — on le signale bruyamment dans les logs plutôt que de choisir en
+ * silence. Utilisé par le calcul du prix ET le mapping panier, pour que le
+ * prix affiché et la ligne envoyée à Shopify ne divergent jamais.
+ */
+export function selectionnerVariantKit<T>(variants: T[] | undefined | null): T | undefined {
+  if (!variants || variants.length === 0) return undefined;
+  if (variants.length > 1) {
+    console.error(
+      `Kit bundle : ${variants.length} variants détectés alors qu'un seul est attendu — ` +
+        'vérifier la fiche produit boutique (le premier variant est retenu par défaut).'
+    );
+  }
+  return variants[0];
+}
+
 // Handles des sous-couches sur Shopify
 export const SOUS_COUCHE_HANDLES = {
   blanche: 'sous-couche-blanche-peinture-biosourcee-murs-et-plafonds',
@@ -332,8 +351,8 @@ export function calculerQuantites(pieces: Piece[], shopifyData?: Record<string, 
 
   const kitType = surfaceTotale <= SEUIL_SURFACE_KIT ? 'petite' : 'grande';
   const kitHandle = surfaceTotale <= SEUIL_SURFACE_KIT ? KIT_HANDLES.petiteSurface : KIT_HANDLES.grandeSurface;
-  const kitVariants = shopifyData?.[kitHandle]?.variants || [];
-  const kitPrix = kitVariants.length > 0 ? parseFloat(kitVariants[0].price.amount || kitVariants[0].price) : 0;
+  const kitVariant = selectionnerVariantKit<any>(shopifyData?.[kitHandle]?.variants);
+  const kitPrix = kitVariant ? parseFloat(kitVariant.price.amount || kitVariant.price) : 0;
   
   const kit: CalculKit = {
     type: kitType,
@@ -365,8 +384,11 @@ export function calculerQuantites(pieces: Piece[], shopifyData?: Record<string, 
 /**
  * Agrège les surfaces par couleur unique
  * Supporte le nouveau modèle multi-murs avec agrégation automatique
+ * (exportée pour les tests : la clé d'agrégation productHandle+finition est
+ * un invariant critique — deux finitions d'un même produit ne doivent JAMAIS
+ * être fusionnées, leurs prix diffèrent)
  */
-function agregerSurfacesParCouleur(pieces: Piece[]): SurfaceParCouleur[] {
+export function agregerSurfacesParCouleur(pieces: Piece[]): SurfaceParCouleur[] {
   const map = new Map<string, SurfaceParCouleur>();
 
   for (const piece of pieces) {

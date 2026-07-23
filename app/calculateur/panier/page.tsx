@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { track } from '@vercel/analytics';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StepIndicator, CALCULATEUR_STEPS } from '@/components/ui/StepIndicator';
@@ -74,6 +75,9 @@ export default function PanierPage() {
     setClient(storedClient);
     setPieces(storedPieces);
     setResultat(JSON.parse(storedCalcul));
+
+    // Événement anonyme : l'utilisateur a atteint le panier
+    track('panier_atteint');
     
     if (storedOptions) {
       setOptions(JSON.parse(storedOptions));
@@ -256,6 +260,7 @@ export default function PanierPage() {
       setError('Panier non disponible. Merci de recharger la page.');
       return;
     }
+    track('sortie_choisie', { sortie: 'checkout' });
     setIsProcessing(true);
     window.location.href = cart.checkoutUrl;
   }
@@ -269,6 +274,7 @@ export default function PanierPage() {
       return;
     }
 
+    track('sortie_choisie', { sortie: 'permalink' });
     setIsProcessing(true);
     setError(null);
 
@@ -296,6 +302,7 @@ export default function PanierPage() {
   // Sortie 3 — "✉️ Recevoir mon estimation par e-mail" : la modale collecte les
   // coordonnées et appelle la route serveur (client + draft order remisé + invoice).
   function handleEstimationSuccess() {
+    track('sortie_choisie', { sortie: 'estimation' });
     setShowEstimationModal(false);
     router.push('/calculateur/confirmation');
   }

@@ -7,7 +7,7 @@
 
 import type { CartLineInput } from './shopify-cart';
 import type { ResultatCalcul, CalculPeinture, CalculSousCouche } from './calcul';
-import { selectionnerVariantGammeStandard } from './calcul';
+import { selectionnerVariantGammeStandard, selectionnerVariantKit } from './calcul';
 
 /**
  * Interface pour les options de panier
@@ -183,13 +183,14 @@ function mapKitToCartLines(
   shopifyData: Record<string, ShopifyProductData>
 ): CartLineInput[] {
   const productData = shopifyData[kit.handle];
+  // Même verrou de sélection que le calcul du prix (`selectionnerVariantKit`) :
+  // prix affiché et ligne panier ne divergent jamais.
+  const variant = selectionnerVariantKit(productData?.variants);
 
-  if (!productData || !productData.variants || productData.variants.length === 0) {
+  if (!variant) {
     console.error(`Kit non trouvé: ${kit.handle}`);
     return [];
   }
-
-  const variant = productData.variants[0];
 
   return [{
     merchandiseId: variant.id,
