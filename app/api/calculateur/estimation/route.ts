@@ -5,6 +5,7 @@ import {
   subscribeCustomerEmailMarketing,
 } from '@/lib/shopify-customers';
 import { createDraftOrder, sendDraftOrderInvoice } from '@/lib/shopify-draft-orders';
+import { sendKlaviyoEvent } from '@/lib/klaviyo';
 import { isValidEmail, isValidPhone } from '@/lib/utils';
 import { normalizeFrenchPhone } from '@/lib/utils/phone';
 
@@ -74,6 +75,14 @@ interface EstimationRequestBody {
   telephone?: string;
   consentementMarketing?: boolean;
   lineItems?: Array<{ variantId?: string; quantity?: number }>;
+  // Contexte projet (affiché dans les relances Klaviyo) — informatif, optionnel
+  projet?: { surfaceTotale?: number; nombrePieces?: number };
+}
+
+// Nombre fini et positif, sinon undefined (les données projet viennent du client :
+// informatives pour les templates Klaviyo, jamais utilisées pour un prix)
+function nombrePositifOuUndefined(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
 export async function POST(request: NextRequest) {
@@ -193,6 +202,46 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // 4. Événement Klaviyo "Estimation calculateur demandée" — déclenche les
+    // relances sur un événement précis (et transporte le lien de paiement du
+    // devis) plutôt que sur l'appartenance à une liste. FAIL-SOFT ABSOLU :
+    // l'estimation est déjà partie (draft order + e-mail), un incident Klaviyo
+    // ne doit jamais faire échouer la réponse — sendKlaviyoEvent logge et rend
+    // false, on ignore le retour.
+    // Montants ancrés sur le draft order Shopify (source de vérité) :
+    // total_ttc = total remisé facturé, total_avant_remise = somme catalogue.
+    const totalTtc = Math.round(parseFloat(draftOrder.totalPrice) * 100) / 100;
+    const totalAvantRemise =
+      Math.round(
+        draftOrder.lineItems.edges.reduce(
+          (sum, { node }) => sum + parseFloat(node.originalUnitPrice) * node.quantity,
+          0
+        ) * 100
+      ) / 100;
+
+    await sendKlaviyoEvent({
+      metricName: 'Estimation calculateur demandée',
+      profile: { email, firstName: prenom, lastName: nom },
+      properties: {
+        invoice_url: draftOrder.invoiceUrl,
+        total_ttc: totalTtc,
+        total_avant_remise: totalAvantRemise,
+        remise: Math.round((totalAvantRemise - totalTtc) * 100) / 100,
+        surface_totale: nombrePositifOuUndefined(body.projet?.surfaceTotale),
+        nombre_pieces: nombrePositifOuUndefined(body.projet?.nombrePieces),
+        line_items: draftOrder.lineItems.edges.map(({ node }) => ({
+          libelle: node.title,
+          quantite: node.quantity,
+          prix_unitaire: Math.round(parseFloat(node.originalUnitPrice) * 100) / 100,
+        })),
+        draft_order_id: draftOrder.id,
+        consentement_marketing: consentementMarketing,
+      },
+      value: totalTtc,
+      // Déduplication : un retry sur le même draft order ne compte qu'un événement
+      uniqueId: draftOrder.id,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

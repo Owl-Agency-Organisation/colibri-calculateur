@@ -154,6 +154,13 @@ Contenus :
       Récapitulatif : règle factuelle (velours pièces de vie/chambres, satin
       pièces d'eau, mat plafonds sauf salle de bains), renvoi au 05 62 14 16 46,
       aucune promesse de personnalisation
+- [x] (Évolution 23/07, branche `feat/klaviyo-event`) Événement Klaviyo
+      `Estimation calculateur demandée` envoyé par la route estimation après
+      création du draft order : relances déclenchées sur événement (et non sur
+      l'appartenance à une liste), `invoice_url` transportée comme lien de
+      finalisation. Fail-soft absolu (timeout 5 s, log seul en cas d'échec),
+      clé `KLAVIYO_PRIVATE_API_KEY` serveur uniquement, envoi ignoré avec
+      warning si la clé est absente (previews sans clé fonctionnels)
 
 ## Phase 5 — Qualité & mise en prod (branche : `test/phase-5-qualite`)
 
