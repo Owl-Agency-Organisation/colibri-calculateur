@@ -107,13 +107,19 @@ Contenus :
 
 ## Phase 3 — Kits tout-ou-rien dynamiques (branche : `feat/phase-3-kits`)
 
-- [ ] `KIT_HANDLES` → `kit-peinture-petite-surface` et
+- [x] `KIT_HANDLES` → `kit-peinture-petite-surface` et
       `kit-materiel-de-peinture-moyenne-et-grande-surface-1`
-- [ ] `lib/kits-config.ts` : supprimer prix et contenu hardcodés ; prix + contenu
-      chargés via Storefront API (description produit)
-- [ ] UI : case unique cocher/décocher ; contenu informatif non modifiable ;
-      supprimer la personnalisation par élément et le bouton "Réinitialiser le kit"
-- [ ] Seuils conservés : petite surface ≤ 30 m², moyenne/grande > 30 m²
+      — déjà corrects dans `lib/calcul/index.ts` ; vérifiés et conservés
+- [x] `lib/kits-config.ts` : supprimé prix et contenu (composants) hardcodés ; le kit
+      est désormais ajouté au panier comme une ligne Shopify unique au prix bundle
+      (`lib/cart-mapper.ts`, `mapKitToCartLines`) ; le contenu informatif provient de
+      la description du produit Shopify (`app/api/shopify/products/variants/route.ts`
+      expose désormais `description`)
+- [x] UI : case unique cocher/décocher (`app/calculateur/options/page.tsx`) ; contenu
+      informatif non modifiable ; personnalisation par élément et bouton
+      "Réinitialiser le kit" supprimés
+- [x] Seuils conservés : petite surface ≤ 30 m², moyenne/grande > 30 m²
+      (`determinerKit` dans `lib/kits-config.ts`)
 
 ## Phase 4 — Tunnel réordonné + triple sortie (branche : `feat/phase-4-tunnel`)
 

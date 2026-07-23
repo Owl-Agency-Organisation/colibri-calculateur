@@ -7,6 +7,43 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Phase 3 — Kits tout-ou-rien dynamiques
+
+#### Modifié
+- **Kit matériel traité comme un produit Shopify unique** : `lib/cart-mapper.ts`
+  (`mapKitToCartLines`) ajoute désormais **une seule ligne de panier** au prix bundle
+  du produit Shopify (`kit-peinture-petite-surface` ou
+  `kit-materiel-de-peinture-moyenne-et-grande-surface-1`), au lieu d'ajouter chaque
+  composant individuellement. Le prix bundle étant inférieur à la somme des
+  composants, sommer les composants aurait affiché un total supérieur au prix
+  réellement facturé au checkout.
+- **`lib/kits-config.ts`** : suppression de tous les prix et contenus (composants)
+  codés en dur. Ne reste que la référence locale handle/titre/seuil ; le prix vient
+  de la Storefront API (déjà le cas via `lib/calcul/index.ts`), le contenu affiché
+  vient de la description du produit Shopify.
+- **`app/api/shopify/products/variants/route.ts`** : expose désormais le champ
+  `description` du produit (déjà récupéré par `lib/shopify.ts`) pour permettre
+  l'affichage du contenu du kit à titre informatif.
+- **UI tout-ou-rien (`app/calculateur/options/page.tsx`)** : une seule case à cocher
+  pour inclure le kit. Le contenu (issu de la description Shopify) est affiché à
+  titre informatif, non modifiable. Suppression de la personnalisation par élément
+  (croix par ligne) et du bouton « Réinitialiser le kit ».
+- **`app/calculateur/panier/page.tsx`** : le titre et le sous-total du kit
+  proviennent directement de `resultat.kit` (calcul métier) plutôt que d'une
+  reconstruction à partir des composants présents dans le panier.
+
+#### Supprimé
+- Code mort lié à la personnalisation du kit par composant : état `composantsKit`,
+  handlers `supprimerComposantKit` / `reinitialiserKit`, type `ComposantKit`,
+  fonction `findVariantByFilter` (`lib/cart-mapper.ts`), `calculerPrixKit`
+  (`lib/kits-config.ts`).
+
+#### Notes
+- Seuils de recommandation inchangés : kit petite surface ≤ 30 m², kit moyenne et
+  grande surface > 30 m² (`determinerKit`).
+- La remise -15% s'applique au kit comme au reste du panier (ligne Shopify standard,
+  soumise au même code promo que les autres lignes).
+
 ### Phase 2 — Remise réelle 15% + prix boutique
 
 #### Ajouté
