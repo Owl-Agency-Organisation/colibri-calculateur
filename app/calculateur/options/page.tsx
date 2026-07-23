@@ -79,7 +79,10 @@ export default function OptionsPage() {
       
       try {
         await Promise.all(Array.from(handles).map(async (handle) => {
-          const res = await fetch(`/api/shopify/products/variants?handle=${handle}`);
+          // Pour le kit : charger aussi les composants du bundle Shopify
+          // ("Produits en lot") pour l'affichage en cartes
+          const bundleParam = handle === kitConfig.handle ? '&bundle=1' : '';
+          const res = await fetch(`/api/shopify/products/variants?handle=${handle}${bundleParam}`);
           if (res.ok) {
             const data = await res.json();
             shopifyData[handle] = data;
@@ -257,9 +260,53 @@ export default function OptionsPage() {
             </div>
 
             {optionKit && (
-              <div className="pt-2 border-t border-gray-200">
+              <div className="space-y-2 pt-2 border-t border-gray-200">
                 {(() => {
                   const kitProductData = shopifyData[kitConfig.handle];
+                  const composants: Array<{
+                    id: string;
+                    titre: string;
+                    quantite: number;
+                    imageUrl?: string;
+                    imageAlt?: string;
+                  }> = Array.isArray(kitProductData?.bundleComponents)
+                    ? kitProductData.bundleComponents
+                    : [];
+
+                  // Cas nominal : composants du bundle Shopify en cartes
+                  // (même style que les produits de préparation, sans croix
+                  // de suppression — le kit est tout-ou-rien)
+                  if (composants.length > 0) {
+                    return composants.map((composant) => (
+                      <div
+                        key={composant.id}
+                        className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg"
+                      >
+                        {composant.imageUrl ? (
+                          <img
+                            src={composant.imageUrl}
+                            alt={composant.imageAlt || composant.titre}
+                            className="w-12 h-12 object-cover rounded"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center">
+                            <span className="text-xl">🧰</span>
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{composant.titre}</p>
+                        </div>
+                        {composant.quantite > 1 && (
+                          <span className="text-sm font-medium text-gray-500">
+                            ×{composant.quantite}
+                          </span>
+                        )}
+                      </div>
+                    ));
+                  }
+
+                  // Fallback (composants indisponibles : API, bundle vide) :
+                  // description produit — l'affichage n'est jamais cassé
                   const imageUrl = kitProductData?.featuredImage?.url;
                   const contenu = (kitProductData?.description || '')
                     .split('\n')
@@ -290,13 +337,13 @@ export default function OptionsPage() {
                         ) : (
                           <p className="mt-1 text-sm text-gray-500">Contenu détaillé sur la fiche produit.</p>
                         )}
-                        <p className="mt-2 text-xs text-gray-500">
-                          Contenu à titre informatif — non modifiable (produit boutique unique).
-                        </p>
                       </div>
                     </div>
                   );
                 })()}
+                <p className="text-xs text-gray-500">
+                  Contenu inclus dans le kit — non modifiable.
+                </p>
               </div>
             )}
           </div>

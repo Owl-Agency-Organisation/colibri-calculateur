@@ -7,6 +7,34 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Évolution — Kit en cartes composants + tooltips finition contextualisés
+
+#### Modifié
+- **Contenu du kit affiché en cartes composants** (page Options) : les kits
+  étant des bundles Shopify natifs ("Produits en lot"), leurs composants sont
+  chargés via la Storefront API (`ProductVariant.components`, disponible depuis
+  la version 2024-07 — notre version 2025-01 le supporte, vérifié contre le
+  schéma officiel) et affichés en cartes vignette + libellé, même style que les
+  produits de préparation des surfaces, sans croix de suppression (tout-ou-rien
+  conservé). Quantité affichée quand elle dépasse 1 (`×N`). Aucun prix par
+  composant : seul le prix bundle existe. **Fallback** : si les composants ne
+  remontent pas (API, bundle vide), la description produit s'affiche comme
+  avant — l'affichage n'est jamais cassé. Mention conservée : « Contenu inclus
+  dans le kit — non modifiable ».
+- **`app/api/shopify/products/variants`** : paramètre optionnel `bundle=1`
+  déclenchant une requête séparée des composants du bundle (les produits
+  peinture, jusqu'à 50 variants, ne sont pas alourdis).
+- **Tooltips finition contextualisés** : le texte générique unique est remplacé
+  par quatre messages courts propres au contexte (murs velours pièces sèches,
+  murs satin pièces humides, plafond mat, plafond satin salle de bains),
+  centralisés dans `FINITION_TOOLTIPS` + `getFinitionTooltip()`
+  (`components/ui/InfoTooltip.tsx`), dérivés de `REGLES_FINITION` (source de
+  vérité unique). Numéro de téléphone retiré (déjà dans le header).
+- **Positionnement du tooltip corrigé sur mobile** : position `fixed` calculée
+  et bornée au viewport (plus de débordement masquant le champ de saisie) ;
+  au-dessus de l'icône par défaut, bascule en dessous si la place manque,
+  fermeture au scroll.
+
 ### Évolution — Événement Klaviyo sur estimation
 
 #### Ajouté

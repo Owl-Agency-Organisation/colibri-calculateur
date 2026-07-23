@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { StepIndicator, CALCULATEUR_STEPS } from '@/components/ui/StepIndicator';
 import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { CouleurModal } from '@/components/modals/CouleurModal';
-import { InfoTooltip, TOOLTIP_FINITION } from '@/components/ui/InfoTooltip';
+import { InfoTooltip, getFinitionTooltip } from '@/components/ui/InfoTooltip';
 import { getStoredPieces, setStoredPieces } from '@/lib/store/projetStore';
 import type { Piece, Couleur, TypePiece, Mur } from '@/lib/types';
 import { REGLES_FINITION } from '@/lib/calcul';
@@ -303,7 +303,7 @@ export default function SaisieSurfacesPage() {
                             <span className="px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 text-[10px] font-bold uppercase tracking-wider">
                               {mur.couleur?.finition || REGLES_FINITION[typePiece]?.murs}
                             </span>
-                            <InfoTooltip text={TOOLTIP_FINITION} ariaLabel="Pourquoi cette finition ?" />
+                            <InfoTooltip text={getFinitionTooltip('murs', typePiece)} ariaLabel="Pourquoi cette finition ?" />
                           </>
                         )}
                       </div>
@@ -393,7 +393,7 @@ export default function SaisieSurfacesPage() {
                     <span className="px-2 py-0.5 rounded-full bg-gray-200 text-gray-700 text-[10px] font-bold uppercase tracking-wider">
                       {couleurPlafond?.finition || REGLES_FINITION[typePiece]?.plafond}
                     </span>
-                    <InfoTooltip text={TOOLTIP_FINITION} ariaLabel="Pourquoi cette finition ?" />
+                    <InfoTooltip text={getFinitionTooltip('plafond', typePiece)} ariaLabel="Pourquoi cette finition ?" />
                   </>
                 )}
               </div>
