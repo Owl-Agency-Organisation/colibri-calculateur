@@ -7,7 +7,7 @@
 
 import type { CartLineInput } from './shopify-cart';
 import type { ResultatCalcul, CalculPeinture, CalculSousCouche } from './calcul';
-import { selectionnerVariantGammeStandard, selectionnerVariantKit } from './calcul';
+import { selectionnerVariantContenance, selectionnerVariantKit } from './calcul';
 
 /**
  * Interface pour les options de panier
@@ -58,29 +58,17 @@ export const PRODUITS_RENOVATION = [
 ];
 
 /**
- * Trouve le variant Shopify correspondant à une contenance et une finition
+ * Trouve le variant Shopify correspondant à une contenance et une finition.
+ * Délègue à la voie de sélection UNIQUE (`selectionnerVariantContenance`),
+ * partagée avec la table de prix de l'optimiseur de contenants et le prix
+ * affiché : le produit mis au panier ne peut pas diverger du prix montré.
  */
 function findVariant(
   variants: ShopifyProductData['variants'],
   contenance: string,
   finition?: string
 ): ShopifyProductData['variants'][0] | undefined {
-  if (!variants || variants.length === 0) return undefined;
-
-  // Chercher avec contenance + finition, puis verrouiller la gamme standard (Biosourcée)
-  // parmi les candidats — même logique que `calculerPrixTotal` pour que le prix envoyé
-  // à Shopify ne diverge jamais du prix affiché.
-  if (finition) {
-    const candidats = variants.filter(v => {
-      const title = (v.title || '').toLowerCase();
-      return title.includes(contenance.toLowerCase()) && title.includes(finition.toLowerCase());
-    });
-    const variant = selectionnerVariantGammeStandard(candidats);
-    if (variant) return variant;
-  }
-
-  // Fallback : chercher uniquement avec la contenance
-  return variants.find(v => (v.title || '').toLowerCase().includes(contenance.toLowerCase()));
+  return selectionnerVariantContenance(variants, contenance, finition);
 }
 
 /**
@@ -101,7 +89,7 @@ function mapPeinturesToCartLines(
     }
 
     // Pour chaque contenant calculé
-    peinture.contenants.forEach((contenant) => {
+    peinture.contenants.forEach((contenant, index) => {
       const variant = findVariant(
         productData.variants,
         contenant.contenance,
@@ -125,6 +113,11 @@ function mapPeinturesToCartLines(
           { key: '_surface_originale', value: `${peinture.surfaceTotale.toFixed(1)}` },
           { key: '_surface_display', value: `${peinture.surfaceTotale.toFixed(1)}m²` },
           { key: '_contenance', value: contenant.contenance },
+          // Justification affichée au panier quand la composition dépasse le
+          // besoin par choix de prix (portée par la première ligne seulement)
+          ...(index === 0 && peinture.justification
+            ? [{ key: '_justification', value: peinture.justification }]
+            : []),
         ],
       });
     });
@@ -150,7 +143,7 @@ function mapSousCouchesToCartLines(
       return;
     }
 
-    sousCouche.contenants.forEach((contenant) => {
+    sousCouche.contenants.forEach((contenant, index) => {
       const variant = findVariant(productData.variants, contenant.contenance);
 
       if (!variant) {
@@ -165,6 +158,9 @@ function mapSousCouchesToCartLines(
           { key: '_type', value: 'sous-couche' },
           { key: '_sous_couche_type', value: sousCouche.type },
           { key: '_contenance', value: contenant.contenance },
+          ...(index === 0 && sousCouche.justification
+            ? [{ key: '_justification', value: sousCouche.justification }]
+            : []),
         ],
       });
     });
