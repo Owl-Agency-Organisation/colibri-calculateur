@@ -32,9 +32,8 @@ export default function OptionsPage() {
   const [optionKit, setOptionKit] = useState(true); // ✅ Kit coché par défaut
   const [optionRenovation, setOptionRenovation] = useState(false);
   const [shopifyData, setShopifyData] = useState<Record<string, any>>({});
-  
-  // États pour la gestion des composants sélectionnés
-  const [composantsKit, setComposantsKit] = useState<string[]>([]);
+
+  // États pour la gestion des produits de rénovation sélectionnés
   const [produitsRenovation, setProduitsRenovation] = useState<string[]>([]);
 
   useEffect(() => {
@@ -66,13 +65,11 @@ export default function OptionsPage() {
       handles.add('sous-couche-blanche-peinture-biosourcee-murs-et-plafonds');
       handles.add('sous-couche-grise-peinture-biosourcee-murs-et-plafonds');
       
-      // Ajouter les composants des kits selon la surface
+      // Ajouter le kit recommandé selon la surface (produit unique, prix bundle)
       const kitType = determinerKit(surfaceTotale);
       const kitConfig = KITS_CONFIG[kitType];
-      kitConfig.composants.forEach(composant => {
-        handles.add(composant.handle);
-      });
-      
+      handles.add(kitConfig.handle);
+
       // Ajouter les produits de rénovation
       PRODUITS_RENOVATION.forEach(p => handles.add(p.handle));
 
@@ -118,18 +115,10 @@ export default function OptionsPage() {
       const savedOptions = localStorage.getItem(STORAGE_KEYS.OPTIONS);
       if (savedOptions) {
         const parsed = JSON.parse(savedOptions);
-        
+
         setOptionKit(parsed.kit ?? true); // ✅ Default true si undefined
         setOptionRenovation(parsed.renovation ?? false);
-        
-        // Charger les composants sélectionnés
-        if (parsed.composantsKit) {
-          setComposantsKit(parsed.composantsKit);
-        } else if (parsed.kit ?? true) {
-          // Si pas de composants sauvegardés mais kit activé, initialiser avec tous les composants
-          setComposantsKit(kitConfig.composants.map(c => c.handle));
-        }
-        
+
         if (parsed.produitsRenovation) {
           setProduitsRenovation(parsed.produitsRenovation);
         } else if (parsed.renovation) {
@@ -137,11 +126,10 @@ export default function OptionsPage() {
           setProduitsRenovation(PRODUITS_RENOVATION.map(p => p.handle));
         }
       } else {
-        // ✅ NOUVEAU : Initialiser par défaut avec le kit activé et complet
+        // ✅ NOUVEAU : Initialiser par défaut avec le kit activé
         setOptionKit(true);
-        setComposantsKit(kitConfig.composants.map(c => c.handle));
         // Sauvegarder immédiatement
-        saveOptions(true, false, kitConfig.composants.map(c => c.handle), []);
+        saveOptions(true, false, []);
       }
 
       // 6. Sauvegarder le calcul et les données Shopify dans localStorage
@@ -154,12 +142,11 @@ export default function OptionsPage() {
     init();
   }, [router]);
 
-  const saveOptions = (kit: boolean, renovation: boolean, composants?: string[], produits?: string[]) => {
+  const saveOptions = (kit: boolean, renovation: boolean, produits?: string[]) => {
     localStorage.setItem(STORAGE_KEYS.OPTIONS, JSON.stringify({
       sousCouche: true, // Toujours true car obligatoire
       kit,
       renovation,
-      composantsKit: composants || composantsKit,
       produitsRenovation: produits || produitsRenovation,
     }));
   };
@@ -167,56 +154,28 @@ export default function OptionsPage() {
   const handleOptionChange = (option: 'kit' | 'renovation', value: boolean) => {
     if (option === 'kit') {
       setOptionKit(value);
-      if (value && resultat) {
-        // Initialiser avec tous les composants du kit
-        const kitType = determinerKit(resultat.surfaceTotale);
-        const handles = KITS_CONFIG[kitType].composants.map(c => c.handle);
-        setComposantsKit(handles);
-        saveOptions(value, optionRenovation, handles, produitsRenovation);
-      } else {
-        saveOptions(value, optionRenovation, [], produitsRenovation);
-      }
+      saveOptions(value, optionRenovation, produitsRenovation);
+      // Forcer recréation du panier pour refléter l'ajout/retrait du kit
+      localStorage.removeItem('SHOPIFY_CART_ID');
+      localStorage.removeItem('SHOPIFY_CART_DATA_HASH');
     } else if (option === 'renovation') {
       setOptionRenovation(value);
       if (value) {
         // Initialiser avec tous les produits de rénovation
         const handles = PRODUITS_RENOVATION.map(p => p.handle);
         setProduitsRenovation(handles);
-        saveOptions(optionKit, value, composantsKit, handles);
+        saveOptions(optionKit, value, handles);
       } else {
-        saveOptions(optionKit, value, composantsKit, []);
+        saveOptions(optionKit, value, []);
       }
     }
-  };
-
-  const supprimerComposantKit = (handle: string) => {
-    const nouveauxComposants = composantsKit.filter(h => h !== handle);
-    setComposantsKit(nouveauxComposants);
-    saveOptions(optionKit, optionRenovation, nouveauxComposants, produitsRenovation);
-    
-    // Forcer recréation du panier
-    localStorage.removeItem('SHOPIFY_CART_ID');
-    localStorage.removeItem('SHOPIFY_CART_DATA_HASH');
-  };
-
-  const reinitialiserKit = () => {
-    if (!resultat) return;
-    const kitType = determinerKit(resultat.surfaceTotale);
-    const handles = KITS_CONFIG[kitType].composants.map(c => c.handle);
-    setComposantsKit(handles);
-    setOptionKit(true);
-    saveOptions(true, optionRenovation, handles, produitsRenovation);
-    
-    // Forcer recréation du panier
-    localStorage.removeItem('SHOPIFY_CART_ID');
-    localStorage.removeItem('SHOPIFY_CART_DATA_HASH');
   };
 
   const supprimerProduitRenovation = (handle: string) => {
     const nouveauxProduits = produitsRenovation.filter(h => h !== handle);
     setProduitsRenovation(nouveauxProduits);
-    saveOptions(optionKit, optionRenovation, composantsKit, nouveauxProduits);
-    
+    saveOptions(optionKit, optionRenovation, nouveauxProduits);
+
     // Forcer recréation du panier
     localStorage.removeItem('SHOPIFY_CART_ID');
     localStorage.removeItem('SHOPIFY_CART_DATA_HASH');
@@ -226,8 +185,8 @@ export default function OptionsPage() {
     const handles = PRODUITS_RENOVATION.map(p => p.handle);
     setProduitsRenovation(handles);
     setOptionRenovation(true);
-    saveOptions(optionKit, true, composantsKit, handles);
-    
+    saveOptions(optionKit, true, handles);
+
     // Forcer recréation du panier
     localStorage.removeItem('SHOPIFY_CART_ID');
     localStorage.removeItem('SHOPIFY_CART_DATA_HASH');
@@ -272,7 +231,7 @@ export default function OptionsPage() {
         </p>
       </div>
 
-      {/* Kit matériel */}
+      {/* Kit matériel — tout-ou-rien : un seul produit boutique, contenu informatif */}
       <Card>
         <CardHeader>
           <CardTitle>Kit matériel</CardTitle>
@@ -298,56 +257,46 @@ export default function OptionsPage() {
             </div>
 
             {optionKit && (
-              <div className="space-y-2 pt-2 border-t border-gray-200">
-                {/* Liste des composants */}
-                {kitConfig.composants
-                  .filter(c => composantsKit.includes(c.handle))
-                  .map((composant) => {
-                    const productData = shopifyData[composant.handle];
-                    const imageUrl = productData?.featuredImage?.url;
-                    
-                    return (
-                      <div key={composant.handle} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
-                        {/* Image */}
-                        {imageUrl ? (
-                          <img
-                            src={imageUrl}
-                            alt={composant.nom}
-                            className="w-12 h-12 object-cover rounded"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center">
-                            <span className="text-xl">🧰</span>
-                          </div>
-                        )}
-                        
-                        {/* Nom */}
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">{composant.nom}</p>
-                        </div>
-                        
-                        {/* Bouton supprimer */}
-                        <button
-                          onClick={() => supprimerComposantKit(composant.handle)}
-                          className="text-gray-400 hover:text-red-600 transition-colors"
-                          aria-label="Supprimer"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    );
-                  })}
+              <div className="pt-2 border-t border-gray-200">
+                {(() => {
+                  const kitProductData = shopifyData[kitConfig.handle];
+                  const imageUrl = kitProductData?.featuredImage?.url;
+                  const contenu = (kitProductData?.description || '')
+                    .split('\n')
+                    .map((ligne: string) => ligne.trim())
+                    .filter(Boolean);
 
-                {/* Bouton réinitialiser */}
-                <div className="pt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={reinitialiserKit}
-                  >
-                    Réinitialiser le kit
-                  </Button>
-                </div>
+                  return (
+                    <div className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg">
+                      {imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt={kitConfig.titre}
+                          className="w-12 h-12 object-cover rounded flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center flex-shrink-0">
+                          <span className="text-xl">🧰</span>
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">{kitConfig.titre}</p>
+                        {contenu.length > 0 ? (
+                          <ul className="mt-1 text-sm text-gray-600 list-disc list-inside">
+                            {contenu.map((ligne: string, i: number) => (
+                              <li key={i}>{ligne}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-1 text-sm text-gray-500">Contenu détaillé sur la fiche produit.</p>
+                        )}
+                        <p className="mt-2 text-xs text-gray-500">
+                          Contenu à titre informatif — non modifiable (produit boutique unique).
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>

@@ -29,10 +29,11 @@ export async function GET(request: Request) {
       selectedOptions: edge.node.selectedOptions,
     }));
     
-    return NextResponse.json({ 
+    return NextResponse.json({
       id: product.id,
       handle: product.handle,
       title: product.title,
+      description: product.description,
       variants,
       featuredImage: product.featuredImage ? {
         url: product.featuredImage.url,

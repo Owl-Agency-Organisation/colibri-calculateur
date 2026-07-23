@@ -10,7 +10,6 @@ import { getStoredPieces, getStoredClient, STORAGE_KEYS } from '@/lib/store/proj
 import { removeCartLines, getCart, updateCartBuyerIdentity, type ShopifyCart, type CartLineNode, type UserData } from '@/lib/shopify-cart';
 import { normalizeFrenchPhone } from '@/lib/utils/phone';
 import { mapCalculToCartLines, canRemoveLine, getLineType, PRODUITS_RENOVATION } from '@/lib/cart-mapper';
-import { determinerKit, KITS_CONFIG } from '@/lib/kits-config';
 import type { ResultatCalcul } from '@/lib/calcul';
 import type { Piece, Client } from '@/lib/types';
 
@@ -211,16 +210,8 @@ export default function PanierPage() {
           const options = JSON.parse(savedOptions);
           
           if (lineType === 'kit') {
-            // Retirer le composant de la liste des composants kit
-            const composantHandle = attributes.find(a => a.key === '_composant')?.value || attributes.find(a => a.key === 'composant')?.value;
-            if (composantHandle && options.composantsKit) {
-              options.composantsKit = options.composantsKit.filter((h: string) => h !== composantHandle);
-              
-              // Si tous les composants sont supprimés, décocher l'option kit
-              if (options.composantsKit.length === 0) {
-                options.kit = false;
-              }
-            }
+            // Le kit est une ligne unique (tout-ou-rien) : la supprimer décoche l'option
+            options.kit = false;
           } else if (lineType === 'renovation') {
             // Retirer le produit de la liste des produits rénovation
             const produitHandle = attributes.find(a => a.key === '_produit')?.value || attributes.find(a => a.key === 'produit')?.value;
@@ -474,30 +465,11 @@ export default function PanierPage() {
     else if (type === 'renovation') lignesParType.renovation.push(node);
   });
 
-  // Vérifier si tous les composants du kit sont présents
-  const kitType = lignesParType.kit.length > 0
-    ? (lignesParType.kit[0].attributes.find(a => a.key === '_kit_type')?.value || lignesParType.kit[0].attributes.find(a => a.key === 'kit_type')?.value)
-    : null;
-
-  let estKitComplet = false;
-  let titreKit = '🧰 Matériel sélectionné';
-
-  if (kitType && resultat) {
-    const kitConfig = KITS_CONFIG[kitType as keyof typeof KITS_CONFIG];
-    if (kitConfig) {
-      const composantsPresents = lignesParType.kit.map(node =>
-(node.attributes.find(a => a.key === '_composant')?.value || node.attributes.find(a => a.key === 'composant')?.value)
-      );
-
-      estKitComplet = kitConfig.composants.every(c =>
-        composantsPresents.includes(c.handle)
-      );
-
-      if (estKitComplet) {
-        titreKit = `🧰 ${kitConfig.titre}`;
-      }
-    }
-  }
+  // Le kit est une ligne unique (produit bundle tout-ou-rien) : le titre vient
+  // directement du résultat de calcul, jamais d'une reconstruction par composants.
+  const titreKit = lignesParType.kit.length > 0 && resultat
+    ? `🧰 ${resultat.kit.titre}`
+    : '🧰 Matériel sélectionné';
 
   // Composant pour afficher une ligne produit
   const LigneProductJSX = ({ node }: { node: CartLineNode }) => {
@@ -734,11 +706,7 @@ export default function PanierPage() {
                 <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
                   <h3 className="font-semibold text-lg flex items-center gap-2">
                     {titreKit}
-                    <span className="ml-2 text-sm text-gray-500">({lignesParType.kit.length})</span>
                   </h3>
-                  {estKitComplet && (
-                    <span className="text-xs text-green-600 font-medium">✓ Kit complet</span>
-                  )}
                 </div>
                 <div className="divide-y divide-gray-200">
                   {lignesParType.kit.map((node) => (

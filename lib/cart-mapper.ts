@@ -6,9 +6,8 @@
  */
 
 import type { CartLineInput } from './shopify-cart';
-import type { ResultatCalcul, CalculPeinture, CalculSousCouche, CalculKit } from './calcul';
+import type { ResultatCalcul, CalculPeinture, CalculSousCouche } from './calcul';
 import { selectionnerVariantGammeStandard } from './calcul';
-import { determinerKit, KITS_CONFIG, type ComposantKit } from './kits-config';
 
 /**
  * Interface pour les options de panier
@@ -17,7 +16,6 @@ export interface CartOptions {
   sousCouche: boolean;
   kit: boolean;
   renovation: boolean;
-  composantsKit?: string[];
   produitsRenovation?: string[];
 }
 
@@ -28,6 +26,7 @@ export interface ShopifyProductData {
   id: string;
   handle: string;
   title: string;
+  description?: string;
   variants: Array<{
     id: string;
     title: string;
@@ -175,80 +174,31 @@ function mapSousCouchesToCartLines(
 }
 
 /**
- * Trouve un variant Shopify en utilisant un filtre optionnel sur les selectedOptions
- */
-function findVariantByFilter(
-  variants: ShopifyProductData['variants'],
-  filter?: ComposantKit['variantFilter']
-): ShopifyProductData['variants'][0] | undefined {
-  if (!variants || variants.length === 0) return undefined;
-
-  // Si un filtre est défini, chercher le variant correspondant
-  if (filter) {
-    const variant = variants.find(v =>
-      v.selectedOptions?.some(opt =>
-        opt.name === filter.option && opt.value === filter.value
-      )
-    );
-    if (variant) return variant;
-  }
-
-  // Fallback : retourner le premier variant
-  return variants[0];
-}
-
-/**
- * Convertit le kit matériel en lignes de panier Shopify
- * Ajoute chaque composant du kit individuellement
+ * Convertit le kit matériel (tout-ou-rien) en une ligne de panier Shopify unique.
+ * Le kit est un produit bundle : une seule ligne, au prix boutique du produit,
+ * jamais une somme de composants individuels.
  */
 function mapKitToCartLines(
-  surfaceTotale: number,
-  shopifyData: Record<string, ShopifyProductData>,
-  composantsSelectionnes?: string[]
+  kit: ResultatCalcul['kit'],
+  shopifyData: Record<string, ShopifyProductData>
 ): CartLineInput[] {
-  const lines: CartLineInput[] = [];
-  
-  // Déterminer le type de kit selon la surface
-  const kitType = determinerKit(surfaceTotale);
-  const kitConfig = KITS_CONFIG[kitType];
+  const productData = shopifyData[kit.handle];
 
-  // Pour chaque composant du kit (filtrer par composants sélectionnés si fournis)
-  const composantsATraiter = composantsSelectionnes
-    ? kitConfig.composants.filter(c => composantsSelectionnes.includes(c.handle))
-    : kitConfig.composants;
+  if (!productData || !productData.variants || productData.variants.length === 0) {
+    console.error(`Kit non trouvé: ${kit.handle}`);
+    return [];
+  }
 
-  composantsATraiter.forEach((composant) => {
-    const productData = shopifyData[composant.handle];
-    
-    if (!productData) {
-      console.warn(`Composant kit indisponible: ${composant.nom} (${composant.handle})`);
-      return;
-    }
+  const variant = productData.variants[0];
 
-    // Trouver le variant approprié (avec filtre si nécessaire)
-    const variant = findVariantByFilter(productData.variants, composant.variantFilter);
-
-    if (!variant) {
-      console.warn(
-        `Variant non trouvé pour composant kit: ${composant.nom} - ${composant.handle}`,
-        composant.variantFilter
-      );
-      return;
-    }
-
-    lines.push({
-      merchandiseId: variant.id,
-      quantity: 1,
-      attributes: [
-        { key: '_type', value: 'kit' },
-        { key: '_kit_type', value: kitType },
-        { key: '_composant', value: composant.handle },
-        { key: '_composant_nom', value: composant.nom },
-      ],
-    });
-  });
-
-  return lines;
+  return [{
+    merchandiseId: variant.id,
+    quantity: 1,
+    attributes: [
+      { key: '_type', value: 'kit' },
+      { key: '_kit_type', value: kit.type },
+    ],
+  }];
 }
 
 /**
@@ -309,13 +259,9 @@ export function mapCalculToCartLines(
     lines.push(...sousCoucheLines);
   }
 
-  // 3. Kit matériel (si option activée)
+  // 3. Kit matériel (si option activée) — une ligne unique, au prix bundle
   if (options.kit) {
-    const kitLines = mapKitToCartLines(
-      resultat.surfaceTotale,
-      shopifyData,
-      options.composantsKit
-    );
+    const kitLines = mapKitToCartLines(resultat.kit, shopifyData);
     lines.push(...kitLines);
   }
 
