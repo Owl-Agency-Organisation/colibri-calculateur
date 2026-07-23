@@ -3,15 +3,13 @@
  */
 
 // ========== CLIENT ==========
+// Coordonnées saisies dans la modale d'estimation (seul l'e-mail est requis).
+// Servent à pré-remplir la modale et le checkout lors d'une visite ultérieure.
 export interface Client {
-  civilite: 'M' | 'Mme';
-  nom: string;
-  prenom: string;
   email: string;
-  telephone: string;
-  adresse?: string;
-  codePostal?: string;
-  ville?: string;
+  prenom?: string;
+  nom?: string;
+  telephone?: string;
 }
 
 // ========== PIÈCE ==========

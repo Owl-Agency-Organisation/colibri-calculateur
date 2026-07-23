@@ -7,6 +7,63 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Phase 4 — Tunnel réordonné + triple sortie
+
+#### Ajouté
+- **Route serveur `POST /api/calculateur/permalink`** ("Continuer mes achats") :
+  construit le cart permalink boutique
+  `https://www.colibripeinture.com/cart/{id}:{qté},...?discount={CODE}&storefront=true`
+  à partir des lignes du panier. Extraction stricte de l'identifiant numérique de
+  variante depuis le GID Storefront (suffixe de contexte `@inContext` toléré),
+  fail-closed : une ligne invalide refuse tout le permalink (jamais de panier
+  partiel silencieux). Le code promo est lu côté serveur, jamais dans le bundle
+  client. ⚠️ Le permalink remplace le panier boutique existant et la remise
+  s'applique à tout le panier boutique (comportement Shopify, accepté).
+- **Route serveur `POST /api/calculateur/estimation`** ("Recevoir mon estimation") :
+  enchaîne recherche/création du client Shopify (tag `calculateur`) → draft order
+  remisé 15% (`appliedDiscount` PERCENTAGE, mécanisme Phase 2) → e-mail invoice.
+  Revalidation serveur des entrées (e-mail, téléphone, lignes) et **rate limiting
+  par IP** (5 requêtes / 10 min, fenêtre glissante en mémoire, best-effort par
+  instance serverless) : la route crée de vraies ressources Shopify sur une app
+  publique.
+- **`components/modals/EstimationModal.tsx`** : modale légère (e-mail requis ;
+  prénom, nom, téléphone optionnels ; case de consentement marketing décochée par
+  défaut avec lien vers la politique de confidentialité). Validation
+  e-mail/téléphone réutilisée de `lib/utils`. L'estimation part même sans
+  consentement ; si la case est cochée, le consentement single opt-in est posé
+  (`emailMarketingConsent` à la création, mutation
+  `customerEmailMarketingConsentUpdate` pour un client existant).
+- **`components/ui/InfoTooltip.tsx`** : infobulle informative (survol, focus,
+  clic mobile) posée sur les badges de finition (Surfaces, Récapitulatif) :
+  règle factuelle des finitions automatiques + renvoi au 05 62 14 16 46, sans
+  promesse de personnalisation.
+
+#### Modifié
+- **Le tunnel démarre au choix des pièces** : étape Identification supprimée,
+  stepper renuméroté (6 étapes), garde-fous sans condition d'identification,
+  boutons de l'accueil → `/calculateur/piece`.
+- **"🛒 Régler ma commande"** : plus aucune dépendance à `CUSTOMER_ID` ;
+  redirection directe vers `cart.checkoutUrl`. `buyerIdentity` optionnel : posé à
+  la création du panier uniquement si des coordonnées (estimation précédente)
+  existent, sinon le checkout Shopify collecte les coordonnées.
+- **Type `Client` allégé** (e-mail + prénom/nom/téléphone optionnels) : ne sert
+  plus qu'à pré-remplir la modale d'estimation et le checkout.
+- **Page Confirmation réécrite** : confirme l'envoi de l'estimation par e-mail
+  (l'ancien contenu "PDF téléchargé" correspondait à un flux mort).
+- `clearProjetData()` purge aussi les clés techniques du panier
+  (`SHOPIFY_CART_ID`, `SHOPIFY_CART_DATA_HASH`, `KIT_TYPE`) et les clés héritées
+  (`CUSTOMER_ID`, `USER_DATA`).
+
+#### Supprimé
+- `app/calculateur/identification/` (étape et formulaire), clés localStorage
+  `CUSTOMER_ID` / `USER_DATA` (plus écrites, purgées au reset, pas de migration).
+- `app/api/calculateur/checkout/route.ts` : le mode `direct` ne faisait que
+  renvoyer l'URL reçue ; le mode `save` est remplacé par la route estimation.
+- `app/api/shopify/customer/route.ts` (seul appelant : l'identification).
+- `app/api/generate-pdf/route.ts` : flux PDF sans aucun appelant (mort depuis la
+  refonte), supprimé plutôt que maintenu.
+- `updateCartBuyerIdentity` / `UserData` dans `lib/shopify-cart.ts` (sans appelant).
+
 ### Phase 3 — Kits tout-ou-rien dynamiques
 
 #### Modifié

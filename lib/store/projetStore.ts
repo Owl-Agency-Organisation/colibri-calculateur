@@ -11,26 +11,24 @@ export const STORAGE_KEYS = {
   SHOPIFY_DATA: 'colibri-projet-shopify-data',
 } as const;
 
-// État initial du client
-export const initialClient: Client = {
-  civilite: 'M',
-  nom: '',
-  prenom: '',
-  email: '',
-  telephone: '',
-  adresse: '',
-  codePostal: '',
-  ville: '',
-};
+// Clés localStorage héritées des anciennes versions (étape identification,
+// supprimée en Phase 4). Plus jamais écrites ; purgées à chaque reset de projet.
+const LEGACY_KEYS = ['CUSTOMER_ID', 'USER_DATA'];
+
+// Clés techniques liées au panier Shopify en cours (hors STORAGE_KEYS car
+// gérées par les pages panier/options)
+const CART_KEYS = ['SHOPIFY_CART_ID', 'SHOPIFY_CART_DATA_HASH', 'KIT_TYPE'];
 
 // Fonctions utilitaires pour la gestion du localStorage
-export function getStoredClient(): Client {
-  if (typeof window === 'undefined') return initialClient;
+export function getStoredClient(): Client | null {
+  if (typeof window === 'undefined') return null;
   try {
     const stored = localStorage.getItem(STORAGE_KEYS.CLIENT);
-    return stored ? JSON.parse(stored) : initialClient;
+    if (!stored) return null;
+    const client: Client = JSON.parse(stored);
+    return client.email ? client : null;
   } catch {
-    return initialClient;
+    return null;
   }
 }
 
@@ -123,7 +121,7 @@ export function setStoredPieces(pieces: Piece[]): void {
 export function clearProjetData(): void {
   if (typeof window === 'undefined') return;
   try {
-    Object.values(STORAGE_KEYS).forEach(key => {
+    [...Object.values(STORAGE_KEYS), ...CART_KEYS, ...LEGACY_KEYS].forEach(key => {
       localStorage.removeItem(key);
     });
   } catch (error) {

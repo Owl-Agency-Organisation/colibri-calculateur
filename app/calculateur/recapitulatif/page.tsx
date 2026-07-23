@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { StepIndicator, CALCULATEUR_STEPS } from '@/components/ui/StepIndicator';
 import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { InfoTooltip, TOOLTIP_FINITION } from '@/components/ui/InfoTooltip';
 import { getStoredPieces, setStoredPieces } from '@/lib/store/projetStore';
 import type { Piece, TypePiece } from '@/lib/types';
 import { REGLES_FINITION } from '@/lib/calcul';
@@ -110,7 +111,7 @@ export default function RecapitulatifPage() {
       {/* Step indicator */}
       <StepIndicator 
         steps={CALCULATEUR_STEPS} 
-        currentStep={4} 
+        currentStep={3} 
         onStepClick={handleStepClick}
         isStepDisabled={isStepDisabled}
       />
@@ -159,8 +160,9 @@ export default function RecapitulatifPage() {
                             <p className="text-sm font-medium text-gray-900">
                               Mur {index + 1} : {mur.surface} m²
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-gray-500 flex items-center gap-1">
                               {mur.couleur.titre} • <span className="uppercase">{mur.couleur.finition || REGLES_FINITION[piece.typePiece]?.murs}</span>
+                              <InfoTooltip text={TOOLTIP_FINITION} ariaLabel="Pourquoi cette finition ?" />
                             </p>
                           </div>
                         </div>
@@ -182,8 +184,9 @@ export default function RecapitulatifPage() {
                             <p className="text-sm font-medium text-gray-900">
                               Plafond : {piece.surfacePlafond} m²
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-gray-500 flex items-center gap-1">
                               {piece.couleurPlafond.titre} • <span className="uppercase">{piece.couleurPlafond.finition || REGLES_FINITION[piece.typePiece]?.plafond}</span>
+                              <InfoTooltip text={TOOLTIP_FINITION} ariaLabel="Pourquoi cette finition ?" />
                             </p>
                           </div>
                         </div>

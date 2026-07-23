@@ -123,20 +123,37 @@ Contenus :
 
 ## Phase 4 — Tunnel réordonné + triple sortie (branche : `feat/phase-4-tunnel`)
 
-- [ ] Supprimer l'étape Identification du stepper ; le tunnel démarre au choix des
-      pièces ; adapter navigation et garde-fous
-- [ ] "🛒 Régler ma commande" : supprimer la dépendance à `CUSTOMER_ID` ;
-      `buyerIdentity` optionnel ; redirection `checkoutUrl`
-- [ ] "🛍️ Continuer mes achats" : construire le cart permalink
-      `https://www.colibripeinture.com/cart/{variantId}:{qté},...?discount={CODE}&storefront=true`
-      depuis les lignes du panier ; tester réellement la redirection vers `/cart`
-      avec remise conservée et documenter le comportement dans la PR
-- [ ] "✉️ Recevoir mon estimation" : modale légère (email requis ; prénom, nom,
-      téléphone optionnels ; case consentement marketing + lien politique de
-      confidentialité) → création client tag `calculateur` → draft order remisé →
-      email invoice → écran de confirmation
-- [ ] Réutiliser la validation email/téléphone existante (`lib/utils`)
-- [ ] Supprimer le code mort de l'ancienne étape identification
+- [x] Supprimer l'étape Identification du stepper ; le tunnel démarre au choix des
+      pièces ; adapter navigation et garde-fous — stepper renuméroté (6 étapes),
+      guards sans `isIdentified`, accueil → `/calculateur/piece`, clés localStorage
+      `CUSTOMER_ID`/`USER_DATA` supprimées (purgées via `clearProjetData`, pas de
+      migration)
+- [x] "🛒 Régler ma commande" : supprimer la dépendance à `CUSTOMER_ID` ;
+      `buyerIdentity` optionnel (posé à la création du panier uniquement si des
+      coordonnées d'estimation existent) ; redirection directe `checkoutUrl`
+      (le mode `direct` de la route checkout, devenu inutile, est supprimé)
+- [x] "🛍️ Continuer mes achats" : cart permalink construit par la route serveur
+      `POST /api/calculateur/permalink` (extraction stricte de l'ID numérique de
+      variante, fail-closed ; code promo lu côté serveur uniquement)
+      — ⚠️ test réel de redirection impossible depuis l'environnement distant
+      (politique réseau : colibripeinture.com bloqué) : à exécuter sur le preview,
+      scénario détaillé dans la PR
+- [x] "✉️ Recevoir mon estimation" : modale légère (email requis ; prénom, nom,
+      téléphone optionnels ; case consentement marketing décochée par défaut +
+      lien politique de confidentialité) → route serveur unique
+      `POST /api/calculateur/estimation` (rate limitée par IP) : client tag
+      `calculateur` (consentement single opt-in si coché) → draft order remisé
+      15% → email invoice → écran de confirmation réécrit
+- [x] Réutiliser la validation email/téléphone existante (`lib/utils`) — modale
+      côté client ET revalidation serveur dans la route estimation
+- [x] Supprimer le code mort de l'ancienne étape identification —
+      `app/calculateur/identification/`, `app/api/shopify/customer/`,
+      `app/api/calculateur/checkout/`, `updateCartBuyerIdentity`, et
+      `app/api/generate-pdf/` (flux PDF sans appelant, confirmé mort)
+- [x] (Ajout validé le 23/07) Tooltip finition informatif sur Surfaces et
+      Récapitulatif : règle factuelle (velours pièces de vie/chambres, satin
+      pièces d'eau, mat plafonds sauf salle de bains), renvoi au 05 62 14 16 46,
+      aucune promesse de personnalisation
 
 ## Phase 5 — Qualité & mise en prod (branche : `test/phase-5-qualite`)
 
