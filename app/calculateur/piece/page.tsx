@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { track } from '@vercel/analytics';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StepIndicator, CALCULATEUR_STEPS } from '@/components/ui/StepIndicator';
@@ -60,6 +61,8 @@ export default function SelectionPiecePage() {
   }, []);
 
   const handleSelectPiece = (typePiece: TypePiece) => {
+    // Événement anonyme : uniquement le type de pièce choisi
+    track('piece_validee', { type_piece: typePiece });
     // Stocker le type de pièce temporairement
     sessionStorage.setItem('colibri-temp-piece-type', typePiece);
     // Naviguer vers la saisie des surfaces
