@@ -27,6 +27,38 @@ export const REGLES_FINITION: Record<string, { murs: string; plafond: string }> 
 const MARGE_SECURITE = 0.05; // +5%
 const SEUIL_SURFACE_KIT = 30; // m²
 
+// Verrou de gamme : les fiches Colibri exposent deux gammes pour un même coloris —
+// « Biosourcée » (standard) et « Biosourcée dépolluante ». Elles partagent contenance
+// ET finition, donc un simple `.find(contenance + finition)` retiendrait la première
+// dans l'ordre de l'API (non déterministe → écart de prix, ex. Schmidt Blanc 3L Mate
+// 92,68 € vs Dépolluante 107,65 €). On sélectionne donc explicitement la gamme
+// standard en excluant la Dépolluante (marqueur fiable quel que soit le libellé exact,
+// « Dépolluante » seul ou « Biosourcée dépolluante »).
+const MARQUEURS_DEPOLLUANTE = ['dépollu', 'depollu'];
+
+/**
+ * Vrai si le variant appartient à la gamme standard (Biosourcée), c.-à-d. n'est PAS
+ * de la gamme Dépolluante. Sert de verrou de gamme lors de la sélection du variant.
+ */
+export function estVariantGammeStandard(title?: string): boolean {
+  const t = (title || '').toLowerCase();
+  return !MARQUEURS_DEPOLLUANTE.some((m) => t.includes(m));
+}
+
+/**
+ * Parmi des variants déjà filtrés sur contenance + finition, retient la gamme standard
+ * (Biosourcée) quand le produit expose les deux gammes ; sinon garde l'unique gamme
+ * disponible (produits mono-gamme intacts). Déterministe : ne dépend jamais de l'ordre
+ * de retour de l'API.
+ */
+export function selectionnerVariantGammeStandard<T extends { title?: string }>(
+  candidats: T[]
+): T | undefined {
+  if (candidats.length === 0) return undefined;
+  const standard = candidats.filter((v) => estVariantGammeStandard(v.title));
+  return (standard.length > 0 ? standard : candidats)[0];
+}
+
 // Handles des kits matériels sur Shopify
 export const KIT_HANDLES = {
   petiteSurface: 'kit-peinture-petite-surface',
@@ -220,18 +252,20 @@ export function calculerPrixTotal(
   
   return contenants.reduce((total, c) => {
     let variant;
-    
+
     if (finition) {
-      // Filtrer sur contenance + finition
-      variant = variants.find(v => {
+      // Filtrer sur contenance + finition, puis verrouiller la gamme standard
+      // (Biosourcée) parmi les candidats — évite de retenir la Dépolluante par hasard.
+      const candidats = variants.filter(v => {
         const title = v.title || '';
         return title.includes(c.contenance) && title.includes(finition);
       });
+      variant = selectionnerVariantGammeStandard(candidats);
     } else {
       // Fallback : filtrer uniquement sur la contenance (pour sous-couches)
       variant = variants.find(v => (v.title || '').includes(c.contenance));
     }
-    
+
     const prix = variant ? parseFloat(variant.price.amount || variant.price) : 0;
     return total + (prix * c.quantite);
   }, 0);

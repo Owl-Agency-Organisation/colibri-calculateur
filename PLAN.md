@@ -138,6 +138,9 @@ Contenus :
 - [ ] Tests `lib/calcul` : `calculerLitresNecessaires` (2 couches),
       `optimiserContenants`, `determinerTypeSousCouche`, `calculerPrixTotal` —
       dont le cas "même contenance, finitions différentes → prix différents"
+      ET le cas "produit disposant des deux gammes (Biosourcée + Dépolluante,
+      même contenance+finition) → la variante retenue est Biosourcée, prix conforme"
+      (`selectionnerVariantGammeStandard`, verrou ajouté en Phase 2)
 - [ ] Ajouter `pnpm test` au CI (`.github/workflows/ci.yml`)
 - [ ] Fournir la matrice de recette manuelle (checklist) :
       {1 pièce, multi-pièces, multi-murs, ±kit, ±rénovation} ×

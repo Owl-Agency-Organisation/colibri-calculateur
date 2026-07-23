@@ -45,6 +45,16 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
   Shopify (le total n'est jamais une somme d'arrondis locaux). Garde-fou serveur :
   log d'erreur explicite si un code soumis revient `applicable: false` (le code
   n'est jamais loggé ni exposé).
+- **Verrou de gamme (fidélité des prix)** : un coloris Colibri expose deux gammes
+  partageant contenance ET finition (« Biosourcée » standard et « Biosourcée
+  dépolluante »). La sélection de variant reposait sur `.find(contenance + finition)`
+  qui retenait la **première** correspondance selon l'ordre de l'API — non
+  déterministe (ex. Schmidt Blanc 3L Mate : 92,68 € Biosourcée vs 107,65 €
+  Dépolluante). `lib/calcul/index.ts` et `lib/cart-mapper.ts` verrouillent désormais
+  explicitement la **gamme standard (Biosourcée)** via `selectionnerVariantGammeStandard`
+  (exclusion de la Dépolluante, quel que soit le libellé) ; les produits mono-gamme
+  restent intacts. Prix affiché et prix envoyé à Shopify utilisent le **même** verrou,
+  donc ne divergent jamais.
 
 #### Notes
 - **Aucun prix codé en dur** : le fallback `PRIX_PAR_CONTENANT` (jadis dans
