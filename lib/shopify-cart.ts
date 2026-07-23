@@ -14,10 +14,23 @@ export interface CartLineInput {
   attributes?: Array<{ key: string; value: string }>;
 }
 
+// Allocation de remise calculée par Shopify. On ne demande QUE le montant
+// (`discountedAmount`) — jamais le champ `code`, qui exposerait le code promo
+// au client.
+export interface CartDiscountAllocation {
+  discountedAmount: {
+    amount: string;
+    currencyCode: string;
+  };
+}
+
 export interface CartLineNode {
   id: string;
   quantity: number;
   attributes: Array<{ key: string; value: string }>;
+  // Remises ventilées sur cette ligne par Shopify (code "montant sur des produits").
+  // Vide si le code est appliqué au niveau commande.
+  discountAllocations?: CartDiscountAllocation[];
   merchandise: {
     id: string;
     title: string;
@@ -76,6 +89,11 @@ export interface ShopifyCart {
       currencyCode: string;
     };
   };
+  // Remises appliquées au niveau du panier entier (code "montant sur la commande").
+  discountAllocations?: CartDiscountAllocation[];
+  // État des codes promo soumis. Seul le booléen `applicable` est demandé —
+  // jamais `code` — pour détecter côté serveur un code désactivé/plafonné.
+  discountCodes?: Array<{ applicable: boolean }>;
   buyerIdentity?: {
     email?: string;
     countryCode?: string;
@@ -95,6 +113,12 @@ const CART_FRAGMENT = `
           attributes {
             key
             value
+          }
+          discountAllocations {
+            discountedAmount {
+              amount
+              currencyCode
+            }
           }
           merchandise {
             ... on ProductVariant {
@@ -144,6 +168,15 @@ const CART_FRAGMENT = `
         amount
         currencyCode
       }
+    }
+    discountAllocations {
+      discountedAmount {
+        amount
+        currencyCode
+      }
+    }
+    discountCodes {
+      applicable
     }
     buyerIdentity {
       email
@@ -236,7 +269,24 @@ export async function createCart(
     throw new Error('Erreur création panier: réponse invalide');
   }
 
-  return response.data.cartCreate.cart;
+  const cart = response.data.cartCreate.cart;
+
+  // Garde-fou serveur : si un code promo a été soumis mais que Shopify le déclare
+  // non applicable (code désactivé, expiré, plafonné…), le panier partirait au prix
+  // catalogue plein sans que personne ne s'en aperçoive. On le rend visible dans les
+  // logs serveur (le code lui-même n'est jamais loggé ni renvoyé au client).
+  if (discountCode) {
+    const codes = cart.discountCodes ?? [];
+    if (codes.length === 0 || codes.some((c) => !c.applicable)) {
+      console.error(
+        'ALERTE remise calculateur : le code promo DISCOUNT_CODE soumis à cartCreate ' +
+          "n'est pas applicable (désactivé, expiré ou plafonné côté Shopify ?). " +
+          'Le panier est facturé au prix catalogue plein.'
+      );
+    }
+  }
+
+  return cart;
 }
 
 /**

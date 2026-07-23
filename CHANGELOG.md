@@ -33,6 +33,19 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 - **`lib/shopify.ts`** : cache Storefront `revalidate` abaissé de 3600 s à 900 s
   (15 min) pour refléter plus vite les changements de prix boutique.
 
+#### Corrigé
+- **Affichage de la remise au panier** : le prix barré, le badge « −15 % » et le
+  montant économisé ne s'affichaient pas. Cause : un code promo « montant sur la
+  commande » n'inscrit pas la remise dans `cost.totalAmount` des lignes (elle vit
+  dans `discountAllocations`), donc `totalAmount == subtotalAmount` et l'app se
+  croyait sans remise. Le fragment lit désormais `discountAllocations`
+  (niveau ligne **et** panier) et `discountCodes { applicable }` ; l'économie est la
+  somme exacte des allocations Shopify. Nouveau bloc de synthèse en miroir du
+  checkout : **Sous-total → Remise −15 % → Total**, les trois montants venant de
+  Shopify (le total n'est jamais une somme d'arrondis locaux). Garde-fou serveur :
+  log d'erreur explicite si un code soumis revient `applicable: false` (le code
+  n'est jamais loggé ni exposé).
+
 #### Notes
 - **Aucun prix codé en dur** : le fallback `PRIX_PAR_CONTENANT` (jadis dans
   `ANALYSE_PRIX.md`, supprimé en Phase 1) n'existe plus ; le PDF ne source que des
