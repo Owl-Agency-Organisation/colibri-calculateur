@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { EmbedBridge } from '@/components/EmbedBridge';
 
 export const metadata: Metadata = {
   title: 'Calculateur de peinture | Colibri',
@@ -10,5 +11,10 @@ export default function CalculateurLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <>
+      <EmbedBridge />
+      {children}
+    </>
+  );
 }
