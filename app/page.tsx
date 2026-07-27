@@ -21,13 +21,24 @@ export default function AccueilPage() {
 
   return (
     <div className="max-w-2xl mx-auto py-12 px-4">
-      <div className="text-center mb-12">
+      <div className="text-center mb-6">
+        <p className="text-[10px] uppercase tracking-widest text-primary-600 font-bold mb-3">
+          Configurateur de peinture
+        </p>
         <h1 className="text-3xl font-serif font-bold text-gray-900 mb-4">
-          Bienvenue dans votre espace dédié
+          La juste quantité de peinture pour votre projet
         </h1>
         <p className="text-lg text-gray-600">
-          Choisissez l&apos;option qui vous convient pour continuer votre projet de rénovation.
+          Décrivez vos pièces et vos surfaces&nbsp;: le calculateur détermine les
+          quantités exactes, compose la combinaison de pots la moins chère et
+          applique −15&nbsp;% sur votre commande.
         </p>
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-6 mb-10 text-sm text-gray-500">
+        <span className="whitespace-nowrap">✓ Gratuit et sans engagement</span>
+        <span className="whitespace-nowrap">✓ Zéro gaspillage</span>
+        <span className="whitespace-nowrap">✓ −15&nbsp;% appliqués automatiquement</span>
       </div>
 
       <div className="grid grid-cols-1 gap-6">

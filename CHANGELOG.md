@@ -7,6 +7,21 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Écran d'entrée — titre et réassurance (contexte embed)
+
+#### Modifié
+- **`app/page.tsx`** (texte uniquement) : le cadrage hérité du portail
+  (« Bienvenue dans votre espace dédié », « continuer votre projet de
+  rénovation ») laisse place à un bloc titre à trois niveaux — surtitre
+  « CONFIGURATEUR DE PEINTURE » (style de l'ancienne baseline du header
+  supprimé en mode embed), h1 « La juste quantité de peinture pour votre
+  projet », sous-titre décrivant ce que fait l'outil (quantités exactes,
+  combinaison de pots la moins chère, −15 % sur la commande). Ajout d'une
+  ligne de réassurance discrète entre le sous-titre et les cartes
+  (« ✓ Gratuit et sans engagement · ✓ Zéro gaspillage · ✓ −15 % appliqués
+  automatiquement », séparée par l'espacement, colonne sur mobile). Cartes,
+  tracking `calcul_demarre`, `clearAllData` et ligne d'assistance inchangés.
+
 ### Mode embed — intégration iframe dans la boutique Shopify
 
 #### Corrigé
