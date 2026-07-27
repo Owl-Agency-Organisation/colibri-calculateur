@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
+import { EmbedBridge } from '@/components/EmbedBridge';
 import './globals.css';
 
 const inter = Inter({
@@ -15,17 +16,32 @@ const playfair = Playfair_Display({
   display: 'swap',
 });
 
-const SITE_URL = 'https://calculateur.colibripeinture.com';
+// URL canonique : la page Shopify qui embarque l'app en iframe.
+// calculateur.colibripeinture.com n'est plus qu'un hôte technique.
+const SITE_URL = 'https://colibripeinture.com/pages/configurateur';
 const SITE_TITLE = 'Calculateur de peinture en ligne — Colibri Peinture';
 const SITE_DESCRIPTION =
   'Calculez gratuitement la juste quantité de peinture pour votre projet : ' +
   'pièces, surfaces, couleurs et finitions. Peintures biosourcées fabriquées en France, ' +
   '-15% sur votre commande via le calculateur.';
 
+// Accès direct au sous-domaine technique hors iframe → page canonique.
+// Le garde sur hostname préserve les previews Vercel (*.vercel.app) ;
+// aucune boucle possible : dans l'iframe, window.self !== window.top.
+const REDIRECT_GUARD = `
+try {
+  if (location.hostname === 'calculateur.colibripeinture.com'
+      && window.self === window.top) {
+    location.replace('https://colibripeinture.com/pages/configurateur');
+  }
+} catch (e) {}
+`;
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: SITE_TITLE,
   description: SITE_DESCRIPTION,
+  robots: { index: false, follow: true },
   openGraph: {
     type: 'website',
     url: SITE_URL,
@@ -54,56 +70,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr" className={`${inter.variable} ${playfair.variable}`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: REDIRECT_GUARD }} />
+      </head>
       <body className="antialiased font-sans bg-background text-gray-900">
-        <div className="min-h-screen bg-background">
-          {/* Header */}
-          <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100">
-            <div className="max-w-4xl mx-auto px-4 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col items-start">
-                  <img
-                    src="https://cdn.shopify.com/s/files/1/0971/0436/3865/files/logo-colibri-lettre-ligne-gris.png?v=1761219657"
-                    alt="Colibri Logo"
-                    className="h-8 w-auto object-contain mb-1"
-                  />
-                  <p className="text-[10px] uppercase tracking-widest text-primary-600 font-bold">
-                    Votre calculateur de peinture
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-600">Besoin d&apos;aide ?</p>
-                  <a href="tel:+33562141646" className="text-sm font-medium text-primary-600 hover:text-primary-700">
-                    05 62 14 16 46
-                  </a>
-                </div>
-              </div>
-            </div>
-          </header>
-
-          {/* Main content */}
-          <main className="max-w-4xl mx-auto px-4 py-8">
-            {children}
-          </main>
-
-          {/* Footer */}
-          <footer className="bg-white border-t border-gray-100 mt-auto">
-            <div className="max-w-4xl mx-auto px-4 py-12">
-              <div className="flex flex-col items-center space-y-4">
-                <p className="text-center text-xs text-gray-400 tracking-wide">
-                  © {new Date().getFullYear()} COLIBRI PEINTURE — RÉALISATION{' '}
-                  <a
-                    href="https://owl-agency.io"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-gray-600 transition-colors"
-                  >
-                    OWL AGENCY
-                  </a>
-                </p>
-              </div>
-            </div>
-          </footer>
-        </div>
+        {/* Pas de header ni footer : le chrome (logo, navigation, crédits) est
+            celui du site Shopify qui embarque l'app. La hauteur du document doit
+            refléter la hauteur réelle du contenu (auto-resize de l'iframe). */}
+        <main className="max-w-4xl mx-auto px-4 py-4">
+          {children}
+        </main>
+        <EmbedBridge />
         <Analytics />
       </body>
     </html>
