@@ -11,6 +11,7 @@ import { getStoredPieces, getStoredClient, STORAGE_KEYS } from '@/lib/store/proj
 import { removeCartLines, getCart, type ShopifyCart, type CartLineNode } from '@/lib/shopify-cart';
 import { normalizeFrenchPhone } from '@/lib/utils/phone';
 import { mapCalculToCartLines, canRemoveLine, getLineType } from '@/lib/cart-mapper';
+import { redirectTop } from '@/lib/navigation';
 import { EstimationModal } from '@/components/modals/EstimationModal';
 import type { ResultatCalcul } from '@/lib/calcul';
 import type { Piece, Client } from '@/lib/types';
@@ -262,7 +263,7 @@ export default function PanierPage() {
     }
     track('sortie_choisie', { sortie: 'checkout' });
     setIsProcessing(true);
-    window.location.href = cart.checkoutUrl;
+    redirectTop(cart.checkoutUrl);
   }
 
   // Sortie 2 — "🛍️ Continuer mes achats" : cart permalink boutique construit
@@ -291,7 +292,7 @@ export default function PanierPage() {
         throw new Error(result.error || "Impossible d'ouvrir la boutique. Merci de réessayer.");
       }
 
-      window.location.href = result.url;
+      redirectTop(result.url);
     } catch (err) {
       console.error('Erreur permalink:', err);
       setError(err instanceof Error ? err.message : "Impossible d'ouvrir la boutique. Merci de réessayer.");
