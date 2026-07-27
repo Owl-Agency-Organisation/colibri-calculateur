@@ -9,10 +9,19 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ### Mode embed — intégration iframe dans la boutique Shopify
 
+#### Corrigé
+- **Hotfix `PARENT_ORIGIN`** (constaté en recette production) : l'origine
+  cible des postMessage était `https://colibripeinture.com` alors que la
+  boutique vit sur `https://www.colibripeinture.com` — le navigateur rejetait
+  silencieusement tous les messages (resize, scrollTop) et l'iframe restait
+  sur son min-height de secours. `PARENT_ORIGIN`, la destination du script de
+  redirection et `SITE_URL` passent en `www` (les mentions ci-dessous sont
+  alignées).
+
 #### Modifié
 - **URL canonique** : le calculateur est désormais intégré en iframe
   cross-origin dans la page Shopify
-  `https://colibripeinture.com/pages/configurateur`, cible de tous les CTA
+  `https://www.colibripeinture.com/pages/configurateur`, cible de tous les CTA
   (landing, e-mails Klaviyo). `calculateur.colibripeinture.com` devient un
   simple hôte technique : un accès direct hors iframe est redirigé vers la page
   canonique par un script inline bloquant dans le `<head>` (garde sur
@@ -29,7 +38,7 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
   `redirectTop`) : « 🛒 Régler ma commande » (checkout) et « 🛍️ Continuer mes
   achats » (cart permalink) naviguent la page parente —
   `window.top.location.href` sous user activation, secours postMessage
-  `colibri:redirect` vers `https://colibripeinture.com` puis repli local
+  `colibri:redirect` vers `https://www.colibripeinture.com` puis repli local
   différé. Le checkout Shopify refuse l'affichage en iframe
   (`frame-ancestors`) et le permalink chargeait le site entier imbriqué dans
   lui-même : les deux boutons étaient cassés en production.
@@ -46,7 +55,7 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
   `{ type: 'colibri:scrollTop' }` à chaque changement de route — le tout
   premier après montage est sauté, quel que soit le point d'entrée, pour ne
   pas faire sauter la page Shopify sur l'iframe au chargement initial.
-  Origine cible `https://colibripeinture.com`, jamais `'*'` ; aucune émission
+  Origine cible `https://www.colibripeinture.com`, jamais `'*'` ; aucune émission
   hors iframe (previews silencieuses).
 
 ### Évolution — Optimisation des contenants par le prix

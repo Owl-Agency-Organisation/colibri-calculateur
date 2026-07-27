@@ -201,7 +201,7 @@ Contenus :
 ## Mode embed — iframe Shopify (branche : `claude/embed-mode-shopify-iframe-beafaz`)
 
 > Décision (27/07) : l'app est intégrée en **iframe cross-origin** dans la page
-> Shopify https://colibripeinture.com/pages/configurateur, qui devient l'**URL
+> Shopify https://www.colibripeinture.com/pages/configurateur, qui devient l'**URL
 > canonique** du calculateur (cible de tous les CTA — landing, e-mails Klaviyo).
 > `calculateur.colibripeinture.com` n'est plus qu'un hôte technique servant
 > l'iframe. Le listener postMessage (resize, scrollTop, redirect) est **déjà
@@ -213,7 +213,7 @@ Contenus :
       l'iframe ; `min-h-screen` et paddings ajustés pour que la hauteur du
       document colle au contenu réel (pré-requis de l'auto-resize) ; la ligne
       d'assistance existante dans le contenu de l'app reste telle quelle
-- [x] `SITE_URL` → `https://colibripeinture.com/pages/configurateur`
+- [x] `SITE_URL` → `https://www.colibripeinture.com/pages/configurateur`
       (metadataBase + OpenGraph) ; `robots: { index: false, follow: true }`
 - [x] Script inline bloquant dans le `<head>` : accès direct à
       `calculateur.colibripeinture.com` hors iframe → redirection vers la page
@@ -233,6 +233,6 @@ Contenus :
       300 px, première émission au montage) et `colibri:scrollTop` à chaque
       changement de route — le tout premier après montage est sauté, quel que
       soit le point d'entrée (pas de saut de la page Shopify sur l'iframe au
-      chargement) — origine cible `https://colibripeinture.com`, jamais `*`
+      chargement) — origine cible `https://www.colibripeinture.com`, jamais `*`
 - [x] `EstimationModal` : lien politique de confidentialité déjà en
       `target="_blank" rel="noopener noreferrer"` (vérifié, aucun changement)
