@@ -197,3 +197,38 @@ Contenus :
       Voie de sélection de variante unifiée (`selectionnerVariantContenance`)
       entre table de prix, prix affiché et ligne panier — zéro divergence
       possible. 25 tests ajoutés, les 37 existants inchangés
+
+## Mode embed — iframe Shopify (branche : `claude/embed-mode-shopify-iframe-beafaz`)
+
+> Décision (27/07) : l'app est intégrée en **iframe cross-origin** dans la page
+> Shopify https://colibripeinture.com/pages/configurateur, qui devient l'**URL
+> canonique** du calculateur (cible de tous les CTA — landing, e-mails Klaviyo).
+> `calculateur.colibripeinture.com` n'est plus qu'un hôte technique servant
+> l'iframe. Le listener postMessage (resize, scrollTop, redirect) est **déjà
+> déployé** côté page Shopify : contrat de messages figé.
+
+- [x] Chrome de l'app supprimé (`app/layout.tsx`) : header (logo, baseline, bloc
+      téléphone) et footer (crédit) — le chrome est celui du site Shopify ;
+      corrige le header `sticky` qui recouvrait le contenu au scroll dans
+      l'iframe ; `min-h-screen` et paddings ajustés pour que la hauteur du
+      document colle au contenu réel (pré-requis de l'auto-resize) ; la ligne
+      d'assistance existante dans le contenu de l'app reste telle quelle
+- [x] `SITE_URL` → `https://colibripeinture.com/pages/configurateur`
+      (metadataBase + OpenGraph) ; `robots: { index: false, follow: true }`
+- [x] Script inline bloquant dans le `<head>` : accès direct à
+      `calculateur.colibripeinture.com` hors iframe → redirection vers la page
+      canonique (garde sur hostname : les previews Vercel ne redirigent pas)
+- [x] `lib/navigation.ts` — `redirectTop(url)` : navigation top-level
+      (`window.top.location.href` sous user activation, secours postMessage
+      `colibri:redirect` + repli local différé)
+- [x] Sorties du tunnel (`panier`) : « 🛒 Régler ma commande » (checkout) et
+      « 🛍️ Continuer mes achats » (permalink) passent par `redirectTop()` — le
+      checkout Shopify refuse l'iframe (`frame-ancestors`) et le permalink
+      chargeait le site entier imbriqué dans lui-même
+- [x] `components/EmbedBridge.tsx`, monté dans le layout du tunnel (pas de
+      duplication dans les étapes) : `colibri:resize` (ResizeObserver du
+      document, throttle rAF, seuil de variation 2 px anti-boucle, plancher
+      300 px, première émission au montage) et `colibri:scrollTop` au montage
+      de chaque étape — origine cible `https://colibripeinture.com`, jamais `*`
+- [x] `EstimationModal` : lien politique de confidentialité déjà en
+      `target="_blank" rel="noopener noreferrer"` (vérifié, aucun changement)

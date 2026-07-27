@@ -7,6 +7,43 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Mode embed — intégration iframe dans la boutique Shopify
+
+#### Modifié
+- **URL canonique** : le calculateur est désormais intégré en iframe
+  cross-origin dans la page Shopify
+  `https://colibripeinture.com/pages/configurateur`, cible de tous les CTA
+  (landing, e-mails Klaviyo). `calculateur.colibripeinture.com` devient un
+  simple hôte technique : un accès direct hors iframe est redirigé vers la page
+  canonique par un script inline bloquant dans le `<head>` (garde sur
+  `hostname` : les previews Vercel restent testables). `metadataBase`/OpenGraph
+  pointent sur la page canonique et l'app passe en `noindex, follow`.
+- **Chrome de l'app supprimé** (`app/layout.tsx`) : plus de header (logo,
+  baseline, bloc téléphone) ni de footer (crédit) — le chrome est celui du site
+  Shopify qui embarque l'app. Corrige au passage le header `sticky top-0` qui
+  recouvrait le contenu au scroll dans l'iframe. `min-h-screen` du wrapper
+  supprimé et paddings du `<main>` réduits : la hauteur du document reflète le
+  contenu réel (pré-requis de l'auto-resize). La ligne d'assistance
+  (05 62 14 16 46) présente dans le contenu de l'app est inchangée.
+- **Sorties du tunnel en navigation top-level** (`lib/navigation.ts`,
+  `redirectTop`) : « 🛒 Régler ma commande » (checkout) et « 🛍️ Continuer mes
+  achats » (cart permalink) naviguent la page parente —
+  `window.top.location.href` sous user activation, secours postMessage
+  `colibri:redirect` vers `https://colibripeinture.com` puis repli local
+  différé. Le checkout Shopify refuse l'affichage en iframe
+  (`frame-ancestors`) et le permalink chargeait le site entier imbriqué dans
+  lui-même : les deux boutons étaient cassés en production.
+
+#### Ajouté
+- **`components/EmbedBridge.tsx`** (monté dans le layout du tunnel) — contrat
+  postMessage avec la page parente, dont le listener est déjà déployé côté
+  Shopify : `{ type: 'colibri:resize', height }` sur ResizeObserver du
+  document (`height` numérique, throttle `requestAnimationFrame`, émission
+  seulement si variation > 2 px — anti-boucle —, plancher 300 px, première
+  émission au montage) et `{ type: 'colibri:scrollTop' }` au montage de chaque
+  étape du tunnel. Origine cible `https://colibripeinture.com`, jamais `'*'` ;
+  aucune émission hors iframe (previews silencieuses).
+
 ### Évolution — Optimisation des contenants par le prix
 
 #### Modifié
