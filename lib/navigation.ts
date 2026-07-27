@@ -1,8 +1,8 @@
-// L'app vit dans une iframe cross-origin sur colibripeinture.com/pages/configurateur.
+// L'app vit dans une iframe cross-origin sur www.colibripeinture.com/pages/configurateur.
 // Les sorties du tunnel (checkout, panier boutique) doivent naviguer la page
 // parente : le checkout Shopify refuse l'iframe (frame-ancestors) et le cart
 // permalink chargerait le site entier imbriqué dans lui-même.
-export const PARENT_ORIGIN = 'https://colibripeinture.com';
+export const PARENT_ORIGIN = 'https://www.colibripeinture.com';
 
 export function redirectTop(url: string): void {
   try {

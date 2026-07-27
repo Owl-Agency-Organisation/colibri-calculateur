@@ -18,7 +18,7 @@ const playfair = Playfair_Display({
 
 // URL canonique : la page Shopify qui embarque l'app en iframe.
 // calculateur.colibripeinture.com n'est plus qu'un hôte technique.
-const SITE_URL = 'https://colibripeinture.com/pages/configurateur';
+const SITE_URL = 'https://www.colibripeinture.com/pages/configurateur';
 const SITE_TITLE = 'Calculateur de peinture en ligne — Colibri Peinture';
 const SITE_DESCRIPTION =
   'Calculez gratuitement la juste quantité de peinture pour votre projet : ' +
@@ -32,7 +32,7 @@ const REDIRECT_GUARD = `
 try {
   if (location.hostname === 'calculateur.colibripeinture.com'
       && window.self === window.top) {
-    location.replace('https://colibripeinture.com/pages/configurateur');
+    location.replace('https://www.colibripeinture.com/pages/configurateur');
   }
 } catch (e) {}
 `;
