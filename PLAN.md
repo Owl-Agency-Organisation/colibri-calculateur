@@ -225,10 +225,14 @@ Contenus :
       « 🛍️ Continuer mes achats » (permalink) passent par `redirectTop()` — le
       checkout Shopify refuse l'iframe (`frame-ancestors`) et le permalink
       chargeait le site entier imbriqué dans lui-même
-- [x] `components/EmbedBridge.tsx`, monté dans le layout du tunnel (pas de
-      duplication dans les étapes) : `colibri:resize` (ResizeObserver du
+- [x] `components/EmbedBridge.tsx`, monté dans le layout racine (retour de
+      review : couvre toutes les routes, écran d'entrée compris — sinon un
+      retour navigateur vers `/` démontait le bridge et figeait l'iframe à la
+      dernière hauteur du tunnel) : `colibri:resize` (ResizeObserver du
       document, throttle rAF, seuil de variation 2 px anti-boucle, plancher
-      300 px, première émission au montage) et `colibri:scrollTop` au montage
-      de chaque étape — origine cible `https://colibripeinture.com`, jamais `*`
+      300 px, première émission au montage) et `colibri:scrollTop` à chaque
+      changement de route — le tout premier après montage est sauté, quel que
+      soit le point d'entrée (pas de saut de la page Shopify sur l'iframe au
+      chargement) — origine cible `https://colibripeinture.com`, jamais `*`
 - [x] `EstimationModal` : lien politique de confidentialité déjà en
       `target="_blank" rel="noopener noreferrer"` (vérifié, aucun changement)

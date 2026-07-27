@@ -35,14 +35,19 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
   lui-même : les deux boutons étaient cassés en production.
 
 #### Ajouté
-- **`components/EmbedBridge.tsx`** (monté dans le layout du tunnel) — contrat
-  postMessage avec la page parente, dont le listener est déjà déployé côté
-  Shopify : `{ type: 'colibri:resize', height }` sur ResizeObserver du
-  document (`height` numérique, throttle `requestAnimationFrame`, émission
-  seulement si variation > 2 px — anti-boucle —, plancher 300 px, première
-  émission au montage) et `{ type: 'colibri:scrollTop' }` au montage de chaque
-  étape du tunnel. Origine cible `https://colibripeinture.com`, jamais `'*'` ;
-  aucune émission hors iframe (previews silencieuses).
+- **`components/EmbedBridge.tsx`** (monté dans le layout racine : resize et
+  scrollTop couvrent toutes les routes, écran d'entrée compris — un retour
+  navigateur du tunnel vers `/` ne fige plus l'iframe à la dernière hauteur du
+  tunnel) — contrat postMessage avec la page parente, dont le listener est
+  déjà déployé côté Shopify : `{ type: 'colibri:resize', height }` sur
+  ResizeObserver du document (`height` numérique, throttle
+  `requestAnimationFrame`, émission seulement si variation > 2 px —
+  anti-boucle —, plancher 300 px, première émission au montage) et
+  `{ type: 'colibri:scrollTop' }` à chaque changement de route — le tout
+  premier après montage est sauté, quel que soit le point d'entrée, pour ne
+  pas faire sauter la page Shopify sur l'iframe au chargement initial.
+  Origine cible `https://colibripeinture.com`, jamais `'*'` ; aucune émission
+  hors iframe (previews silencieuses).
 
 ### Évolution — Optimisation des contenants par le prix
 

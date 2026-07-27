@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { PARENT_ORIGIN } from '@/lib/navigation';
 
@@ -22,6 +22,8 @@ function estEmbarque(): boolean {
 
 /**
  * Pont postMessage avec la page Shopify qui embarque l'app en iframe.
+ * Monté dans le layout racine : resize et scrollTop couvrent toutes les
+ * routes, écran d'entrée compris.
  * Contrat figé côté parent (déjà en production) :
  * - `{ type: 'colibri:resize', height: number }` — auto-resize de l'iframe
  * - `{ type: 'colibri:scrollTop' }` — scroll vers le haut à chaque étape
@@ -29,6 +31,7 @@ function estEmbarque(): boolean {
  */
 export function EmbedBridge() {
   const pathname = usePathname();
+  const premierScrollTop = useRef(true);
 
   // Auto-resize : hauteur réelle du document → hauteur de l'iframe
   useEffect(() => {
@@ -66,8 +69,15 @@ export function EmbedBridge() {
     };
   }, []);
 
-  // Retour en haut de l'iframe au montage de chaque étape du tunnel
+  // Retour en haut de l'iframe à chaque changement de route. Le tout premier
+  // passage est sauté, quel que soit le point d'entrée (écran d'entrée, deep
+  // link, rechargement) : au chargement de /pages/configurateur, un scrollTop
+  // ferait sauter la page Shopify sur l'iframe en ignorant le contenu au-dessus.
   useEffect(() => {
+    if (premierScrollTop.current) {
+      premierScrollTop.current = false;
+      return;
+    }
     if (!estEmbarque()) return;
     window.parent.postMessage({ type: 'colibri:scrollTop' }, PARENT_ORIGIN);
   }, [pathname]);

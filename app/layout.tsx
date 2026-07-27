@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
+import { EmbedBridge } from '@/components/EmbedBridge';
 import './globals.css';
 
 const inter = Inter({
@@ -79,6 +80,7 @@ export default function RootLayout({
         <main className="max-w-4xl mx-auto px-4 py-4">
           {children}
         </main>
+        <EmbedBridge />
         <Analytics />
       </body>
     </html>
