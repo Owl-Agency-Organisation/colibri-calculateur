@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
-import { Analytics } from '@vercel/analytics/next';
+import { AnalyticsAvecFiltre } from '@/components/AnalyticsAvecFiltre';
 import { EmbedBridge } from '@/components/EmbedBridge';
 import './globals.css';
 
@@ -81,7 +81,7 @@ export default function RootLayout({
           {children}
         </main>
         <EmbedBridge />
-        <Analytics />
+        <AnalyticsAvecFiltre />
       </body>
     </html>
   );
