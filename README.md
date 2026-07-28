@@ -58,9 +58,12 @@ Ce module est couvert par des tests unitaires (`pnpm test`) — ne pas le modifi
 │       └── /shopify              # Lectures Storefront (collections, produits, variants)
 ├── /components
 │   ├── /ui                       # Button, Card, Input, Select, StepIndicator, InfoTooltip
-│   └── /modals                   # CouleurModal, ConfirmModal, EstimationModal
+│   ├── /modals                   # CouleurModal, ConfirmModal, EstimationModal
+│   ├── EmbedBridge.tsx           # Pont postMessage avec la page Shopify (resize, scrollTop)
+│   └── AnalyticsAvecFiltre.tsx   # Vercel Analytics + filtre trafic interne + badge
 ├── /lib
 │   ├── /calcul                   # Algorithme de calcul (cœur métier, testé)
+│   ├── /analytics                # Mode trafic interne (état localStorage, testé)
 │   ├── cart-mapper.ts            # ResultatCalcul → lignes de panier Shopify
 │   ├── shopify.ts                # Client Storefront API (catalogue, bundles)
 │   ├── shopify-cart.ts           # Panier Storefront (création côté serveur)
@@ -111,7 +114,7 @@ pnpm build        # build de production
 pnpm start        # serveur de production
 pnpm lint         # ESLint
 pnpm type-check   # tsc --noEmit
-pnpm test         # tests unitaires Vitest (lib/calcul, cart-mapper)
+pnpm test         # tests unitaires Vitest (lib/calcul, cart-mapper, lib/analytics)
 ```
 
 CI GitHub Actions (`.github/workflows/ci.yml`) : lint + type-check + tests + build sur chaque PR.
@@ -127,6 +130,38 @@ Configurer les variables d'environnement dans Vercel (Production + Preview). Cha
 ## Analytics de parcours
 
 Événements Vercel Analytics anonymes (aucune donnée personnelle) : `calcul_demarre`, `piece_validee`, `surfaces_saisies`, `options_validees`, `panier_atteint`, `sortie_choisie` (`checkout` / `permalink` / `estimation`). Ils mesurent où les utilisateurs décrochent dans le tunnel.
+
+### Trafic interne (équipe, QA, démos) — exclusion des stats
+
+Un navigateur marqué « trafic interne » n'envoie **plus rien** à Vercel
+Analytics : ni pages vues, ni événements de parcours (filtre `beforeSend`
+dans `components/AnalyticsAvecFiltre.tsx`, état dans `lib/analytics/interne.ts`).
+Le mode persiste entre les sessions (`localStorage`, clé
+`colibri:trafic-interne`).
+
+Tant que le mode est actif, un badge fixe **« 🦉 Trafic interne — exclu des
+stats »** est affiché en bas à gauche de l'écran. **Pas de badge = visites
+comptées** : si vous ne le voyez pas, le filtre n'est pas actif dans ce
+navigateur.
+
+**Procédure d'activation / désactivation :**
+
+1. **Le geste — seul chemin qui fonctionne en production (iframe Shopify).**
+   Ouvrir <https://www.colibripeinture.com/pages/configurateur>, aller sur
+   l'**écran d'accueil** du calculateur, puis cliquer **7 fois en moins de
+   3 secondes** sur le petit surtitre « CONFIGURATEUR DE PEINTURE » (au-dessus
+   du grand titre). Le geste **bascule** le mode : le refaire pour le
+   désactiver.
+2. **Paramètre d'URL** — pour les previews Vercel, localhost et les accès
+   directs hors iframe : ajouter `?owl=1` à n'importe quelle URL pour activer,
+   `?owl=0` pour désactiver.
+
+⚠️ **Le stockage est partitionné par contexte.** Les navigateurs isolent le
+`localStorage` d'une iframe tierce : un drapeau posé en visitant directement
+`calculateur.colibripeinture.com` ne vaut **pas** dans l'iframe de la page
+Shopify (et réciproquement). En production, activer le mode **depuis
+l'intérieur de l'iframe** via le geste, dans chaque navigateur/profil utilisé.
+Vider les données de site du navigateur réinitialise le mode.
 
 ## Documentation
 
