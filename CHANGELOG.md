@@ -7,6 +7,49 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Analytics — exclusion du trafic interne
+
+#### Ajouté
+- **Mode « trafic interne »** : un navigateur marqué par l'équipe n'envoie
+  plus rien à Vercel Analytics — ni pages vues, ni événements `track()` du
+  tunnel. Le trafic Owl Agency / QA / démos représentait la majorité des pages
+  vues et rendait les stats de production inexploitables.
+  - **`lib/analytics/interne.ts`** : état persisté en `localStorage` (clé
+    `colibri:trafic-interne`) avec reflet mémoire de session ; tout accès au
+    stockage est protégé (navigation privée ou blocage tiers : rien ne casse,
+    le mode vaut pour la session en cours). Helpers testés sous Vitest
+    (15 tests : activation, désactivation, persistance, stockage indisponible,
+    paramètre d'URL, geste de clics, abonnements).
+  - **`components/AnalyticsAvecFiltre.tsx`** : wrapper client de
+    `<Analytics />` (le layout racine est un composant serveur, `beforeSend`
+    ne peut pas lui être passé) — le filtre `beforeSend` retourne `null` pour
+    tout événement (pageview et event) quand le mode est actif, et relit
+    l'état à chaque envoi (fonction stable niveau module, pas de closure
+    figée). Badge « 🦉 Trafic interne — exclu des stats » affiché tant que le
+    mode est actif, **dans le flux en tête de contenu** (monté avant `<main>`,
+    `pointer-events-none` : aucune interaction). Pas de `fixed`/`sticky` :
+    l'iframe étant dimensionnée à la hauteur totale du document, son viewport
+    couvre tout le contenu et c'est la page Shopify qui scrolle — un élément
+    fixe se calerait en bas du document, hors écran (invisible sur le preview
+    Vercel, qui n'est pas embarqué). L'apparition du badge ne décale la hauteur
+    qu'une fois, sans boucle de resize (seuil de 2 px d'`EmbedBridge` inchangé).
+  - **Activation** : `?owl=1` / désactivation `?owl=0` sur n'importe quelle
+    URL (previews Vercel, accès hors iframe), **ou** geste discret depuis
+    l'intérieur de l'iframe — 7 clics en moins de 3 secondes sur le surtitre
+    « CONFIGURATEUR DE PEINTURE » de l'écran d'accueil (bascule). Le geste est
+    le seul chemin valable en production : le `localStorage` d'une iframe
+    tierce est partitionné par les navigateurs, un drapeau posé en accès
+    direct au sous-domaine ne vaut pas dans l'iframe Shopify. Procédure
+    détaillée dans le README.
+
+#### Modifié
+- **`app/layout.tsx`** : `<Analytics />` remplacé par
+  `<AnalyticsAvecFiltre />`, monté avant `<main>` pour que le badge se rende en
+  tête de contenu (garde de redirection et `EmbedBridge` inchangés).
+- **`app/page.tsx`** : le surtitre de l'écran d'accueil porte le geste de
+  bascule (élément non interactif en apparence, `select-none`) ; cartes,
+  tracking et textes inchangés.
+
 ### Écran d'entrée — titre et réassurance (contexte embed)
 
 #### Modifié

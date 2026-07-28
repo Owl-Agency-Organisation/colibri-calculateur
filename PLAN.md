@@ -236,3 +236,41 @@ Contenus :
       chargement) — origine cible `https://www.colibripeinture.com`, jamais `*`
 - [x] `EstimationModal` : lien politique de confidentialité déjà en
       `target="_blank" rel="noopener noreferrer"` (vérifié, aucun changement)
+
+## Analytics — exclusion du trafic interne (branche : `claude/analytics-internal-traffic-e8ft4b`)
+
+> Constat (25–28/07) : le trafic interne (équipe, QA, démos) représente la
+> majorité des pages vues (5 visiteurs Mac pour 184 pages vues) et contamine
+> les événements de parcours. Objectif : un navigateur marqué « interne »
+> n'envoie plus rien à Vercel Analytics, de façon persistante et réversible.
+
+- [x] `lib/analytics/interne.ts` — helper d'état isolé et testé : clé
+      `localStorage` `colibri:trafic-interne`, reflet mémoire de session,
+      accès au stockage systématiquement protégés (navigation privée /
+      blocage tiers : ne jette jamais), paramètre d'URL, geste de clics,
+      abonnements aux changements
+- [x] Tests Vitest (15) : activation, désactivation, persistance entre
+      sessions, stockage absent ou en panne, `?owl=1`/`?owl=0`, geste
+      (fenêtre de 3 s, bascule, clics trop espacés), désabonnement
+- [x] `components/AnalyticsAvecFiltre.tsx` — wrapper client de `<Analytics />`
+      avec `beforeSend` (le layout racine est un composant serveur) : filtre
+      pages vues **et** événements `track()` (vérifié sur la 1.6.1 installée :
+      `BeforeSendEvent = pageview | event`, `null` annule l'envoi), fonction
+      stable niveau module qui relit l'état à chaque événement
+- [x] Badge « 🦉 Trafic interne — exclu des stats » visible uniquement quand le
+      mode est actif, **dans le flux en tête de contenu** (`AnalyticsAvecFiltre`
+      monté avant `<main>`, `pointer-events-none`) — `fixed`/`sticky` seraient
+      inopérants : l'iframe faisant la hauteur totale du document, un élément
+      fixe se cale en bas du contenu, hors écran (piège invisible sur le preview
+      Vercel, non embarqué) ; décalage de hauteur ponctuel, pas de boucle de
+      resize (seuil de 2 px d'`EmbedBridge` inchangé)
+- [x] Activation par URL : `?owl=1` active, `?owl=0` désactive (previews
+      Vercel, localhost, accès hors iframe) — lu au montage sur toute route
+- [x] Activation depuis l'iframe (seul chemin valable en production, stockage
+      tiers partitionné) : 7 clics en moins de 3 s sur le surtitre
+      « CONFIGURATEUR DE PEINTURE » de l'écran d'accueil — bascule le mode,
+      sans modifier le contrat postMessage figé côté Shopify
+- [x] `app/layout.tsx` : `<Analytics />` → `<AnalyticsAvecFiltre />` (garde de
+      redirection et `EmbedBridge` intacts)
+- [x] Procédure d'activation documentée noir sur blanc : README (§ Analytics
+      de parcours), CHANGELOG, PLAN
