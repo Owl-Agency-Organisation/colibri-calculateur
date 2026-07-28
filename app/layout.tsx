@@ -77,11 +77,15 @@ export default function RootLayout({
         {/* Pas de header ni footer : le chrome (logo, navigation, crédits) est
             celui du site Shopify qui embarque l'app. La hauteur du document doit
             refléter la hauteur réelle du contenu (auto-resize de l'iframe). */}
+        {/* En tête de body : le badge « trafic interne » rendu par ce composant
+            est dans le flux (aucun positionnement fixed/sticky, inopérant dans
+            une iframe dimensionnée à la hauteur de son contenu). Analytics
+            lui-même ne rend rien, sa position dans le DOM est indifférente. */}
+        <AnalyticsAvecFiltre />
         <main className="max-w-4xl mx-auto px-4 py-4">
           {children}
         </main>
         <EmbedBridge />
-        <AnalyticsAvecFiltre />
       </body>
     </html>
   );

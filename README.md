@@ -139,10 +139,10 @@ dans `components/AnalyticsAvecFiltre.tsx`, état dans `lib/analytics/interne.ts`
 Le mode persiste entre les sessions (`localStorage`, clé
 `colibri:trafic-interne`).
 
-Tant que le mode est actif, un badge fixe **« 🦉 Trafic interne — exclu des
-stats »** est affiché en bas à gauche de l'écran. **Pas de badge = visites
-comptées** : si vous ne le voyez pas, le filtre n'est pas actif dans ce
-navigateur.
+Tant que le mode est actif, un badge **« 🦉 Trafic interne — exclu des stats »**
+est affiché en haut du calculateur, au-dessus du contenu de l'étape en cours
+(dans le flux, sur toutes les routes). **Pas de badge = visites comptées** : si
+vous ne le voyez pas, le filtre n'est pas actif dans ce navigateur.
 
 **Procédure d'activation / désactivation :**
 

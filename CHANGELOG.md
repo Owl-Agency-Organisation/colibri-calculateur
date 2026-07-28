@@ -25,9 +25,14 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
     ne peut pas lui être passé) — le filtre `beforeSend` retourne `null` pour
     tout événement (pageview et event) quand le mode est actif, et relit
     l'état à chaque envoi (fonction stable niveau module, pas de closure
-    figée). Badge fixe « 🦉 Trafic interne — exclu des stats » en bas à
-    gauche tant que le mode est actif (`pointer-events-none`, hors flux :
-    aucune interaction ni impact sur l'auto-resize de l'iframe).
+    figée). Badge « 🦉 Trafic interne — exclu des stats » affiché tant que le
+    mode est actif, **dans le flux en tête de contenu** (monté avant `<main>`,
+    `pointer-events-none` : aucune interaction). Pas de `fixed`/`sticky` :
+    l'iframe étant dimensionnée à la hauteur totale du document, son viewport
+    couvre tout le contenu et c'est la page Shopify qui scrolle — un élément
+    fixe se calerait en bas du document, hors écran (invisible sur le preview
+    Vercel, qui n'est pas embarqué). L'apparition du badge ne décale la hauteur
+    qu'une fois, sans boucle de resize (seuil de 2 px d'`EmbedBridge` inchangé).
   - **Activation** : `?owl=1` / désactivation `?owl=0` sur n'importe quelle
     URL (previews Vercel, accès hors iframe), **ou** geste discret depuis
     l'intérieur de l'iframe — 7 clics en moins de 3 secondes sur le surtitre
@@ -39,7 +44,8 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 #### Modifié
 - **`app/layout.tsx`** : `<Analytics />` remplacé par
-  `<AnalyticsAvecFiltre />` (garde de redirection et `EmbedBridge` inchangés).
+  `<AnalyticsAvecFiltre />`, monté avant `<main>` pour que le badge se rende en
+  tête de contenu (garde de redirection et `EmbedBridge` inchangés).
 - **`app/page.tsx`** : le surtitre de l'écran d'accueil porte le geste de
   bascule (élément non interactif en apparence, `select-none`) ; cartes,
   tracking et textes inchangés.

@@ -22,6 +22,12 @@ function filtrerTraficInterne(evenement: BeforeSendEvent): BeforeSendEvent | nul
  * de confirmation. `beforeSend` étant une fonction, ce wrapper client est
  * obligatoire : le layout racine est un composant serveur.
  * Activation : `?owl=1` / `?owl=0`, ou geste de clics (cf. README).
+ *
+ * Le badge est rendu DANS LE FLUX, en tête de contenu (monté avant `<main>`).
+ * `fixed`/`sticky` seraient inopérants : l'iframe est dimensionnée à la hauteur
+ * totale du document par EmbedBridge, son viewport couvre donc tout le contenu
+ * et c'est la page Shopify parente qui scrolle — un élément fixe se calerait en
+ * bas du document, hors de l'écran.
  */
 export function AnalyticsAvecFiltre() {
   const interne = useSyncExternalStore(
@@ -43,9 +49,11 @@ export function AnalyticsAvecFiltre() {
       {interne && (
         <div
           role="status"
-          className="pointer-events-none fixed bottom-2 left-2 z-50 select-none rounded-full bg-gray-900/80 px-3 py-1 text-xs font-medium text-white shadow-lg"
+          className="pointer-events-none select-none max-w-4xl mx-auto px-4 pt-2 flex justify-center"
         >
-          🦉 Trafic interne — exclu des stats
+          <span className="rounded-full bg-gray-900/85 px-3 py-1 text-xs font-medium text-white">
+            🦉 Trafic interne — exclu des stats
+          </span>
         </div>
       )}
     </>

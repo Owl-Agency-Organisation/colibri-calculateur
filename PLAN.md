@@ -257,9 +257,13 @@ Contenus :
       pages vues **et** événements `track()` (vérifié sur la 1.6.1 installée :
       `BeforeSendEvent = pageview | event`, `null` annule l'envoi), fonction
       stable niveau module qui relit l'état à chaque événement
-- [x] Badge fixe « 🦉 Trafic interne — exclu des stats » en bas à gauche,
-      visible uniquement quand le mode est actif (`pointer-events-none`, hors
-      flux : pas d'impact sur l'auto-resize ni le scrollTop de l'iframe)
+- [x] Badge « 🦉 Trafic interne — exclu des stats » visible uniquement quand le
+      mode est actif, **dans le flux en tête de contenu** (`AnalyticsAvecFiltre`
+      monté avant `<main>`, `pointer-events-none`) — `fixed`/`sticky` seraient
+      inopérants : l'iframe faisant la hauteur totale du document, un élément
+      fixe se cale en bas du contenu, hors écran (piège invisible sur le preview
+      Vercel, non embarqué) ; décalage de hauteur ponctuel, pas de boucle de
+      resize (seuil de 2 px d'`EmbedBridge` inchangé)
 - [x] Activation par URL : `?owl=1` active, `?owl=0` désactive (previews
       Vercel, localhost, accès hors iframe) — lu au montage sur toute route
 - [x] Activation depuis l'iframe (seul chemin valable en production, stockage
