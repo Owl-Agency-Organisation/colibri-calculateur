@@ -55,6 +55,8 @@ Cocher les cases de `PLAN.md` au fur et à mesure et le committer avec les chang
    "Continuer mes achats" (`?discount={CODE}&storefront=true`), estimation par
    email. Le code promo n'est jamais affiché à l'écran — seule la mention
    "-15% appliqués automatiquement" apparaît.
+10. Répondre et rédiger tous les rapports, commits et descriptions de PR en français.
+11. Branche cible du repo : `main`. `develop` est obsolète, ne pas l'utiliser.
 
 ## Workflow git
 
