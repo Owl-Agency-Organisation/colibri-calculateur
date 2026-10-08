@@ -4,9 +4,11 @@
  * Usage : pnpm wizart:export-peintures
  *
  * Source : Storefront API (variables de `.env.local`), collections
- * `title:Les *`, produits paginés par curseur. Pour chaque collection :
- * teinte la plus claire, la plus foncée et la médiane (luminance calculée
- * depuis le metafield `custom.code_hexadecimal`), plafond de 30 lignes.
+ * `title:Les *` hors laques et sélections thématiques
+ * (`PAINT_EXCLUDED_COLLECTIONS`), produits paginés par curseur. Pour chaque
+ * collection : teinte la plus claire, la plus foncée et la médiane (luminance
+ * calculée depuis le metafield `custom.code_hexadecimal`), plafond
+ * `PAINT_SAMPLE_MAX_ROWS` lignes.
  *
  * Sorties : scripts/wizart/out/colibri-peintures-echantillon.{csv,md}
  */
@@ -89,8 +91,11 @@ async function main(): Promise<void> {
     (data) => data.collections,
   );
   // La recherche Storefront est permissive : on ne garde que les titres « Les … »
-  const collections = allCollections.filter((c) => /^Les\s/i.test(c.title));
+  const lesCollections = allCollections.filter((c) => /^Les\s/i.test(c.title));
   const ignoredCollections = allCollections.filter((c) => !/^Les\s/i.test(c.title));
+  // Laques (bois et métal) et sélections thématiques transverses : hors échantillon
+  const excludedCollections = lesCollections.filter((c) => common.PAINT_EXCLUDED_COLLECTIONS.test(c.title));
+  const collections = lesCollections.filter((c) => !common.PAINT_EXCLUDED_COLLECTIONS.test(c.title));
 
   const shadesByCollection: CollectionShades[] = [];
   const exclusions: Exclusion[] = [];
@@ -136,6 +141,7 @@ async function main(): Promise<void> {
     collections: shadesByCollection,
     productCounts,
     ignoredCollections,
+    excludedCollections,
     exclusions,
     sample,
   });
@@ -151,11 +157,12 @@ function buildReport(input: {
   collections: CollectionShades[];
   productCounts: Map<string, number>;
   ignoredCollections: CollectionNode[];
+  excludedCollections: CollectionNode[];
   exclusions: Exclusion[];
   sample: SampleResult;
 }): string {
   const { mdCell } = common;
-  const { collections, productCounts, ignoredCollections, exclusions, sample } = input;
+  const { collections, productCounts, ignoredCollections, excludedCollections, exclusions, sample } = input;
   const lines: string[] = [];
 
   lines.push('# Échantillon teintes Colibri — export Wizart (gabarit PAINT)');
@@ -226,6 +233,17 @@ function buildReport(input: {
     lines.push('');
     for (const shade of sample.droppedByCap) {
       lines.push(`- ${mdCell(shade.collectionTitle)} — ${mdCell(shade.title)} (${shade.role}, \`${shade.handle}\`)`);
+    }
+    lines.push('');
+  }
+
+  if (excludedCollections.length > 0) {
+    lines.push('## Collections « Les … » hors échantillon');
+    lines.push('');
+    lines.push('Laques bois et métal (hors murs) et sélections thématiques transverses (Pastels, Peps, Tendances), dont les teintes appartiennent déjà aux familles de couleurs :');
+    lines.push('');
+    for (const collection of excludedCollections) {
+      lines.push(`- ${mdCell(collection.title)} (\`${collection.handle}\`)`);
     }
     lines.push('');
   }

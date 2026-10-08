@@ -20,12 +20,15 @@ fichier. Aucun secret n'est écrit dans les sorties.
 
 ```bash
 pnpm wizart:export-peintures
-pnpm wizart:export-papiers-peints
-# critères de repérage explicites (répétables, correspondance exacte) :
-pnpm wizart:export-papiers-peints --collection papiers-peints --product-type "Papier peint" --tag "Papier peint"
+# repérage confirmé sur la boutique (voir « Papiers peints ») :
+pnpm wizart:export-papiers-peints --product-type "Papier peint"
 ```
 
-Sorties (à committer pour l'essai) :
+L'environnement distant de Claude Code ne joint pas Shopify : les exports du
+08/10/2026 ont été lancés depuis un autre environnement, et leurs sorties sont
+commitées dans `out/`.
+
+Sorties (commitées pour l'essai) :
 
 | Fichier | Contenu |
 | --- | --- |
@@ -43,6 +46,13 @@ Source : collections `title:Les *` (filtrées ensuite sur les titres commençant
 par « Les »), produits paginés par curseur (`first: 100` + `after`), champs
 `handle`, `title`, `featuredImage`, metafield `custom.code_hexadecimal`.
 
+Collections « Les … » écartées (`PAINT_EXCLUDED_COLLECTIONS`) :
+
+- « Les laques … » (13 collections) : laques bois et métal, hors murs, donc
+  hors visualiseur ;
+- « Les Pastels », « Les Peps », « Les Tendances » : sélections thématiques
+  transverses, dont les teintes appartiennent déjà aux 14 familles de couleurs.
+
 Sélection de l'échantillon :
 
 1. Les produits sans hex valide (metafield absent ou illisible) sont exclus et
@@ -53,9 +63,11 @@ Sélection de l'échantillon :
 3. Un handle n'est exporté qu'une fois (identifiant unique) : un produit
    présent dans plusieurs collections reste dans la première par ordre
    alphabétique, les suivantes choisissent parmi leurs autres teintes.
-4. Plafond de **30 lignes** appliqué en tourniquet (la plus claire de chaque
-   collection, puis la médiane, puis la plus foncée) pour que chaque
-   collection soit représentée. Les teintes écartées sont listées.
+4. Plafond de **45 lignes** appliqué en tourniquet (la plus claire de chaque
+   collection, puis la médiane, puis la plus foncée). Avec 14 familles le
+   plafond n'est pas atteint : 41 teintes exportées le 08/10/2026 (« Les
+   Noirs » n'en compte que 2). Le plafond initial de 30, posé pour 30
+   collections, ne laissait sortir que les teintes claires.
 
 | Colonne Wizart | Valeur |
 | --- | --- |
@@ -65,10 +77,17 @@ Sélection de l'échantillon :
 | `unique_SKU_ID` | Handle Shopify du produit |
 | `render_color` | Hex normalisé `#RRGGBB` |
 | `product_link` | `https://www.colibripeinture.com/products/{handle}` |
-| `pattern_width` | `1` (voir « À confirmer ») |
-| `price`, `description`, `product_image` | Vides |
+| `pattern_width` | `1` (flottant en mètres ; doc Wizart : jusqu'à 15 m, exemple 0,5) |
+| `price_per_container`, `product_description`, `product_image` | Vides |
 
 ## Papiers peints — gabarit WALLPAPER (squelette)
+
+**Repérage confirmé sur la boutique le 08/10/2026** : `productType` =
+« Papier peint », 3 produits (`papier-peint-montgolfiere`,
+`ombrelle-papier-peint-ecologique`, `rayures-papier-peint-ecologique`).
+Le repérage par défaut remonte en plus la collection « Matériel Papier peint »
+(outillage : brosses, cutter, règle…) : lancer le script avec
+`--product-type "Papier peint"`.
 
 Repérage par défaut, cumulatif (le rapport indique pour chaque produit le ou
 les critères qui l'ont retenu) :
@@ -78,9 +97,7 @@ les critères qui l'ont retenu) :
 3. produits portant un tag contenant « papier(s) peint(s) ».
 
 Les options `--collection`, `--product-type`, `--tag` remplacent ce repérage
-une fois le mode réel confirmé dans l'admin Shopify. Le repérage n'a pas pu
-être vérifié sur la boutique depuis l'environnement de développement : la
-section « Repérage dans Shopify » du rapport fait foi au premier lancement.
+par des critères exacts.
 
 | Colonne Wizart | Valeur |
 | --- | --- |
@@ -95,14 +112,17 @@ section « Repérage dans Shopify » du rapport fait foi au premier lancement.
 Largeurs : premier metafield non vide parmi les candidats, converti en mètres
 (metafield `dimension`, `53 cm`, `0,53 m`…). Sans unité : centimètres supposés
 au-delà de 3, mètres en dessous, et la supposition est signalée. Metafield
-absent → cellule vide, signalée dans le rapport. Les metafields doivent être
-exposés au Storefront API (Admin → Paramètres → Données personnalisées →
-accès Storefront), sinon ils remontent vides.
+absent → cellule vide, signalée dans le rapport. **Au 08/10/2026, aucun des
+metafields candidats n'est renseigné ou exposé** : les largeurs sont à saisir
+à la main (ou à créer dans Shopify puis exposer au Storefront API : Admin →
+Paramètres → Données personnalisées → accès Storefront).
 
 **Textures** : les images Shopify (photos produit, mises en situation) ne sont
 pas des textures raccordables. Elles ne sont jamais utilisées comme textures,
 seulement listées dans le rapport pour information. Les textures viendront du
-fournisseur, un fichier par produit nommé `{handle}.{extension}`.
+fournisseur, un fichier par produit nommé `{handle}.{extension}`. Les trois
+papiers peints existent en plusieurs coloris (images `…-terracotta`, `…-bleu`…)
+: une ligne par coloris sera nécessaire dans Wizart, à cadrer avant l'import.
 
 ## Décisions
 
@@ -114,6 +134,7 @@ fournisseur, un fichier par produit nommé `{handle}.{extension}`.
   le visualiseur teinte le mur à partir du hex, sans fichier image.
 - **Prix vides** : la boutique reste la seule source de prix ; aucun prix n'est
   recopié dans le PIM pendant l'essai.
+- **Laques et sélections thématiques hors échantillon** (voir ci-dessus).
 - **Aucune dépendance ajoutée** : Node exécute le TypeScript nativement
   (`--experimental-strip-types`, sans effet à partir de Node 22.18). Les
   modules locaux sont chargés par import dynamique avec extension `.ts`, car
@@ -121,32 +142,30 @@ fournisseur, un fichier par produit nommé `{handle}.{extension}`.
 - Client Storefront de l'application réutilisé (`shopifyFetch` de
   `lib/shopify.ts`), chargé après lecture de `.env.local`.
 
-## À confirmer sur le gabarit officiel
+## Vérifié sur la documentation Wizart (08/10/2026)
 
-Les pages Wizart n'étaient pas accessibles depuis l'environnement de
-développement ; les points suivants suivent le brief et sont à vérifier sur le
-fichier exemple avant l'import. Le gabarit fait foi.
+- Noms de colonnes PAINT : `unique_SKU_ID`, `render_color`,
+  `price_per_container`, `product_description`, `product_link`,
+  `pattern_width` (requis, flottant en mètres, exemple 0,5).
+- Noms de colonnes WALLPAPER : `unique_sku_id`, `product_regular_price`,
+  `product_width`, `repeat_width`, mesures en mètres.
+- Contrainte : un fichier utilise soit `render_color` soit `product_image`,
+  jamais les deux.
 
-- Séparateur CSV (virgule ici) : constante `CSV_SEPARATOR` dans `common.ts`.
-- `pattern_width` (peinture) : `1` faute de valeur lue dans le fichier exemple
-  (la documentation publique Wizart borne la valeur entre 0,01 et 9 m) :
-  constante `PAINT_PATTERN_WIDTH`.
-- Casse de l'identifiant : `unique_SKU_ID` (PAINT) et `unique_sku_id`
-  (WALLPAPER), comme dans le brief.
-- Noms exacts des colonnes prix et description (`price`, `description` ici).
+## Reste à confirmer sur le fichier exemple
+
+- Séparateur CSV (virgule ici, non documenté) : constante `CSV_SEPARATOR`.
+  Le PIM accepte aussi le XLSX, solution de repli si le CSV est refusé.
 - Sens de `repeat_width` (largeur du motif) face au « raccord » français
   (souvent la hauteur de raccord vertical).
 
 ## Reste manuel
 
-1. Lancer les deux scripts avec un `.env.local` valide, relire les rapports
-   `.md`, committer `out/`.
-2. Importer `colibri-peintures-echantillon.csv` dans le PIM Wizart (procédure
-   d'import ci-dessous) et vérifier le rendu de quelques teintes claires et
-   foncées.
-3. Papiers peints : confirmer le mode de repérage, compléter les largeurs
-   manquantes, récupérer les textures auprès du fournisseur, les nommer
-   d'après `product_image`, puis importer le ZIP des textures et le CSV.
+1. Importer `colibri-peintures-echantillon.csv` dans le PIM Wizart et vérifier
+   le rendu de quelques teintes claires et foncées sur photo réelle.
+2. Papiers peints : saisir les largeurs, récupérer les textures auprès du
+   fournisseur, les nommer d'après `product_image`, cadrer les coloris, puis
+   importer le ZIP des textures et le CSV.
 
 ## Références Wizart
 

@@ -23,14 +23,30 @@ export const STORE_PUBLIC_URL = 'https://www.colibripeinture.com';
 export const CSV_SEPARATOR = ',';
 
 /**
- * `pattern_width` (gabarit PAINT) : valeur du fichier exemple Wizart à défaut
- * de laquelle le brief impose 1. Documentation publique Wizart : bornes
- * 0,01–9 m pour la peinture. À confirmer sur le fichier exemple.
+ * `pattern_width` (gabarit PAINT) : flottant en mètres (documentation Wizart :
+ * « float, numbers only, up to 15 meters », exemple 0.5). Valeur 1 retenue
+ * par le brief faute d'indication spécifique à la peinture.
  */
 export const PAINT_PATTERN_WIDTH = '1';
 
 export const PAINT_SAMPLE_PER_COLLECTION = 3;
-export const PAINT_SAMPLE_MAX_ROWS = 30;
+
+/**
+ * Plafond de lignes. La boutique compte 14 familles de couleurs murales
+ * (« Les Blancs », « Les Bleus »…) : 14 × 3 = 42 teintes, plafond posé à 45
+ * pour qu'aucune famille ne perde sa teinte foncée (constaté au premier
+ * export réel : avec 30 collections et un plafond de 30, seules les teintes
+ * claires sortaient).
+ */
+export const PAINT_SAMPLE_MAX_ROWS = 45;
+
+/**
+ * Collections « Les … » écartées de l'échantillon peinture :
+ * - « Les laques … » : laques bois et métal, hors murs, donc hors visualiseur ;
+ * - « Les Pastels », « Les Peps », « Les Tendances » : sélections thématiques
+ *   transverses, dont les teintes appartiennent déjà aux familles de couleurs.
+ */
+export const PAINT_EXCLUDED_COLLECTIONS = /laque|pastel|peps|tendance/i;
 
 export const WIZART_OUT_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'out');
 
@@ -298,9 +314,10 @@ export function formatError(error: unknown): string {
 // ─── Gabarit PAINT ──────────────────────────────────────────────────────────
 
 /**
- * Colonnes du gabarit PAINT, dans l'ordre du brief. `price`, `description`
- * et `product_image` sont exportées vides : toutes les lignes utilisent
- * `render_color` (contrainte Wizart : jamais `product_image` pour la peinture).
+ * Colonnes du gabarit PAINT (noms officiels de la documentation Wizart).
+ * `price_per_container`, `product_description` et `product_image` sont
+ * exportées vides : toutes les lignes utilisent `render_color` (contrainte
+ * Wizart : jamais `product_image` et `render_color` dans un même fichier).
  */
 export const PAINT_COLUMNS = [
   'brand_name',
@@ -310,8 +327,8 @@ export const PAINT_COLUMNS = [
   'render_color',
   'product_link',
   'pattern_width',
-  'price',
-  'description',
+  'price_per_container',
+  'product_description',
   'product_image',
 ] as const;
 
@@ -326,8 +343,8 @@ export function toPaintRow(shade: SelectedShade): Record<PaintColumn, string> {
     render_color: shade.hex,
     product_link: productLink(shade.handle),
     pattern_width: PAINT_PATTERN_WIDTH,
-    price: '',
-    description: '',
+    price_per_container: '',
+    product_description: '',
     product_image: '',
   };
 }

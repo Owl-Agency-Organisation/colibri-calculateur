@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   PAINT_COLUMNS,
+  PAINT_EXCLUDED_COLLECTIONS,
   buildPaintSample,
   csvCell,
   normalizeHex,
@@ -120,6 +121,17 @@ describe('buildPaintSample', () => {
   });
 });
 
+describe('PAINT_EXCLUDED_COLLECTIONS', () => {
+  it('écarte les laques et les sélections thématiques, garde les familles de couleurs', () => {
+    expect(PAINT_EXCLUDED_COLLECTIONS.test('Les laques bleues')).toBe(true);
+    expect(PAINT_EXCLUDED_COLLECTIONS.test('Les Pastels')).toBe(true);
+    expect(PAINT_EXCLUDED_COLLECTIONS.test('Les Peps')).toBe(true);
+    expect(PAINT_EXCLUDED_COLLECTIONS.test('Les Tendances')).toBe(true);
+    expect(PAINT_EXCLUDED_COLLECTIONS.test('Les Bleus')).toBe(false);
+    expect(PAINT_EXCLUDED_COLLECTIONS.test('Les Blancs teintés')).toBe(false);
+  });
+});
+
 describe('CSV', () => {
   it('échappe séparateur, guillemets et sauts de ligne', () => {
     expect(csvCell('simple')).toBe('simple');
@@ -140,8 +152,8 @@ describe('CSV', () => {
       render_color: '#1A2B3C',
       product_link: 'https://www.colibripeinture.com/products/bleu-nuit',
       pattern_width: '1',
-      price: '',
-      description: '',
+      price_per_container: '',
+      product_description: '',
       product_image: '',
     });
     const csv = toCsv(PAINT_COLUMNS, [row]);
