@@ -1,5 +1,6 @@
 /**
- * Export d'un échantillon de teintes Colibri au gabarit PAINT de Wizart.
+ * Export d'un échantillon de teintes Colibri au gabarit PAINT de Wizart
+ * (mapping par défaut du PIM, méthode image).
  *
  * Usage : pnpm wizart:export-peintures
  *
@@ -10,7 +11,11 @@
  * calculée depuis le metafield `custom.code_hexadecimal`), plafond
  * `PAINT_SAMPLE_MAX_ROWS` lignes.
  *
+ * Chaque teinte est fournie comme un aplat PNG uni 1000×1000 (RGB) généré
+ * depuis son hex, nommé `{handle}.png` dans le ZIP ; `product_image` = handle.
+ *
  * Sorties : scripts/wizart/out/colibri-peintures-echantillon.{csv,md}
+ *           scripts/wizart/out/colibri-peintures-aplats.zip
  */
 import path from 'node:path';
 
@@ -24,9 +29,11 @@ import type {
 // Import dynamique avec extension : exécuté par Node (type stripping natif),
 // qui ne résout pas les imports relatifs sans extension.
 const common = (await import(new URL('./common.ts', import.meta.url).href)) as typeof import('./common');
+const aplats = (await import(new URL('./aplats.ts', import.meta.url).href)) as typeof import('./aplats');
 
 const CSV_FILE = 'colibri-peintures-echantillon.csv';
 const REPORT_FILE = 'colibri-peintures-echantillon.md';
+const ZIP_FILE = 'colibri-peintures-aplats.zip';
 
 const COLLECTIONS_QUERY = `
   query WizartPaintCollections($after: String) {
@@ -137,6 +144,11 @@ async function main(): Promise<void> {
   const csv = common.toCsv(common.PAINT_COLUMNS, sample.rows.map(common.toPaintRow));
   const csvPath = common.writeOutput(CSV_FILE, csv);
 
+  const zip = aplats.zipStore(
+    sample.rows.map((row) => ({ name: common.aplatFileName(row.handle), data: aplats.solidPng(row.hex) })),
+  );
+  const zipPath = common.writeOutput(ZIP_FILE, zip);
+
   const report = buildReport({
     collections: shadesByCollection,
     productCounts,
@@ -150,6 +162,7 @@ async function main(): Promise<void> {
   console.log(`✔ ${sample.rows.length} teinte(s) exportée(s) depuis ${collections.length} collection(s)`);
   console.log(`✔ ${exclusions.length} produit(s) exclu(s) (hex absent ou invalide)`);
   console.log(`→ ${path.relative(process.cwd(), csvPath)}`);
+  console.log(`→ ${path.relative(process.cwd(), zipPath)} (${sample.rows.length} aplat(s) PNG)`);
   console.log(`→ ${path.relative(process.cwd(), reportPath)}`);
 }
 
@@ -173,6 +186,10 @@ function buildReport(input: {
   );
   lines.push('');
   lines.push(`**${sample.rows.length} teinte(s)** exportée(s) dans \`${CSV_FILE}\`.`);
+  lines.push('');
+  lines.push(
+    `Aplats : \`${ZIP_FILE}\` contient ${sample.rows.length} image(s) PNG unie(s) ${aplats.APLAT_SIZE}×${aplats.APLAT_SIZE} (RGB), une par teinte, nommée \`{handle}.png\` à la racine de l'archive. La colonne \`product_image\` reprend le handle sans extension. À importer dans le PIM avec le CSV (mapping par défaut).`,
+  );
   lines.push('');
 
   lines.push('## Teintes par collection');
@@ -203,7 +220,7 @@ function buildReport(input: {
   if (exclusions.length === 0) {
     lines.push('Aucun produit exclu : tous les produits ont un hex valide.');
   } else {
-    lines.push('Produits sans `custom.code_hexadecimal` exploitable (non éligibles à `render_color`) :');
+    lines.push('Produits sans `custom.code_hexadecimal` exploitable (aucun aplat possible) :');
     lines.push('');
     lines.push('| Collection | Produit | Handle | Raison |');
     lines.push('| --- | --- | --- | --- |');
