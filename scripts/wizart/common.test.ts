@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   PAINT_COLUMNS,
   PAINT_EXCLUDED_COLLECTIONS,
+  aplatFileName,
   buildPaintSample,
   csvCell,
   normalizeHex,
@@ -140,24 +141,72 @@ describe('CSV', () => {
     expect(csvCell('a;b', ';')).toBe('"a;b"');
   });
 
-  it('produit une ligne PAINT avec render_color et sans product_image ni prix', () => {
+  it('respecte exactement le mapping par défaut PAINT (31 colonnes, ordre Wizart)', () => {
+    expect(PAINT_COLUMNS).toEqual([
+      'brand_name',
+      'collection_name',
+      'product_name',
+      'unique_sku_id',
+      'product_image',
+      'pattern_width',
+      'product_link',
+      'usage',
+      'sheen',
+      'application_surface',
+      'color',
+      'product_coverage',
+      'coating_type',
+      'opacity',
+      'interior_type',
+      'product_description',
+      'country_of_origin',
+      'product_availability',
+      'price_per_container',
+      'promotional_price_per_container',
+      'product_context',
+      'context_currency',
+      'cleanup',
+      'features',
+      'container_size',
+      'drying_time',
+      'recommended_coats',
+      'warranty',
+      'resistance',
+      'lifestyle',
+      'additional_data',
+    ]);
+    expect(PAINT_COLUMNS).not.toContain('render_color');
+  });
+
+  it('produit une ligne PAINT méthode image : product_image = handle, color = hex, le reste vide', () => {
     const [selected] = buildPaintSample([
       { title: 'Les Bleus', handle: 'les-bleus', shades: [shade('bleu-nuit', '#1A2B3C')] },
     ]).rows;
     const row = toPaintRow(selected);
-    expect(row).toMatchObject({
+    const filled = {
       brand_name: 'Colibri Peinture',
       collection_name: 'Les Bleus',
-      unique_SKU_ID: 'bleu-nuit',
-      render_color: '#1A2B3C',
-      product_link: 'https://www.colibripeinture.com/products/bleu-nuit',
+      product_name: 'bleu-nuit',
+      unique_sku_id: 'bleu-nuit',
+      product_image: 'bleu-nuit',
       pattern_width: '1',
-      price_per_container: '',
-      product_description: '',
-      product_image: '',
-    });
+      product_link: 'https://www.colibripeinture.com/products/bleu-nuit',
+      application_surface: 'wall',
+      color: '#1A2B3C',
+      product_availability: 'in_stock',
+    };
+    expect(row).toMatchObject(filled);
+    // Toutes les autres colonnes (prix compris) restent vides
+    for (const column of PAINT_COLUMNS) {
+      if (!(column in filled)) expect(row[column], column).toBe('');
+    }
+    expect(Object.keys(row)).toHaveLength(PAINT_COLUMNS.length);
+    expect(aplatFileName(row.product_image)).toBe('bleu-nuit.png');
+
     const csv = toCsv(PAINT_COLUMNS, [row]);
-    expect(csv.split('\r\n')[0]).toBe(PAINT_COLUMNS.join(','));
+    const [header, line] = csv.split('\r\n');
+    expect(header).toBe(PAINT_COLUMNS.join(','));
+    expect(line.split(',')).toHaveLength(31);
     expect(csv.endsWith('\r\n')).toBe(true);
   });
 });
