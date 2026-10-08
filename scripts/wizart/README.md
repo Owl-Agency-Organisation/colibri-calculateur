@@ -24,21 +24,25 @@ pnpm wizart:export-peintures
 pnpm wizart:export-papiers-peints --product-type "Papier peint"
 ```
 
-L'environnement distant de Claude Code ne joint pas Shopify : les exports du
-08/10/2026 ont été lancés depuis un autre environnement, et leurs sorties sont
-commitées dans `out/`.
+L'environnement distant de Claude Code ne joint pas Shopify : les exports sont
+lancés depuis un autre environnement, et leurs sorties sont commitées dans
+`out/`. Les sorties peinture du 08/10/2026 suivent encore l'ancienne méthode
+`render_color` ; elles seront régénérées au format ci-dessous (méthode image).
 
 Sorties (commitées pour l'essai) :
 
 | Fichier | Contenu |
 | --- | --- |
-| `out/colibri-peintures-echantillon.csv` | Gabarit PAINT, UTF-8 sans BOM, virgule, fins de ligne CRLF |
-| `out/colibri-peintures-echantillon.md` | Échantillon lisible (collection, teinte, rôle, hex, handle) + rapport des exclusions |
+| `out/colibri-peintures-echantillon.csv` | Gabarit PAINT, mapping par défaut (31 colonnes), UTF-8 sans BOM, virgule, fins de ligne CRLF |
+| `out/colibri-peintures-aplats.zip` | Un aplat PNG 1000×1000 RGB uni par teinte, nommé `{handle}.png`, archive plate |
+| `out/colibri-peintures-echantillon.md` | Échantillon lisible (collection, teinte, rôle, hex, handle), mention du ZIP + rapport des exclusions |
 | `out/colibri-papiers-peints-squelette.csv` | Gabarit WALLPAPER (colonnes requises) |
 | `out/colibri-papiers-peints-squelette.md` | Mode de repérage, signalements (largeurs), URLs des images Shopify |
 
-Tests des fonctions pures (hex, luminance, sélection, CSV, conversion des
-largeurs) : `pnpm test` (`scripts/wizart/common.test.ts`).
+Tests : `pnpm test` — `scripts/wizart/common.test.ts` (hex, luminance,
+sélection, mapping PAINT, CSV, conversion des largeurs) et
+`scripts/wizart/aplats.test.ts` (PNG et ZIP relus octet par octet : ouverture,
+nombre d'entrées, noms, CRC, pixels).
 
 ## Peinture — gabarit PAINT
 
@@ -69,16 +73,42 @@ Sélection de l'échantillon :
    Noirs » n'en compte que 2). Le plafond initial de 30, posé pour 30
    collections, ne laissait sortir que les teintes claires.
 
+### Méthode image et mapping par défaut
+
+Le premier import dans le PIM Wizart a fixé la méthode : le **mapping par
+défaut** du PIM exige la colonne `product_image`, et le formulaire d'import
+exige un **ZIP**. Chaque teinte est donc fournie comme une image unie :
+
+- un PNG 1000×1000, RGB 8 bits sans alpha, rempli avec le hex de la teinte ;
+- nommé `{handle}.png`, à la racine du ZIP (archive plate, sans dossier) ;
+- `product_image` = handle, **sans extension**.
+
+Le CSV reprend exactement, dans l'ordre, les 31 colonnes du fichier
+« Default mapping template_Paint.xlsx » de Wizart (`PAINT_COLUMNS`) :
+
 | Colonne Wizart | Valeur |
 | --- | --- |
 | `brand_name` | `Colibri Peinture` |
 | `collection_name` | Titre de la collection Shopify |
 | `product_name` | Titre du produit |
-| `unique_SKU_ID` | Handle Shopify du produit |
-| `render_color` | Hex normalisé `#RRGGBB` |
+| `unique_sku_id` | Handle Shopify du produit |
+| `product_image` | Handle (nom de l'aplat dans le ZIP, sans `.png`) |
+| `pattern_width` | `1` (flottant en mètres) |
 | `product_link` | `https://www.colibripeinture.com/products/{handle}` |
-| `pattern_width` | `1` (flottant en mètres ; doc Wizart : jusqu'à 15 m, exemple 0,5) |
-| `price_per_container`, `product_description`, `product_image` | Vides |
+| `application_surface` | `wall` |
+| `color` | Hex normalisé `#RRGGBB` |
+| `product_availability` | `in_stock` |
+| Les 21 autres colonnes (`usage`, `sheen`, `product_description`, `price_per_container`…) | Vides |
+
+**Pourquoi `render_color` est abandonné** : la méthode `render_color` décrit
+la teinte par un hex, sans image. Or le mapping par défaut exige
+`product_image` et le formulaire d'import exige un ZIP : sans image, l'import
+ne passe pas. Le hex reste exporté dans `color`.
+
+Génération sans dépendance (`aplats.ts`) : encodeur PNG minimal (chunks
+`IHDR`/`IDAT`/`IEND`, compression `node:zlib`) et ZIP en mode « store » (sans
+compression, les PNG étant déjà compressés) avec CRC32. Un aplat pèse environ
+4 Ko ; l'archive est déterministe (date fixe 01/01/1980).
 
 ## Papiers peints — gabarit WALLPAPER (squelette)
 
@@ -126,12 +156,13 @@ papiers peints existent en plusieurs coloris (images `…-terracotta`, `…-bleu
 
 ## Décisions
 
-- **Handle comme identifiant** (`unique_SKU_ID` / `unique_sku_id`) : stable,
+- **Handle comme identifiant** (`unique_sku_id`) : stable,
   unique, lisible, et il reconstruit l'URL produit. Une teinte = un produit :
   ses variantes (contenance, finition) partagent la même couleur, une ligne
   par produit suffit.
-- **`render_color` pour toutes les lignes peinture**, jamais `product_image` :
-  le visualiseur teinte le mur à partir du hex, sans fichier image.
+- **Méthode image pour la peinture** : un aplat PNG par teinte, `product_image`
+  = handle. `render_color` abandonné (voir « Méthode image et mapping par
+  défaut »).
 - **Prix vides** : la boutique reste la seule source de prix ; aucun prix n'est
   recopié dans le PIM pendant l'essai.
 - **Laques et sélections thématiques hors échantillon** (voir ci-dessus).
@@ -142,15 +173,13 @@ papiers peints existent en plusieurs coloris (images `…-terracotta`, `…-bleu
 - Client Storefront de l'application réutilisé (`shopifyFetch` de
   `lib/shopify.ts`), chargé après lecture de `.env.local`.
 
-## Vérifié sur la documentation Wizart (08/10/2026)
+## Vérifié lors du premier import Wizart
 
-- Noms de colonnes PAINT : `unique_SKU_ID`, `render_color`,
-  `price_per_container`, `product_description`, `product_link`,
-  `pattern_width` (requis, flottant en mètres, exemple 0,5).
-- Noms de colonnes WALLPAPER : `unique_sku_id`, `product_regular_price`,
-  `product_width`, `repeat_width`, mesures en mètres.
-- Contrainte : un fichier utilise soit `render_color` soit `product_image`,
-  jamais les deux.
+- Gabarit PAINT : mapping par défaut du PIM, 31 colonnes de « Default mapping
+  template_Paint.xlsx » (identifiant `unique_sku_id` en minuscules),
+  `product_image` obligatoire, import accompagné d'un ZIP d'images.
+- Noms de colonnes WALLPAPER (documentation) : `unique_sku_id`,
+  `product_regular_price`, `product_width`, `repeat_width`, mesures en mètres.
 
 ## Reste à confirmer sur le fichier exemple
 
@@ -161,8 +190,9 @@ papiers peints existent en plusieurs coloris (images `…-terracotta`, `…-bleu
 
 ## Reste manuel
 
-1. Importer `colibri-peintures-echantillon.csv` dans le PIM Wizart et vérifier
-   le rendu de quelques teintes claires et foncées sur photo réelle.
+1. Importer `colibri-peintures-echantillon.csv` avec
+   `colibri-peintures-aplats.zip` dans le PIM Wizart (mapping par défaut) et
+   vérifier le rendu de quelques teintes claires et foncées sur photo réelle.
 2. Papiers peints : saisir les largeurs, récupérer les textures auprès du
    fournisseur, les nommer d'après `product_image`, cadrer les coloris, puis
    importer le ZIP des textures et le CSV.
