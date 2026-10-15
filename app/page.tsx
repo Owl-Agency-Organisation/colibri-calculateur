@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import { Card, CardContent } from '@/components/ui/Card';
 import { clearAllData } from '@/lib/store/projetStore';
+import { enregistrerClicGeste } from '@/lib/analytics/interne';
 
 export default function AccueilPage() {
   const router = useRouter();
@@ -22,7 +23,12 @@ export default function AccueilPage() {
   return (
     <div className="max-w-2xl mx-auto py-12 px-4">
       <div className="text-center mb-6">
-        <p className="text-[10px] uppercase tracking-widest text-primary-600 font-bold mb-3">
+        {/* Geste équipe : 7 clics rapprochés sur ce surtitre basculent le mode
+            « trafic interne » (exclusion des analytics) — cf. README */}
+        <p
+          className="text-[10px] uppercase tracking-widest text-primary-600 font-bold mb-3 select-none"
+          onClick={() => enregistrerClicGeste()}
+        >
           Configurateur de peinture
         </p>
         <h1 className="text-3xl font-serif font-bold text-gray-900 mb-4">
