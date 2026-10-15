@@ -230,10 +230,11 @@ export function mdCell(value: string): string {
   return value.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
 }
 
-export function writeOutput(fileName: string, content: string): string {
+export function writeOutput(fileName: string, content: string | Uint8Array): string {
   mkdirSync(WIZART_OUT_DIR, { recursive: true });
   const filePath = path.join(WIZART_OUT_DIR, fileName);
-  writeFileSync(filePath, content, 'utf8');
+  if (typeof content === 'string') writeFileSync(filePath, content, 'utf8');
+  else writeFileSync(filePath, content);
   return filePath;
 }
 
@@ -314,38 +315,73 @@ export function formatError(error: unknown): string {
 // ─── Gabarit PAINT ──────────────────────────────────────────────────────────
 
 /**
- * Colonnes du gabarit PAINT (noms officiels de la documentation Wizart).
- * `price_per_container`, `product_description` et `product_image` sont
- * exportées vides : toutes les lignes utilisent `render_color` (contrainte
- * Wizart : jamais `product_image` et `render_color` dans un même fichier).
+ * Colonnes du gabarit PAINT, exactement dans l'ordre du fichier
+ * « Default mapping template_Paint.xlsx » de Wizart (mapping par défaut du
+ * PIM, validé au premier import).
+ *
+ * Méthode image : chaque teinte est fournie comme un aplat PNG uni
+ * (`{handle}.png` dans le ZIP, voir `aplats.ts`) et `product_image` = handle,
+ * sans extension. La méthode `render_color` est abandonnée : le mapping par
+ * défaut exige `product_image` et le formulaire d'import exige un ZIP.
  */
 export const PAINT_COLUMNS = [
   'brand_name',
   'collection_name',
   'product_name',
-  'unique_SKU_ID',
-  'render_color',
-  'product_link',
-  'pattern_width',
-  'price_per_container',
-  'product_description',
+  'unique_sku_id',
   'product_image',
+  'pattern_width',
+  'product_link',
+  'usage',
+  'sheen',
+  'application_surface',
+  'color',
+  'product_coverage',
+  'coating_type',
+  'opacity',
+  'interior_type',
+  'product_description',
+  'country_of_origin',
+  'product_availability',
+  'price_per_container',
+  'promotional_price_per_container',
+  'product_context',
+  'context_currency',
+  'cleanup',
+  'features',
+  'container_size',
+  'drying_time',
+  'recommended_coats',
+  'warranty',
+  'resistance',
+  'lifestyle',
+  'additional_data',
 ] as const;
 
 export type PaintColumn = (typeof PAINT_COLUMNS)[number];
 
+/** Nom du fichier aplat d'une teinte dans le ZIP (`product_image` + extension). */
+export function aplatFileName(handle: string): string {
+  return `${handle}.png`;
+}
+
 export function toPaintRow(shade: SelectedShade): Record<PaintColumn, string> {
+  const row = Object.fromEntries(PAINT_COLUMNS.map((column) => [column, ''])) as Record<
+    PaintColumn,
+    string
+  >;
   return {
+    ...row,
     brand_name: BRAND_NAME,
     collection_name: shade.collectionTitle,
     product_name: shade.title,
-    unique_SKU_ID: shade.handle,
-    render_color: shade.hex,
-    product_link: productLink(shade.handle),
+    unique_sku_id: shade.handle,
+    product_image: shade.handle,
     pattern_width: PAINT_PATTERN_WIDTH,
-    price_per_container: '',
-    product_description: '',
-    product_image: '',
+    product_link: productLink(shade.handle),
+    application_surface: 'wall',
+    color: shade.hex,
+    product_availability: 'in_stock',
   };
 }
 
