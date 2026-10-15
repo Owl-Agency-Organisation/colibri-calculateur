@@ -1,8 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/Button';
-import type { Couleur } from '@/lib/types';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import type { Couleur, TypePiece } from '@/lib/types';
+import { chargerCouleur, chargerCouleurs } from '@/lib/couleur';
+import { getTeintesEssayees, ajouterTeintesEssayees } from '@/lib/store/teintesEssayees';
+import { ecouterSimulateur, useSimulateurDisponible } from '@/lib/embed-parent';
+import { messageOuvrirSimulateur } from '@/lib/embed-messages';
+import { postToParent } from '@/lib/navigation';
 
 interface Collection {
   id: string;
@@ -28,14 +32,100 @@ interface CouleurModalProps {
   onSelect: (couleur: Couleur) => void;
   title?: string;
   targetFinition?: string; // 'Mate', 'Velours', 'Satin'
+  /** Type de la pièce : requis pour proposer le simulateur */
+  typePiece?: TypePiece;
+  /** Entrées vers le simulateur (murs uniquement) */
+  simulateur?: boolean;
 }
 
-export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition }: CouleurModalProps) {
+const nettoyerTitre = (titre: string) => titre.replace(' - Peinture biosourcée murs et plafonds', '');
+
+/**
+ * Carte d'une teinte. Sans lien simulateur : rendu historique (bouton unique).
+ * Avec : la carte reste cliquable pour choisir, « Voir dans ma pièce » en dessous.
+ */
+function CarteTeinte({ imageUrl, titre, onChoisir, onVoir }: {
+  imageUrl?: string;
+  titre: string;
+  onChoisir: () => void;
+  onVoir?: () => void;
+}) {
+  const contenu = (
+    <>
+      {imageUrl && (
+        <img
+          src={imageUrl}
+          alt={titre}
+          className="w-full h-24 object-cover rounded-md mb-2"
+        />
+      )}
+      <p className="text-xs font-medium text-gray-900 line-clamp-2">
+        {nettoyerTitre(titre)}
+      </p>
+    </>
+  );
+
+  if (!onVoir) {
+    return (
+      <button
+        onClick={onChoisir}
+        className="group relative bg-white border-2 border-gray-200 rounded-lg p-3 hover:border-primary-500 hover:shadow-md transition-all"
+      >
+        {contenu}
+      </button>
+    );
+  }
+
+  return (
+    <div className="relative bg-white border-2 border-gray-200 rounded-lg p-3 hover:border-primary-500 hover:shadow-md transition-all flex flex-col">
+      <button type="button" onClick={onChoisir} className="text-left">
+        {contenu}
+      </button>
+      <button
+        type="button"
+        onClick={onVoir}
+        className="mt-2 text-left text-xs font-medium text-primary-500 underline underline-offset-2 hover:text-primary-600"
+      >
+        Voir dans ma pièce
+      </button>
+    </div>
+  );
+}
+
+export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition, typePiece, simulateur = false }: CouleurModalProps) {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Teintes essayées dans le simulateur (bloc en tête, murs et plafond)
+  const [teintesEssayees, setTeintesEssayees] = useState<Couleur[]>([]);
+  const [chargementEssayees, setChargementEssayees] = useState(false);
+  // Plusieurs teintes reçues du simulateur : le bloc est mis en avant
+  const [essayeesEnAvant, setEssayeesEnAvant] = useState(false);
+  const [attenteSimulateur, setAttenteSimulateur] = useState(false);
+
+  const simulateurDisponible = useSimulateurDisponible();
+  const pieceSimulateur = simulateur && simulateurDisponible && typePiece ? typePiece : null;
+
+  // Dernières props, pour les retours asynchrones du simulateur
+  const propsRef = useRef({ onSelect, onClose, targetFinition });
+  propsRef.current = { onSelect, onClose, targetFinition };
+
+  const chargerTeintesEssayees = useCallback(async () => {
+    const handles = getTeintesEssayees();
+    if (handles.length === 0) {
+      setTeintesEssayees([]);
+      return;
+    }
+    setChargementEssayees(true);
+    try {
+      setTeintesEssayees(await chargerCouleurs(handles, { targetFinition: propsRef.current.targetFinition }));
+    } finally {
+      setChargementEssayees(false);
+    }
+  }, []);
 
   // Reset l'état et charger les collections à chaque ouverture
   useEffect(() => {
@@ -44,9 +134,58 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition 
       setSelectedCollection(null);
       setProducts([]);
       setError(null);
+      setEssayeesEnAvant(false);
+      setAttenteSimulateur(false);
       loadCollections();
+      chargerTeintesEssayees();
     }
-  }, [isOpen]);
+  }, [isOpen, chargerTeintesEssayees]);
+
+  // Retours du simulateur (ouvert en surimpression par la page Shopify).
+  // Aucune navigation : la saisie de la page en dessous est conservée.
+  useEffect(() => {
+    if (!isOpen) return;
+    return ecouterSimulateur((evenement) => {
+      setAttenteSimulateur(false);
+      if (evenement.type === 'colibri:simulateur:ferme' || evenement.teintes.length === 0) return;
+
+      ajouterTeintesEssayees(evenement.teintes);
+      setError(null);
+
+      if (evenement.teintes.length === 1) {
+        // Une seule teinte : posée directement sur le mur ciblé
+        const { targetFinition: finition } = propsRef.current;
+        chargerCouleur(evenement.teintes[0], { targetFinition: finition })
+          .then((couleur) => {
+            if (couleur) {
+              propsRef.current.onSelect(couleur);
+              propsRef.current.onClose();
+            } else {
+              chargerTeintesEssayees();
+            }
+          })
+          .catch((err: unknown) => {
+            console.error(err);
+            setError('Impossible de sélectionner cette couleur');
+            chargerTeintesEssayees();
+          });
+        return;
+      }
+
+      // Plusieurs teintes : le client choisit dans le bloc mis en avant
+      setSelectedCollection(null);
+      setProducts([]);
+      setEssayeesEnAvant(true);
+      chargerTeintesEssayees();
+    });
+  }, [isOpen, chargerTeintesEssayees]);
+
+  const ouvrirSimulateur = (teinte?: string) => {
+    if (!pieceSimulateur) return;
+    setError(null);
+    setAttenteSimulateur(true);
+    postToParent(messageOuvrirSimulateur(pieceSimulateur, teinte));
+  };
 
   const loadCollections = async () => {
     setLoading(true);
@@ -118,57 +257,18 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition 
   const handleSelectProduct = async (product: Product) => {
     // Récupérer les détails complets du produit (avec metafields)
     try {
-      const response = await fetch(`/api/shopify/product/${product.handle}`);
-      if (!response.ok) throw new Error('Erreur lors du chargement du produit');
-      const data = await response.json();
-      
-      console.log('DEBUG: Réponse API brute', data);
-
-      // Source de vérité unique : l'option "Finition" des variantes Shopify
-      // On cherche si une variante correspond à la finition attendue (targetFinition)
-      let finition = undefined;
-      
-      if (data.variants && data.variants.length > 0) {
-        // 1. Chercher une variante qui correspond exactement à la finition cible
-        const matchingVariant = data.variants.find((v: any) => 
-          v.selectedOptions?.some((opt: any) => 
-            opt.name.toLowerCase() === 'finition' && 
-            opt.value.toLowerCase() === targetFinition?.toLowerCase()
-          )
-        );
-
-        if (matchingVariant) {
-          finition = matchingVariant.selectedOptions.find((opt: any) => opt.name.toLowerCase() === 'finition')?.value;
-        } else {
-          // 2. Fallback : prendre la finition du premier variant si aucune correspondance exacte
-          const firstVariantWithFinition = data.variants.find((v: any) => 
-            v.selectedOptions?.some((opt: any) => opt.name.toLowerCase() === 'finition')
-          );
-          if (firstVariantWithFinition) {
-            finition = firstVariantWithFinition.selectedOptions.find((opt: any) => opt.name.toLowerCase() === 'finition')?.value;
-          }
-        }
-      }
-
-      console.log('DEBUG: Sélection couleur (Dynamique)', {
-        handle: product.handle,
+      const couleur = await chargerCouleur(product.handle, {
         targetFinition,
-        finalFinition: finition
-      });
-
-      const couleur: Couleur = {
-        productId: product.id,
-        productHandle: product.handle,
-        titre: product.title,
         collection: collections.find(c => c.handle === selectedCollection)?.title || '',
-        base: data.base || 'Blanc',
-        sousCouche: data.sousCouche || 'blanche',
-        codeHex: data.codeHex || '#FFFFFF',
-        finition: finition,
-        imageUrl: product.images.edges[0]?.node.url || '',
-        variants: data.variants || [],
-      };
-      
+        produit: {
+          id: product.id,
+          handle: product.handle,
+          title: product.title,
+          imageUrl: product.images.edges[0]?.node.url || '',
+        },
+      });
+      if (!couleur) throw new Error('Erreur lors du chargement du produit');
+
       onSelect(couleur);
       onClose();
     } catch (err) {
@@ -177,10 +277,16 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition 
     }
   };
 
+  const handleSelectTeinteEssayee = (couleur: Couleur) => {
+    onSelect(couleur);
+    onClose();
+  };
+
   const handleClose = () => {
     // Reset l'état à la fermeture aussi
     setSelectedCollection(null);
     setProducts([]);
+    setAttenteSimulateur(false);
     onClose();
   };
 
@@ -227,14 +333,78 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition 
               </div>
             )}
 
-            {loading && (
+            {attenteSimulateur && (
+              <div className="flex flex-col items-center text-center gap-4 py-12" role="status">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                <div>
+                  <p className="font-medium text-gray-900">Le simulateur est ouvert</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Essayez vos teintes sur la photo de votre pièce, puis validez votre sélection&nbsp;: elle s&apos;affichera ici.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAttenteSimulateur(false)}
+                  className="text-sm text-gray-600 hover:text-gray-900 underline underline-offset-2"
+                >
+                  Revenir au choix des couleurs
+                </button>
+              </div>
+            )}
+
+            {!attenteSimulateur && loading && (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
               </div>
             )}
 
-            {!loading && !selectedCollection && (
+            {!attenteSimulateur && !loading && !selectedCollection && (
               <div>
+                {(teintesEssayees.length > 0 || chargementEssayees) && (
+                  <section
+                    className={`mb-6 rounded-lg ${essayeesEnAvant ? 'border-2 border-primary-500 bg-primary-50 p-4' : ''}`}
+                  >
+                    <h3 className="text-lg font-medium text-gray-900">Vos teintes essayées</h3>
+                    {essayeesEnAvant && (
+                      <p className="text-sm text-primary-600 mt-1">
+                        Voici les teintes retenues dans le simulateur&nbsp;: choisissez celle de ce mur.
+                      </p>
+                    )}
+                    {chargementEssayees && teintesEssayees.length === 0 ? (
+                      <div className="flex items-center justify-center py-6">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4">
+                        {teintesEssayees.map((couleur) => (
+                          <CarteTeinte
+                            key={couleur.productHandle}
+                            imageUrl={couleur.imageUrl}
+                            titre={couleur.titre}
+                            onChoisir={() => handleSelectTeinteEssayee(couleur)}
+                            onVoir={pieceSimulateur ? () => ouvrirSimulateur(couleur.productHandle) : undefined}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {pieceSimulateur && (
+                  <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border border-primary-200 bg-primary-50 p-4">
+                    <p className="flex-1 text-sm text-primary-600">
+                      <span className="font-semibold">Vous hésitez&nbsp;?</span> Essayez les teintes sur une photo de votre pièce.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => ouvrirSimulateur()}
+                      className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-500 transition-colors"
+                    >
+                      Essayer dans ma pièce
+                    </button>
+                  </div>
+                )}
+
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Collections</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {collections.map((collection) => (
@@ -259,7 +429,7 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition 
               </div>
             )}
 
-            {!loading && selectedCollection && (
+            {!attenteSimulateur && !loading && selectedCollection && (
               <div>
                 <button
                   onClick={() => {
@@ -277,22 +447,13 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition 
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Couleurs disponibles</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                   {products.map((product) => (
-                    <button
+                    <CarteTeinte
                       key={product.id}
-                      onClick={() => handleSelectProduct(product)}
-                      className="group relative bg-white border-2 border-gray-200 rounded-lg p-3 hover:border-primary-500 hover:shadow-md transition-all"
-                    >
-                      {product.images.edges[0] && (
-                        <img
-                          src={product.images.edges[0].node.url}
-                          alt={product.title}
-                          className="w-full h-24 object-cover rounded-md mb-2"
-                        />
-                      )}
-                      <p className="text-xs font-medium text-gray-900 line-clamp-2">
-                        {product.title.replace(' - Peinture biosourcée murs et plafonds', '')}
-                      </p>
-                    </button>
+                      imageUrl={product.images.edges[0]?.node.url}
+                      titre={product.title}
+                      onChoisir={() => handleSelectProduct(product)}
+                      onVoir={pieceSimulateur ? () => ouvrirSimulateur(product.handle) : undefined}
+                    />
                   ))}
                 </div>
               </div>

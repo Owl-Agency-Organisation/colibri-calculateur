@@ -9,6 +9,8 @@ export const STORAGE_KEYS = {
   CALCUL: 'colibri-projet-calcul',
   OPTIONS: 'colibri-projet-options',
   SHOPIFY_DATA: 'colibri-projet-shopify-data',
+  // Teintes essayées dans le simulateur (lib/store/teintesEssayees.ts)
+  TEINTES_ESSAYEES: 'colibri-projet-teintes-essayees',
 } as const;
 
 // Clés localStorage héritées des anciennes versions (étape identification,

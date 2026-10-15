@@ -11,6 +11,12 @@ import { InfoTooltip, getFinitionTooltip } from '@/components/ui/InfoTooltip';
 import { getStoredPieces, setStoredPieces } from '@/lib/store/projetStore';
 import type { Piece, TypePiece } from '@/lib/types';
 import { REGLES_FINITION } from '@/lib/calcul';
+import { PARENT_ORIGIN, redirectTop } from '@/lib/navigation';
+import { useSimulateurDisponible } from '@/lib/embed-parent';
+
+// Page Simulateur du site : le projet reste dans le localStorage, le retour
+// se fait par l'écran d'arrivée (« Ajouter cette pièce à mon projet »)
+const URL_PAGE_SIMULATEUR = `${PARENT_ORIGIN}/pages/simulateur`;
 
 const TYPE_PIECE_LABELS: Record<TypePiece, string> = {
   'piece-de-vie': 'Pièce de vie',
@@ -29,6 +35,7 @@ export default function RecapitulatifPage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [pieceToDelete, setPieceToDelete] = useState<string | null>(null);
+  const simulateurDisponible = useSimulateurDisponible();
 
   useEffect(() => {
     const stored = getStoredPieces();
@@ -254,6 +261,17 @@ export default function RecapitulatifPage() {
           </Card>
         ))}
       </div>
+
+      {/* Visualiser une autre pièce : seulement si la page parente a annoncé le simulateur */}
+      {simulateurDisponible && (
+        <Button
+          variant="secondary"
+          className="w-full"
+          onClick={() => redirectTop(URL_PAGE_SIMULATEUR)}
+        >
+          Visualiser une autre pièce dans le simulateur
+        </Button>
+      )}
 
       {/* Bouton ajouter une pièce */}
       <button

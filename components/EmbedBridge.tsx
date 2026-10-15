@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { PARENT_ORIGIN } from '@/lib/navigation';
+import { postToParent } from '@/lib/navigation';
+import { traiterMessageParent } from '@/lib/embed-parent';
 
 // Le parent (page Shopify /pages/configurateur) passe son min-height de secours
 // à 0 dès le premier resize reçu : une hauteur aberrante écraserait la page.
@@ -28,10 +29,20 @@ function estEmbarque(): boolean {
  * - `{ type: 'colibri:resize', height: number }` — auto-resize de l'iframe
  * - `{ type: 'colibri:scrollTop' }` — scroll vers le haut à chaque étape
  * - `{ type: 'colibri:redirect', url }` — émis par redirectTop() (lib/navigation)
+ * Pont simulateur (contrat complet : lib/embed-messages.ts) : écoute des
+ * messages page → app (`colibri:parent:pret`, retours du simulateur).
  */
 export function EmbedBridge() {
   const pathname = usePathname();
   const premierScrollTop = useRef(true);
+
+  // Messages page → app. Posé avant l'annonce de hauteur : le script hébergé
+  // renvoie `colibri:parent:pret` à la première hauteur reçue, l'app doit
+  // déjà écouter à ce moment-là.
+  useEffect(() => {
+    window.addEventListener('message', traiterMessageParent);
+    return () => window.removeEventListener('message', traiterMessageParent);
+  }, []);
 
   // Auto-resize : hauteur réelle du document → hauteur de l'iframe
   useEffect(() => {
@@ -48,7 +59,7 @@ export function EmbedBridge() {
       if (hauteur < HAUTEUR_MIN_PX) return;
       if (Math.abs(hauteur - derniereHauteur) <= SEUIL_VARIATION_PX) return;
       derniereHauteur = hauteur;
-      window.parent.postMessage({ type: 'colibri:resize', height: hauteur }, PARENT_ORIGIN);
+      postToParent({ type: 'colibri:resize', height: hauteur });
     };
 
     const planifierEmission = () => {
@@ -79,7 +90,7 @@ export function EmbedBridge() {
       return;
     }
     if (!estEmbarque()) return;
-    window.parent.postMessage({ type: 'colibri:scrollTop' }, PARENT_ORIGIN);
+    postToParent({ type: 'colibri:scrollTop' });
   }, [pathname]);
 
   return null;

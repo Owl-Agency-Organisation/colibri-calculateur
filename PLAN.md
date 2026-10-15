@@ -236,3 +236,49 @@ Contenus :
       chargement) — origine cible `https://www.colibripeinture.com`, jamais `*`
 - [x] `EstimationModal` : lien politique de confidentialité déjà en
       `target="_blank" rel="noopener noreferrer"` (vérifié, aucun changement)
+
+## Simulateur : pont (branche : `feat/simulateur-pont`)
+
+> Décision (15/10) : le simulateur Wizart (Deployment Kit) est relié au
+> configurateur dans les deux sens — page Simulateur du site → configurateur
+> (pièce + teintes) et popup couleur → simulateur en surimpression (retour des
+> teintes choisies). Wizart renvoie le handle Shopify de la teinte. Aucune
+> logique dans le thème : script hébergé `/embed/colibri.js`, appelé en deux
+> lignes par les pages Shopify. Merge sans effet visible : tant que la page
+> n'annonce pas `colibri:parent:pret`, l'app n'affiche aucune entrée simulateur.
+
+- [x] Contrat de messages typé et documenté (`lib/embed-messages.ts`) :
+      `colibri:simulateur:ouvrir` (app → page), `colibri:simulateur:selection`,
+      `colibri:simulateur:ferme`, `colibri:parent:pret` (page → app) ; contrat
+      historique (`resize`, `scrollTop`, `redirect`) inchangé ; origines
+      vérifiées dans les deux sens, jamais `*`
+- [x] Tâche 1 — teintes essayées (`lib/store/teintesEssayees.ts`, clé
+      `colibri-projet-teintes-essayees`, purgée par `clearProjetData`) ;
+      construction d'une `Couleur` extraite de la popup (`lib/couleur.ts`),
+      handle inconnu ignoré et signalé en console
+- [x] Tâche 2 — écran d'arrivée `/calculateur/simulateur?piece=…&teintes=…`
+      (sans projet / avec projet en cours / nouveau projet), page Surfaces
+      pré-remplie (un mur par teinte, 4 max, finition de la pièce, bandeau
+      « Teintes reprises du simulateur »)
+- [x] Tâche 3 — popup couleur : bloc « Vos teintes essayées » (murs et
+      plafond) ; murs + capacité `simulateur` : bandeau « Vous hésitez ? » et
+      lien « Voir dans ma pièce », attente, une teinte posée directement,
+      plusieurs teintes au choix, fermeture sans perte de saisie
+- [x] Tâche 4 — récapitulatif : « Visualiser une autre pièce dans le
+      simulateur » (capacité `simulateur` uniquement)
+- [x] Tâche 5 — script hébergé `/embed/colibri.js` (modes `configurateur`,
+      `simulateur`, `bouton`), logique pure testée, `docs/EMBED_SHOPIFY.md`
+      (blocs, bascule, retour arrière)
+- [x] Tâche 6 — page de test `/labo/pont` (preview uniquement, `noindex`) :
+      vrai script, faux `WizartDeploymentKit`, liens d'entrée, journal
+- [ ] Mise en ligne (Philippe) : page Shopify masquée de test, bascule du bloc
+      de `/pages/configurateur`, puis après signature Wizart : token Vercel
+      (Production), page Simulateur, bloc fiche teinte, tests réels
+- [ ] À vérifier au premier test avec le vrai simulateur (après la signature),
+      conservés sans changement d'ici là :
+      - `CHECKOUT_OPTIONS_OPEN` traité comme sortie du panier (avec
+        `open_in_store` s'il existe) : confirmer que c'est bien l'événement
+        émis au clic sur la validation du panier Wizart
+      - lecture tolérante du panier dans `extraireHandles` (`embed/colibri.js`) :
+        confirmer la forme réelle de `getShoppingCartState()` (documentée
+        `Array<{ vendor_code, quantity }>`) et réduire la lecture à cette forme

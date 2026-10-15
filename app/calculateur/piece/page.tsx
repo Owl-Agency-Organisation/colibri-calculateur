@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { StepIndicator, CALCULATEUR_STEPS } from '@/components/ui/StepIndicator';
 import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { getStoredPieces } from '@/lib/store/projetStore';
+import { clearCouleursArrivee } from '@/lib/store/arriveeSimulateur';
 import type { TypePiece } from '@/lib/types';
 
 // Types de pièces disponibles avec leurs images
@@ -65,6 +66,8 @@ export default function SelectionPiecePage() {
     track('piece_validee', { type_piece: typePiece });
     // Stocker le type de pièce temporairement
     sessionStorage.setItem('colibri-temp-piece-type', typePiece);
+    // Choix manuel : aucun mur pré-rempli par une arrivée simulateur antérieure
+    clearCouleursArrivee();
     // Naviguer vers la saisie des surfaces
     router.push('/calculateur/surfaces');
   };
