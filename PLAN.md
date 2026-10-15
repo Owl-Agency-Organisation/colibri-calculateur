@@ -274,3 +274,11 @@ Contenus :
 - [ ] Mise en ligne (Philippe) : page Shopify masquée de test, bascule du bloc
       de `/pages/configurateur`, puis après signature Wizart : token Vercel
       (Production), page Simulateur, bloc fiche teinte, tests réels
+- [ ] À vérifier au premier test avec le vrai simulateur (après la signature),
+      conservés sans changement d'ici là :
+      - `CHECKOUT_OPTIONS_OPEN` traité comme sortie du panier (avec
+        `open_in_store` s'il existe) : confirmer que c'est bien l'événement
+        émis au clic sur la validation du panier Wizart
+      - lecture tolérante du panier dans `extraireHandles` (`embed/colibri.js`) :
+        confirmer la forme réelle de `getShoppingCartState()` (documentée
+        `Array<{ vendor_code, quantity }>`) et réduire la lecture à cette forme
