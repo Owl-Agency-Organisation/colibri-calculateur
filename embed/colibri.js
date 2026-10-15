@@ -55,11 +55,8 @@
   var CHEMIN_SIMULATEUR = '/pages/simulateur';
   var CHEMIN_ARRIVEE_APP = '/calculateur/simulateur';
 
-  // Du plus récent au plus ancien : en cas d'échec, on passe au suivant
-  var SCRIPTS_DEPKIT = [
-    'https://d18jpdcj6p6zg6.cloudfront.net/wizart-deployment-kit-v1.1.3.min.js',
-    'https://d18jpdcj6p6zg6.cloudfront.net/wizart-deployment-kit-v1.1.2.min.js',
-  ];
+  // Version unique du DepKit : s'il ne charge pas, le simulateur se ferme
+  var SCRIPT_DEPKIT = 'https://d18jpdcj6p6zg6.cloudfront.net/wizart-deployment-kit-v1.1.3.min.js';
   var DELAI_SCRIPT_MS = 15000;
   var DELAI_PANIER_MS = 5000;
 
@@ -175,10 +172,18 @@
     }
   }
 
+  /**
+   * Simulateur utilisable : token Wizart configuré. Un kit déjà présent sur la
+   * page (faux simulateur de /labo/pont) n'en tient lieu qu'en mode labo
+   * (`config.labo`, jamais en production).
+   */
+  function simulateurDisponible(config, kitDejaPresent) {
+    return !!config.tokenWizart || (config.labo === true && !!kitDejaPresent);
+  }
+
   /** Capacités annoncées à l'app dans `colibri:parent:pret`. */
-  function capacites(tokenWizart, kitDejaPresent) {
-    // Un kit déjà présent sur la page (faux simulateur de /labo/pont) vaut token
-    return tokenWizart || kitDejaPresent ? [CAPACITE_SIMULATEUR] : [];
+  function capacites(config, kitDejaPresent) {
+    return simulateurDisponible(config, kitDejaPresent) ? [CAPACITE_SIMULATEUR] : [];
   }
 
   /**
@@ -293,17 +298,14 @@
     });
   }
 
-  /** DepKit chargé à la demande, une seule fois (repli sur la version précédente). */
+  /** DepKit chargé à la demande, une seule fois. */
   function chargerKit() {
     if (kitPresent()) return Promise.resolve(kitPresent());
     if (promesseKit) return promesseKit;
-    promesseKit = SCRIPTS_DEPKIT.reduce(function (precedente, url) {
-      return precedente.catch(function () {
-        return chargerScript(url).then(function () {
-          if (!kitPresent()) throw new Error('WizartDeploymentKit absent après ' + url);
-        });
-      });
-    }, Promise.reject(new Error('début'))).then(kitPresent, function (erreur) {
+    promesseKit = chargerScript(SCRIPT_DEPKIT).then(function () {
+      if (!kitPresent()) throw new Error('WizartDeploymentKit absent après ' + SCRIPT_DEPKIT);
+      return kitPresent();
+    }).catch(function (erreur) {
       promesseKit = null;
       throw erreur;
     });
@@ -483,7 +485,7 @@
     // première hauteur reçue : l'app peut ne pas encore écouter au `load`.
     var pretRenvoye = false;
     function annoncer() {
-      envoyer({ type: 'colibri:parent:pret', capacites: capacites(config.tokenWizart, kitInitial) });
+      envoyer({ type: 'colibri:parent:pret', capacites: capacites(config, kitInitial) });
     }
     iframe.addEventListener('load', function () {
       pretRenvoye = false;
@@ -525,7 +527,7 @@
 
       // Popup couleur → simulateur en surimpression, retour des teintes
       if (data.type === 'colibri:simulateur:ouvrir') {
-        if (capacites(config.tokenWizart, kitInitial).length === 0) {
+        if (!simulateurDisponible(config, kitInitial)) {
           envoyer({ type: 'colibri:simulateur:ferme' });
           return;
         }
@@ -566,7 +568,7 @@
     var bloc = creer('div', { class: 'colibri-simulateur' });
     bloc.appendChild(creer('h2', { texte: 'Quelle pièce voulez-vous repeindre ?' }));
 
-    if (!config.tokenWizart && !kitPresent()) {
+    if (!simulateurDisponible(config, kitPresent())) {
       bloc.appendChild(creer('p', { class: 'colibri-message', texte: 'Le simulateur est momentanément indisponible.' }));
       bloc.appendChild(creer('a', { class: 'colibri-bouton', href: CHEMIN_CONFIGURATEUR, texte: 'Calculer mes quantités de peinture' }));
       hote.appendChild(bloc);
@@ -612,7 +614,7 @@
     var hote = trouverHote(script, 'colibri-bouton-teinte');
     var handle = (hote.getAttribute('data-teinte') || '').trim().toLowerCase();
     // Sans simulateur configuré ou sans teinte valide : aucun bouton
-    if (!config.tokenWizart || !estHandle(handle)) return;
+    if (!simulateurDisponible(config, kitPresent()) || !estHandle(handle)) return;
     injecterStyles();
     hote.appendChild(creer('a', { class: 'colibri-bouton', href: urlSimulateurTeinte(handle), texte: 'Voir dans ma pièce' }));
   }
@@ -635,6 +637,7 @@
   return {
     PIECES: PIECES,
     CAPACITE_SIMULATEUR: CAPACITE_SIMULATEUR,
+    SCRIPT_DEPKIT: SCRIPT_DEPKIT,
     estTypePiece: estTypePiece,
     estHandle: estHandle,
     normaliserTeintes: normaliserTeintes,
@@ -645,6 +648,7 @@
     urlSimulateurTeinte: urlSimulateurTeinte,
     lireTeinteDemandee: lireTeinteDemandee,
     lireMessageApp: lireMessageApp,
+    simulateurDisponible: simulateurDisponible,
     capacites: capacites,
     extraireHandles: extraireHandles,
     demarrer: demarrer,

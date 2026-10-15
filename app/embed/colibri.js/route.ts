@@ -7,7 +7,10 @@ import path from 'node:path';
  * - origine de l'app = origine du script lui-même (un script servi par un
  *   preview pilote donc ce preview) ;
  * - token Wizart (`NEXT_PUBLIC_WIZART_TOKEN`, public par nature, lu au build :
- *   un ajout dans Vercel exige un redéploiement). Absent : pas de simulateur.
+ *   un ajout dans Vercel exige un redéploiement). Absent : pas de simulateur ;
+ * - indicateur `labo` (`NEXT_PUBLIC_COLIBRI_LABO`, fixé au build, jamais en
+ *   production) : seul cas où un kit déjà présent sur la page (faux simulateur
+ *   de /labo/pont) tient lieu de token.
  */
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +33,7 @@ export function GET(request: Request) {
   const config = {
     origineApp: new URL(request.url).origin,
     tokenWizart: process.env.NEXT_PUBLIC_WIZART_TOKEN?.trim() ?? '',
+    labo: process.env.NEXT_PUBLIC_COLIBRI_LABO === '1',
   };
   const script = lireSource().replace(MARQUEUR_CONFIG, JSON.stringify(config));
 

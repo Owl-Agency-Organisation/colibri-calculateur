@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
 import { LIBELLES_PIECES } from '@/lib/pieces';
@@ -9,9 +10,15 @@ interface Entree {
   teintes: string[];
 }
 
+interface Config {
+  tokenWizart: string;
+  labo?: boolean;
+}
+
 interface LogiqueColibri {
   PIECES: [string, string][];
   CAPACITE_SIMULATEUR: string;
+  SCRIPT_DEPKIT: string;
   estHandle(valeur: unknown): boolean;
   normaliserTeintes(valeurs: unknown): string[];
   lireEntreeConfigurateur(recherche: string, pieceSession: string | null): Entree | null;
@@ -21,7 +28,8 @@ interface LogiqueColibri {
   urlSimulateurTeinte(handle: string): string;
   lireTeinteDemandee(recherche: string): string | null;
   lireMessageApp(donnees: unknown): Record<string, unknown> | null;
-  capacites(token: string, kitDejaPresent: boolean): string[];
+  simulateurDisponible(config: Config, kitDejaPresent: boolean): boolean;
+  capacites(config: Config, kitDejaPresent: boolean): string[];
   extraireHandles(valeur: unknown): string[];
 }
 
@@ -119,10 +127,19 @@ describe('script hébergé — validation des messages de l’app', () => {
 });
 
 describe('script hébergé — capacités et panier Wizart', () => {
-  it('annonce le simulateur seulement avec un token (ou un kit déjà présent)', () => {
-    expect(colibri.capacites('', false)).toEqual([]);
-    expect(colibri.capacites('jeton', false)).toEqual([colibri.CAPACITE_SIMULATEUR]);
-    expect(colibri.capacites('', true)).toEqual([colibri.CAPACITE_SIMULATEUR]);
+  it('hors labo, le simulateur ne dépend que du token (kit déjà présent ignoré)', () => {
+    expect(colibri.capacites({ tokenWizart: '', labo: false }, false)).toEqual([]);
+    expect(colibri.capacites({ tokenWizart: '', labo: false }, true)).toEqual([]);
+    expect(colibri.capacites({ tokenWizart: '' }, true)).toEqual([]);
+    expect(colibri.capacites({ tokenWizart: 'jeton', labo: false }, false)).toEqual([colibri.CAPACITE_SIMULATEUR]);
+    expect(colibri.capacites({ tokenWizart: 'jeton', labo: false }, true)).toEqual([colibri.CAPACITE_SIMULATEUR]);
+  });
+
+  it('en labo, un kit déjà présent tient lieu de token', () => {
+    expect(colibri.simulateurDisponible({ tokenWizart: '', labo: true }, true)).toBe(true);
+    expect(colibri.simulateurDisponible({ tokenWizart: '', labo: true }, false)).toBe(false);
+    expect(colibri.simulateurDisponible({ tokenWizart: 'jeton', labo: true }, false)).toBe(true);
+    expect(colibri.capacites({ tokenWizart: '', labo: true }, true)).toEqual([colibri.CAPACITE_SIMULATEUR]);
   });
 
   it('extrait les handles du panier dans l’ordre, sans doublon', () => {
@@ -139,5 +156,13 @@ describe('script hébergé — capacités et panier Wizart', () => {
     expect(colibri.extraireHandles({ items: [{ vendor_code: 'x' }] })).toEqual(['x']);
     expect(colibri.extraireHandles(undefined)).toEqual([]);
     expect(colibri.extraireHandles([{ vendor_code: 42 }, null])).toEqual([]);
+  });
+});
+
+describe('script hébergé — DepKit', () => {
+  it('charge une seule version du DepKit, la v1.1.3, sans repli', () => {
+    expect(colibri.SCRIPT_DEPKIT).toBe('https://d18jpdcj6p6zg6.cloudfront.net/wizart-deployment-kit-v1.1.3.min.js');
+    const source = readFileSync(new URL('./colibri.js', import.meta.url), 'utf8');
+    expect(source.match(/wizart-deployment-kit-v[\d.]+\.min\.js/g)).toEqual(['wizart-deployment-kit-v1.1.3.min.js']);
   });
 });
