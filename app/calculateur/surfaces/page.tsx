@@ -11,6 +11,7 @@ import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { CouleurModal } from '@/components/modals/CouleurModal';
 import { InfoTooltip, getFinitionTooltip } from '@/components/ui/InfoTooltip';
 import { getStoredPieces, setStoredPieces } from '@/lib/store/projetStore';
+import { getCouleursArrivee, clearCouleursArrivee } from '@/lib/store/arriveeSimulateur';
 import type { Piece, Couleur, TypePiece, Mur } from '@/lib/types';
 import { REGLES_FINITION } from '@/lib/calcul';
 
@@ -36,6 +37,8 @@ export default function SaisieSurfacesPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isEditMode, setIsEditMode] = useState(false);
   const [hasPieces, setHasPieces] = useState(false);
+  // Murs pré-remplis avec les teintes retenues dans le simulateur
+  const [depuisSimulateur, setDepuisSimulateur] = useState(false);
 
   // Charger le type de pièce depuis sessionStorage ou éditer une pièce existante
   useEffect(() => {
@@ -91,6 +94,18 @@ export default function SaisieSurfacesPage() {
         'couloir': 'Couloir',
       };
       setNomPiece(`${labels[type]} ${count}`);
+
+      // Arrivée depuis le simulateur : un mur par teinte, dans l'ordre,
+      // surfaces vides (la finition vient de la règle de la pièce)
+      const couleursSimulateur = getCouleursArrivee().slice(0, MAX_MURS);
+      if (couleursSimulateur.length > 0) {
+        setMurs(couleursSimulateur.map((couleur, index) => ({
+          id: String(index + 1),
+          surface: '',
+          couleur,
+        })));
+        setDepuisSimulateur(true);
+      }
     }
   }, [router]);
 
@@ -219,6 +234,7 @@ export default function SaisieSurfacesPage() {
       // Mode création : ajouter une nouvelle pièce
       pieces.push(pieceData);
       sessionStorage.removeItem('colibri-temp-piece-type');
+      clearCouleursArrivee();
     }
 
     // Sauvegarder dans localStorage
@@ -235,6 +251,7 @@ export default function SaisieSurfacesPage() {
     // Nettoyer les données temporaires
     sessionStorage.removeItem('colibri-edit-piece-id');
     sessionStorage.removeItem('colibri-temp-piece-type');
+    clearCouleursArrivee();
     router.push('/calculateur/piece');
   };
 
@@ -242,6 +259,7 @@ export default function SaisieSurfacesPage() {
     // Nettoyer les données temporaires et aller au récapitulatif
     sessionStorage.removeItem('colibri-edit-piece-id');
     sessionStorage.removeItem('colibri-temp-piece-type');
+    clearCouleursArrivee();
     router.push('/calculateur/recapitulatif');
   };
 
@@ -270,6 +288,17 @@ export default function SaisieSurfacesPage() {
           <p className="text-sm text-gray-500 mt-1">
             Renseignez les surfaces et choisissez les couleurs
           </p>
+          {depuisSimulateur && (
+            <div className="mt-3 flex items-start gap-2 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-600">
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <p>
+                <span className="font-semibold">Teintes reprises du simulateur.</span>{' '}
+                Il ne reste qu&apos;à renseigner la surface de chaque mur.
+              </p>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -483,6 +512,8 @@ export default function SaisieSurfacesPage() {
             : 'Choisir une couleur pour le plafond'
         }
         targetFinition={getTargetFinition()}
+        typePiece={typePiece}
+        simulateur={currentSelection?.type === 'mur'}
       />
     </div>
   );
