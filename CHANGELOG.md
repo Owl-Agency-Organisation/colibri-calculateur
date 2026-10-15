@@ -7,6 +7,45 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Simulateur : pont avec le configurateur
+
+#### Ajouté
+- **Contrat de messages** `lib/embed-messages.ts` (typé, documenté, validé) :
+  `colibri:simulateur:ouvrir` (app → page), `colibri:simulateur:selection`,
+  `colibri:simulateur:ferme` et `colibri:parent:pret` (page → app). Le contrat
+  historique (`resize`, `scrollTop`, `redirect`) ne change pas. L'app n'accepte
+  que les messages de l'origine parente, la page que ceux de l'iframe.
+- **Script hébergé `/embed/colibri.js`** (source `embed/colibri.js`, sans
+  dépendance, cache 5 min) : modes `configurateur` (comportement actuel repris
+  à l'identique + entrée depuis le simulateur, annonce des capacités,
+  simulateur Wizart en surimpression), `simulateur` (page Simulateur du site)
+  et `bouton` (fiche teinte). Blocs Shopify, bascule et retour arrière :
+  `docs/EMBED_SHOPIFY.md`.
+- **Écran d'arrivée** `/calculateur/simulateur?piece=…&teintes=…` : « Votre
+  sélection du simulateur », ajout au projet en cours ou nouveau projet, puis
+  page Surfaces pré-remplie (un mur par teinte, 4 au maximum, bandeau
+  « Teintes reprises du simulateur »).
+- **Teintes essayées** (`lib/store/teintesEssayees.ts`) : bloc « Vos teintes
+  essayées » en tête de la popup couleur (murs et plafond).
+- **Popup couleur des murs** (si la page annonce le simulateur) : bandeau
+  « Vous hésitez ? », lien « Voir dans ma pièce » sur chaque teinte ; une
+  teinte rapportée est posée sur le mur, plusieurs restent au choix ; aucune
+  navigation, la saisie de la page Surfaces est conservée.
+- **Récapitulatif** : bouton « Visualiser une autre pièce dans le
+  simulateur » (si la page annonce le simulateur).
+- **Page de test `/labo/pont`** (previews uniquement, 404 en production,
+  `noindex`) : vrai script, faux simulateur, liens d'entrée, journal des
+  messages.
+- Tests unitaires : messages, paramètres d'entrée, teintes essayées,
+  construction d'une `Couleur`, logique pure du script hébergé.
+
+#### Modifié
+- Construction d'une `Couleur` à partir d'un handle extraite de la popup
+  couleur vers `lib/couleur.ts`, sans changement de comportement.
+- `lib/navigation.ts` : `postToParent()` / `getParentOrigin()` ; hors
+  production uniquement, l'origine du preview est acceptée quand l'app est
+  embarquée par une page de sa propre origine (labo).
+
 ### Écran d'entrée — titre et réassurance (contexte embed)
 
 #### Modifié
