@@ -25,11 +25,13 @@ pnpm wizart:export-papiers-peints --product-type "Papier peint"
 ```
 
 L'environnement distant de Claude Code ne joint pas Shopify : les exports sont
-lancés depuis un autre environnement, et leurs sorties sont commitées dans
-`out/`. Les sorties peinture du 08/10/2026 suivent encore l'ancienne méthode
-`render_color` ; elles seront régénérées au format ci-dessous (méthode image).
+lancés depuis un autre environnement. Les sorties ne sont **pas versionnées** :
+on les régénère à chaque import dans le PIM. L'échantillon de l'essai a été
+importé le 08/10/2026 (import n° 77968, méthode image ci-dessous) ; les
+sorties commitées pendant l'essai, restées au format `render_color`
+abandonné, ont été retirées du repo le 15/10/2026.
 
-Sorties (commitées pour l'essai) :
+Sorties (générées dans `out/`, à ne pas commiter) :
 
 | Fichier | Contenu |
 | --- | --- |
@@ -166,6 +168,8 @@ papiers peints existent en plusieurs coloris (images `…-terracotta`, `…-bleu
 - **Prix vides** : la boutique reste la seule source de prix ; aucun prix n'est
   recopié dans le PIM pendant l'essai.
 - **Laques et sélections thématiques hors échantillon** (voir ci-dessus).
+- **Sorties non versionnées** (15/10/2026) : régénérées à chaque import dans le
+  PIM, pour que le repo ne contienne jamais de fichiers d'export périmés.
 - **Aucune dépendance ajoutée** : Node exécute le TypeScript nativement
   (`--experimental-strip-types`, sans effet à partir de Node 22.18). Les
   modules locaux sont chargés par import dynamique avec extension `.ts`, car
