@@ -274,11 +274,25 @@ Contenus :
 - [ ] Mise en ligne (Philippe) : page Shopify masquée de test, bascule du bloc
       de `/pages/configurateur`, puis après signature Wizart : token Vercel
       (Production), page Simulateur, bloc fiche teinte, tests réels
-- [ ] À vérifier au premier test avec le vrai simulateur (après la signature),
-      conservés sans changement d'ici là :
-      - `CHECKOUT_OPTIONS_OPEN` traité comme sortie du panier (avec
-        `open_in_store` s'il existe) : confirmer que c'est bien l'événement
-        émis au clic sur la validation du panier Wizart
-      - lecture tolérante du panier dans `extraireHandles` (`embed/colibri.js`) :
-        confirmer la forme réelle de `getShoppingCartState()` (documentée
-        `Array<{ vendor_code, quantity }>`) et réduire la lecture à cette forme
+- [x] Vérifié au premier test avec le vrai simulateur (16/10, DepKit v1.1.3,
+      catalogue réel de 41 teintes, token en Preview) — branche
+      `fix/simulateur-sortie-panier` :
+      - `CHECKOUT_OPTIONS_OPEN` ne ferme rien trop tôt : au clic sur
+        « Calculer mes quantités », `OPEN_IN_STORE` (`open_in_store`) est
+        toujours émis en premier et déclenche déjà la sortie ;
+        `CHECKOUT_OPTIONS_OPEN` n'arrive qu'après (et seulement si au moins deux
+        modes de checkout sont activés dans le PIM). Seul `OPEN_IN_STORE` est
+        désormais écouté comme sortie
+      - forme réelle du panier : tableaux parallèles dans `OPEN_IN_STORE.data`
+        (`article_sku` = `vendor_code` du PIM = handle Shopify, à défaut
+        `article_custom_sku`) ; `getShoppingCartState()` ne répond pas en
+        v1.1.3 (délai de 5 s dépassé à chaque fois) : appel supprimé, teintes
+        lues directement dans l'événement, fermeture sans attente. Charge réelle
+        en fixture (`embed/fixtures/wizart-open-in-store.json`)
+      - redirection PIM : avec un seul mode de checkout (« Website checkout »
+        seul), Wizart ouvre un nouvel onglet vers le lien configuré en plus de
+        notre sortie ; le PIM refuse de n'en activer aucun. Configuration
+        retenue : deux modes activés (« Website checkout » et « Email
+        checkout ») — Wizart affiche alors un menu de choix au lieu d'ouvrir un
+        onglet, et le script ferme le simulateur dès `OPEN_IN_STORE`, avant que
+        ce menu soit visible
