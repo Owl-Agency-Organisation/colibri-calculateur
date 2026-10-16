@@ -58,7 +58,6 @@
   // Version unique du DepKit : s'il ne charge pas, le simulateur se ferme
   var SCRIPT_DEPKIT = 'https://d18jpdcj6p6zg6.cloudfront.net/wizart-deployment-kit-v1.1.3.min.js';
   var DELAI_SCRIPT_MS = 15000;
-  var DELAI_PANIER_MS = 5000;
 
   // ===================== Logique pure (testée) =====================
 
@@ -188,15 +187,17 @@
 
   /**
    * Handles des produits du panier Wizart (référence produit = handle Shopify).
-   * Documenté comme Array<{ vendor_code, quantity }> ; quelques variantes de
-   * forme tolérées. Ordre du panier, sans doublon.
+   * Forme réelle (DepKit v1.1.3, `OPEN_IN_STORE.data`) : tableaux parallèles,
+   * `article_sku` (= `vendor_code` du PIM = handle), à défaut
+   * `article_custom_sku`. Formes historiques encore acceptées : Array, ou objet
+   * portant `products` / `items` / `cart`. Ordre du panier, sans doublon.
    */
   function extraireHandles(valeur) {
     var liste = [];
     if (Array.isArray(valeur)) {
       liste = valeur;
     } else if (estObjet(valeur)) {
-      var cles = ['products', 'items', 'cart'];
+      var cles = ['article_sku', 'article_custom_sku', 'products', 'items', 'cart'];
       for (var i = 0; i < cles.length; i++) {
         if (Array.isArray(valeur[cles[i]])) {
           liste = valeur[cles[i]];
@@ -312,19 +313,6 @@
     return promesseKit;
   }
 
-  function avecDelai(promesse, delaiMs) {
-    return new Promise(function (resolve, reject) {
-      var minuteur = setTimeout(function () { reject(new Error('pas de réponse')); }, delaiMs);
-      Promise.resolve(promesse).then(function (valeur) {
-        clearTimeout(minuteur);
-        resolve(valeur);
-      }, function (erreur) {
-        clearTimeout(minuteur);
-        reject(erreur);
-      });
-    });
-  }
-
   /**
    * Ouvre le simulateur en surimpression plein écran.
    * options : { token, teinte, surSelection(handles), surFermeture() }.
@@ -389,16 +377,10 @@
       options.surSelection(handles);
     }
 
-    // Sortie du panier : état du panier, à défaut contenu de l'événement
+    // Sortie du panier : teintes lues dans l'événement, fermeture immédiate
+    // (getShoppingCartState() ne répond pas en v1.1.3)
     function sortiePanier(donneesEvenement) {
-      if (termine) return;
-      var lecture = visualiseur && typeof visualiseur.getShoppingCartState === 'function'
-        ? avecDelai(visualiseur.getShoppingCartState(), DELAI_PANIER_MS)
-        : Promise.reject(new Error('panier indisponible'));
-      lecture.then(function (etat) { return extraireHandles(etat); }, function () { return []; })
-        .then(function (handles) {
-          selectionner(handles.length > 0 ? handles : extraireHandles(donneesEvenement));
-        });
+      selectionner(extraireHandles(donneesEvenement));
     }
 
     boutonFermer.addEventListener('click', function () { session.fermer(); });
@@ -409,7 +391,10 @@
       var evenements = kit.VISUALIZER_EVENTS || {};
       Object.keys(evenements).forEach(function (cle) {
         var valeur = evenements[cle];
-        var sortie = cle === 'CHECKOUT_OPTIONS_OPEN' || valeur === 'open_in_store';
+        // OPEN_IN_STORE est émis en premier au clic sur « Calculer mes
+        // quantités » : la sortie ferme le simulateur avant que le menu de
+        // choix Wizart (CHECKOUT_OPTIONS_OPEN) s'affiche
+        var sortie = cle === 'OPEN_IN_STORE' || valeur === 'open_in_store';
         var retour = cle === 'BACK_BUTTON_CLICK';
         if (!sortie && !retour) return;
         abonnements.push(kit.EventBus.subscribe(function (evenement) {

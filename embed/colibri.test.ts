@@ -150,6 +150,23 @@ describe('script hébergé — capacités et panier Wizart', () => {
     ])).toEqual(['bleu-ciel', 'vert-sauge']);
   });
 
+  it('lit la charge réelle de OPEN_IN_STORE (DepKit v1.1.3, 16/10/2026)', () => {
+    const charge: unknown = JSON.parse(
+      readFileSync(new URL('./fixtures/wizart-open-in-store.json', import.meta.url), 'utf8'),
+    );
+    expect(colibri.extraireHandles(charge)).toEqual([
+      'deguesde-peinture-biosourcee-murs-et-plafonds',
+      'horizon-peinture-biosourcee-murs-et-plafonds',
+    ]);
+  });
+
+  it('se rabat sur article_custom_sku sans article_sku (ordre, sans doublon)', () => {
+    expect(colibri.extraireHandles({
+      number_in_list: [0, 1, 2],
+      article_custom_sku: ['vert-sauge', 'bleu-ciel', 'vert-sauge'],
+    })).toEqual(['vert-sauge', 'bleu-ciel']);
+  });
+
   it('tolère les variantes de forme du panier', () => {
     expect(colibri.extraireHandles({ products: [{ vendorCode: 'a1' }, 'b2', { sku: 'c3' }, { handle: 'd4' }] }))
       .toEqual(['a1', 'b2', 'c3', 'd4']);
