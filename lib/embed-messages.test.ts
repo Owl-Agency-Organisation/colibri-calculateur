@@ -3,8 +3,10 @@ import {
   CAPACITE_SIMULATEUR,
   estHandleTeinte,
   lireEntreeSimulateur,
+  derniereTeinte,
   lireMessagePage,
   messageOuvrirSimulateur,
+  normaliserSelection,
   normaliserTeintes,
 } from '@/lib/embed-messages';
 
@@ -39,9 +41,12 @@ describe('messages page → app', () => {
     expect(lireMessagePage({ type: 'colibri:parent:pret' })).toBeNull();
   });
 
-  it('lit colibri:simulateur:selection en nettoyant les teintes', () => {
+  it('lit colibri:simulateur:selection dans l’ordre d’application (dernière = plus récente)', () => {
+    expect(lireMessagePage({ type: 'colibri:simulateur:selection', teintes: ['b', 'a', 'c'] }))
+      .toEqual({ type: 'colibri:simulateur:selection', teintes: ['b', 'a', 'c'] });
+    // Un doublon compte à sa dernière occurrence : réappliquée, la teinte est la plus récente
     expect(lireMessagePage({ type: 'colibri:simulateur:selection', teintes: ['b', 'a', 'b', 'X Y'] }))
-      .toEqual({ type: 'colibri:simulateur:selection', teintes: ['b', 'a'] });
+      .toEqual({ type: 'colibri:simulateur:selection', teintes: ['a', 'b'] });
     expect(lireMessagePage({ type: 'colibri:simulateur:selection', teintes: 'a,b' })).toBeNull();
   });
 
@@ -82,5 +87,20 @@ describe('paramètres de /calculateur/simulateur', () => {
     expect(lire('piece=chambre&teintes=,,%3Cscript%3E')).toBeNull();
     expect(lire('piece=garage&teintes=bleu-ciel')).toBeNull();
     expect(lire('teintes=bleu-ciel')).toBeNull();
+  });
+});
+
+describe('sélection du simulateur', () => {
+  it('garde les plus récentes au-delà du maximum, la dernière restant la plus récente', () => {
+    expect(normaliserSelection(['a', 'b', 'c', 'd'], 2)).toEqual(['c', 'd']);
+    expect(normaliserSelection([' A ', 3, 'b'])).toEqual(['a', 'b']);
+  });
+
+  it('la teinte posée sur le mur est la dernière de la liste', () => {
+    expect(derniereTeinte(['deguesde', 'horizon', 'ocre'])).toBe('ocre');
+    expect(derniereTeinte(['horizon'])).toBe('horizon');
+    expect(derniereTeinte([])).toBeNull();
+    const message = lireMessagePage({ type: 'colibri:simulateur:selection', teintes: ['ocre', 'horizon', 'ocre'] });
+    expect(message?.type === 'colibri:simulateur:selection' && derniereTeinte(message.teintes)).toBe('ocre');
   });
 });

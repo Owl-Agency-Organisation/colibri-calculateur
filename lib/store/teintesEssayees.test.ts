@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   MAX_TEINTES_ESSAYEES,
   ajouterTeintesEssayees,
+  fusionnerSelectionSimulateur,
   fusionnerTeintes,
   getTeintesEssayees,
   lireTeintesStockees,
@@ -24,6 +25,12 @@ describe('fusionnerTeintes', () => {
     expect(resultat).toHaveLength(MAX_TEINTES_ESSAYEES);
     expect(resultat[0]).toBe('nouvelle');
     expect(resultat).not.toContain(`t${MAX_TEINTES_ESSAYEES - 1}`);
+  });
+});
+
+describe('fusionnerSelectionSimulateur', () => {
+  it('reçue dans l’ordre d’application, la plus récente (dernière) passe en tête', () => {
+    expect(fusionnerSelectionSimulateur(['x', 'b'], ['a', 'b', 'c'])).toEqual(['c', 'b', 'a', 'x']);
   });
 });
 

@@ -15,10 +15,12 @@ import { estTypePiece } from '@/lib/pieces';
  * Pont simulateur (ce module) :
  * - `colibri:simulateur:ouvrir` (app → page) : ouvrir le simulateur en
  *   surimpression, éventuellement sur une teinte
- * - `colibri:simulateur:selection` (page → app) : teintes retenues à la sortie
- *   du panier du simulateur (handles Shopify, ordre du panier, sans doublon)
+ * - `colibri:simulateur:selection` (page → app) : teintes appliquées sur les
+ *   murs pendant la session du simulateur, envoyées par « Utiliser… » de la
+ *   barre Colibri (handles Shopify, ordre d'application, sans doublon : une
+ *   teinte réappliquée passe en dernier, la dernière est la plus récente)
  * - `colibri:simulateur:ferme` (page → app) : simulateur fermé sans sélection
- *   (ou impossible à charger)
+ *   (« Fermer » de la barre, ou impossible à charger)
  * - `colibri:parent:pret` (page → app) : la page est équipée du script hébergé ;
  *   `capacites` contient `simulateur` seulement si le simulateur est utilisable.
  *   L'ancienne page n'envoie rien : sans ce message, l'app n'affiche aucune
@@ -74,7 +76,10 @@ export interface MessageParentPret {
 
 export interface MessageSimulateurSelection {
   type: 'colibri:simulateur:selection';
-  /** Handles des teintes, ordre du panier du simulateur, sans doublon */
+  /**
+   * Handles des teintes, ordre d'application dans le simulateur, sans
+   * doublon : la dernière est la plus récente (posée sur le mur ciblé)
+   */
   teintes: string[];
 }
 
@@ -111,6 +116,21 @@ export function normaliserTeintes(valeurs: readonly unknown[], max = MAX_TEINTES
   return teintes;
 }
 
+/**
+ * Sélection du simulateur (ordre d'application) : handles valides, sans
+ * doublon, la dernière occurrence d'une teinte comptant (réappliquée = plus
+ * récente). Au-delà de `max`, les plus anciennes sont écartées : la dernière
+ * reste toujours la plus récente.
+ */
+export function normaliserSelection(valeurs: readonly unknown[], max = MAX_TEINTES_MESSAGE): string[] {
+  return normaliserTeintes([...valeurs].reverse(), max).reverse();
+}
+
+/** Teinte la plus récente d'une sélection (dernière de la liste), ou null. */
+export function derniereTeinte(teintes: readonly string[]): string | null {
+  return teintes.length > 0 ? teintes[teintes.length - 1] : null;
+}
+
 function estObjet(valeur: unknown): valeur is Record<string, unknown> {
   return typeof valeur === 'object' && valeur !== null;
 }
@@ -132,7 +152,7 @@ export function lireMessagePage(donnees: unknown): MessagePageVersApp | null {
     }
     case 'colibri:simulateur:selection': {
       if (!Array.isArray(donnees.teintes)) return null;
-      return { type: 'colibri:simulateur:selection', teintes: normaliserTeintes(donnees.teintes) };
+      return { type: 'colibri:simulateur:selection', teintes: normaliserSelection(donnees.teintes) };
     }
     case 'colibri:simulateur:ferme':
       return { type: 'colibri:simulateur:ferme' };
