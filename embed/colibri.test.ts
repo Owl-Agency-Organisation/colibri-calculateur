@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { IMAGES_PIECES, LIBELLES_PIECES } from '@/lib/pieces';
 
 // Le script hébergé est un fichier navigateur sans dépendance : chargé comme
@@ -27,6 +27,17 @@ interface Reglages {
   sceneData?: { openWithProduct: string };
 }
 
+interface ReponseFetch {
+  ok: boolean;
+  status: number;
+  json(): Promise<unknown>;
+}
+
+interface CouleursTeintes {
+  hex(handle: string): string | null;
+  chargerCouleurs(origineApp: string, handles: string[], rappel: () => void): Promise<void> | null;
+}
+
 interface LogiqueColibri {
   PIECES: [string, string, string][];
   CAPACITE_SIMULATEUR: string;
@@ -51,6 +62,7 @@ interface LogiqueColibri {
   annonceTeintes(nombre: number): string;
   lireHex(valeur: unknown): string | null;
   urlTeintes(origineApp: string, handles: string[]): string;
+  creerCouleursTeintes(requete: (url: string) => Promise<ReponseFetch>): CouleursTeintes;
   evenementsEcoutes(evenements: Record<string, string> | undefined): { application: string[]; retour: string[] };
   reglagesVisualiseur(kit: { LAYOUTS?: Record<string, string> }, token: string, cible: unknown, teinte?: string | null): Reglages;
 }
@@ -255,6 +267,61 @@ describe('script hébergé — barre Colibri', () => {
     expect(colibri.lireHex('red')).toBeNull();
     expect(colibri.lireHex('#fff;background:url(x)')).toBeNull();
     expect(colibri.lireHex(null)).toBeNull();
+  });
+
+  describe('couleurs des pastilles', () => {
+    const APP = 'https://calculateur.colibripeinture.com';
+    const reponse = (status: number, corps: unknown): ReponseFetch => ({
+      ok: status >= 200 && status < 300,
+      status,
+      json: () => Promise.resolve(corps),
+    });
+
+    it('mémorise une réponse obtenue (teinte absente du catalogue comprise)', async () => {
+      const requete = vi.fn((_url: string) => Promise.resolve(reponse(200, [{ handle: 'horizon', nom: 'Horizon', hex: '#8fa9b8' }])));
+      const rappel = vi.fn();
+      const couleurs = colibri.creerCouleursTeintes(requete);
+      await couleurs.chargerCouleurs(APP, ['horizon', 'inconnue'], rappel);
+      expect(requete).toHaveBeenCalledWith(`${APP}/api/embed/teintes?handles=horizon,inconnue`);
+      expect(couleurs.hex('horizon')).toBe('#8fa9b8');
+      expect(couleurs.hex('inconnue')).toBeNull();
+      expect(rappel).toHaveBeenCalledTimes(1);
+      expect(couleurs.chargerCouleurs(APP, ['horizon', 'inconnue'], rappel)).toBeNull();
+      expect(requete).toHaveBeenCalledTimes(1);
+    });
+
+    it('ne mémorise pas un échec : 502, réseau ou réponse illisible → redemandé au rendu suivant', async () => {
+      const avertissement = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const requete = vi.fn<(url: string) => Promise<ReponseFetch>>()
+        .mockResolvedValueOnce(reponse(502, []))
+        .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+        .mockResolvedValueOnce(reponse(200, { erreur: 'x' }))
+        .mockResolvedValueOnce(reponse(200, [{ handle: 'horizon', hex: '#8fa9b8' }]));
+      const rappel = vi.fn();
+      const couleurs = colibri.creerCouleursTeintes(requete);
+      for (let essai = 0; essai < 3; essai++) {
+        await couleurs.chargerCouleurs(APP, ['horizon'], rappel);
+        expect(couleurs.hex('horizon')).toBeNull();
+      }
+      expect(rappel).not.toHaveBeenCalled();
+      await couleurs.chargerCouleurs(APP, ['horizon'], rappel);
+      expect(requete).toHaveBeenCalledTimes(4);
+      expect(couleurs.hex('horizon')).toBe('#8fa9b8');
+      expect(rappel).toHaveBeenCalledTimes(1);
+      avertissement.mockRestore();
+    });
+
+    it('ne redemande pas un handle dont la requête est en cours', async () => {
+      let terminer: (r: ReponseFetch) => void = () => {};
+      const requete = vi.fn((_url: string) => new Promise<ReponseFetch>((resolve) => { terminer = resolve; }));
+      const couleurs = colibri.creerCouleursTeintes(requete);
+      const premiere = couleurs.chargerCouleurs(APP, ['horizon'], () => {});
+      await Promise.resolve();
+      expect(couleurs.chargerCouleurs(APP, ['horizon'], () => {})).toBeNull();
+      terminer(reponse(200, []));
+      await premiere;
+      expect(requete).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('construit l’URL de l’endpoint des couleurs', () => {

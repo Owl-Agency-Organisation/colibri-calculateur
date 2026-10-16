@@ -413,33 +413,61 @@
     '}',
   ].join('');
 
-  // Couleurs connues (handle → hex, null si indisponible), pour la page
-  var couleursTeintes = {};
-
   /**
-   * Couleurs des teintes demandées à l'app (une requête par lot inconnu).
-   * Échec : pastilles sans rond de couleur, la sortie n'est jamais bloquée.
+   * Couleurs des teintes, demandées à l'app par lots (`requete(url)` → Promise
+   * d'une réponse fetch). Seules les réponses obtenues sont mémorisées : une
+   * teinte absente de la réponse (inconnue du catalogue) reste sans couleur ;
+   * un échec (réseau, HTTP, réponse illisible) n'est pas retenu, les handles
+   * sont redemandés au prochain rendu de la barre. Les pastilles restent
+   * sans rond de couleur en attendant : la sortie n'est jamais bloquée.
    */
-  function chargerCouleurs(origineApp, handles, rappel) {
-    var inconnus = handles.filter(function (h) { return !(h in couleursTeintes); });
-    if (inconnus.length === 0 || typeof fetch !== 'function') return;
-    inconnus.forEach(function (h) { couleursTeintes[h] = null; });
-    fetch(urlTeintes(origineApp, inconnus), { credentials: 'omit' })
-      .then(function (reponse) {
-        if (!reponse.ok) throw new Error('HTTP ' + reponse.status);
-        return reponse.json();
-      })
-      .then(function (liste) {
-        if (!Array.isArray(liste)) return;
-        liste.forEach(function (t) {
-          if (estObjet(t) && inconnus.indexOf(t.handle) !== -1) couleursTeintes[t.handle] = lireHex(t.hex);
-        });
-        rappel();
-      })
-      .catch(function (erreur) {
-        console.warn('[Colibri] Couleurs des teintes indisponibles', erreur);
+  function creerCouleursTeintes(requete) {
+    var connues = {};
+    var enCours = {};
+
+    function hex(handle) {
+      return Object.prototype.hasOwnProperty.call(connues, handle) ? connues[handle] : null;
+    }
+
+    /** Retourne la Promise de la requête lancée, ou null s'il n'y avait rien à demander. */
+    function chargerCouleurs(origineApp, handles, rappel) {
+      var aDemander = handles.filter(function (h) {
+        return !Object.prototype.hasOwnProperty.call(connues, h) && !enCours[h];
       });
+      if (aDemander.length === 0) return null;
+      aDemander.forEach(function (h) { enCours[h] = true; });
+      function liberer() { aDemander.forEach(function (h) { delete enCours[h]; }); }
+
+      return Promise.resolve()
+        .then(function () { return requete(urlTeintes(origineApp, aDemander)); })
+        .then(function (reponse) {
+          if (!reponse || !reponse.ok) throw new Error('HTTP ' + (reponse && reponse.status));
+          return reponse.json();
+        })
+        .then(function (liste) {
+          if (!Array.isArray(liste)) throw new Error('réponse illisible');
+          var recues = {};
+          liste.forEach(function (t) {
+            if (estObjet(t) && aDemander.indexOf(t.handle) !== -1) recues[t.handle] = lireHex(t.hex);
+          });
+          aDemander.forEach(function (h) { connues[h] = recues[h] || null; });
+          liberer();
+          rappel();
+        })
+        .catch(function (erreur) {
+          // Échec non mémorisé : redemandé au prochain rendu
+          liberer();
+          console.warn('[Colibri] Couleurs des teintes indisponibles', erreur);
+        });
+    }
+
+    return { hex: hex, chargerCouleurs: chargerCouleurs };
   }
+
+  // Couleurs des teintes pour la page (une seule instance)
+  var couleursTeintes = creerCouleursTeintes(function (url) {
+    return fetch(url, { credentials: 'omit' });
+  });
 
   /**
    * Barre Colibri : teintes essayées, « Fermer » et « Utiliser… ».
@@ -474,7 +502,7 @@
         liste.appendChild(creer('li', { class: 'vide', texte: 'Appliquez une teinte sur un mur pour la retenir' }));
       }
       teintes.forEach(function (teinte) {
-        var hex = couleursTeintes[teinte.handle] || null;
+        var hex = couleursTeintes.hex(teinte.handle);
         var pastille = creer('li', { class: hex ? 'pastille' : 'pastille sans-couleur' });
         if (hex) {
           var rond = creer('span', { class: 'rond', 'aria-hidden': 'true' });
@@ -498,7 +526,7 @@
       definir: function (suivantes) {
         teintes = suivantes;
         rendre();
-        chargerCouleurs(options.origineApp, teintes.map(function (t) { return t.handle; }), rendre);
+        couleursTeintes.chargerCouleurs(options.origineApp, teintes.map(function (t) { return t.handle; }), rendre);
       },
     };
   }
@@ -970,6 +998,7 @@
     annonceTeintes: annonceTeintes,
     lireHex: lireHex,
     urlTeintes: urlTeintes,
+    creerCouleursTeintes: creerCouleursTeintes,
     evenementsEcoutes: evenementsEcoutes,
     reglagesVisualiseur: reglagesVisualiseur,
     demarrer: demarrer,
