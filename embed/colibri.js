@@ -265,6 +265,7 @@
 
   /** Libellé du bouton principal de la barre (désactivé à 0 teinte). */
   function libelleUtiliser(nombre) {
+    if (nombre === 0) return 'Utiliser mes teintes →';
     return nombre > 1
       ? 'Utiliser ces teintes (' + nombre + ') →'
       : 'Utiliser cette teinte →';

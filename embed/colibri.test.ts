@@ -249,7 +249,7 @@ describe('script hébergé — teintes retenues', () => {
 
 describe('script hébergé — barre Colibri', () => {
   it('libellé du bouton principal selon le nombre de teintes', () => {
-    expect(colibri.libelleUtiliser(0)).toBe('Utiliser cette teinte →');
+    expect(colibri.libelleUtiliser(0)).toBe('Utiliser mes teintes →');
     expect(colibri.libelleUtiliser(1)).toBe('Utiliser cette teinte →');
     expect(colibri.libelleUtiliser(2)).toBe('Utiliser ces teintes (2) →');
     expect(colibri.libelleUtiliser(7)).toBe('Utiliser ces teintes (7) →');
