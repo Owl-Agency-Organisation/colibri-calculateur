@@ -31,8 +31,8 @@ https://calculateur.colibripeinture.com/embed/colibri.js
 La surimpression (plein écran, au-dessus du site) contient deux parties :
 
 - en haut, la zone Wizart (DepKit v1.1.3 en `FILL_PARENT`, `locale: 'fr'`,
-  `showBackToWebsiteButton: false`, ouverture sur une teinte avec
-  `openWithProduct`) ;
+  `showBackToWebsiteButton: false`, ouverture dans un intérieur du type de
+  pièce avec `openInRoom`, sur une teinte avec `openWithProduct`) ;
 - en bas, la **barre Colibri**, toujours visible : « Teintes essayées »
   (pastilles), « Fermer » et « Utiliser cette teinte → » /
   « Utiliser ces teintes (n) → » (« Utiliser mes teintes → », désactivé, tant
@@ -52,6 +52,41 @@ CORS limité à `https://www.colibripeinture.com` et à l'origine de l'app ;
 cache 5 min). Si la couleur n'arrive pas, la pastille affiche le nom seul : la
 barre ne bloque jamais la sortie. Un échec (réseau, erreur serveur) n'est pas
 mémorisé : la couleur est redemandée au prochain rendu de la barre.
+
+### Intérieur d'exemple selon le type de pièce
+
+Le type de pièce est toujours connu (carte de la page Simulateur, ou `piece`
+du message `colibri:simulateur:ouvrir` envoyé par l'app). Wizart s'ouvre
+directement dans un intérieur d'exemple de ce type (`sceneData.openInRoom`,
+transmis à Wizart en `room_uuid`), combiné avec `openWithProduct` quand une
+teinte est demandée. Le client garde « Changer l'intérieur » (en haut à gauche
+dans Wizart) pour revenir à la galerie et à « Télécharger votre photo ». La
+galerie Wizart ne se filtre pas par type de pièce : aucun réglage du DepKit ne
+le permet.
+
+Correspondance (table `INTERIEURS_WIZART` de `embed/colibri.js`, relevée le
+16/10/2026 sur le compte Colibri) :
+
+| Type Colibri | Intérieur Wizart | `room_uuid` |
+|---|---|---|
+| `piece-de-vie` | Wizart_012, salon, 3 murs | `0ccc39c1-6379-4070-934d-f7459ce15247` |
+| `chambre` | Wizart_017, chambre adulte, 2 murs | `1103ea18-8a07-4f59-a1d3-86d08b406755` |
+| `cuisine` | Wizart_018, cuisine avec mur dégagé | `fe9bfc03-6fe5-403d-a6a1-5feb5c71c10c` |
+| `salle-de-bain` | Wizart GO-6041 2, salle de bain avec WC | `00bb8d0e-5dcc-4893-93bc-d4b1b79ae60f` |
+| `toilettes` | le même (seul intérieur avec WC) | `00bb8d0e-5dcc-4893-93bc-d4b1b79ae60f` |
+| `entree` | aucun intérieur adapté | — (galerie) |
+| `couloir` | aucun intérieur adapté | — (galerie) |
+
+**Retrouver les UUID** : ouvrir le simulateur, laisser la galerie s'afficher,
+puis dans l'onglet Réseau des outils du navigateur, lire la réponse de
+`rni.wizart.ai/api/rooms` : chaque intérieur y figure avec son `uuid` et son
+type (`room_type_title`). Mettre à jour la table et son test
+(`embed/colibri.test.ts`).
+
+**UUID inconnu** (intérieur supprimé ou renommé côté Wizart) : sans risque,
+Wizart s'ouvre sur la galerie, comme pour l'entrée et le couloir, sans erreur
+visible. Le labo `/labo/pont` affiche l'intérieur demandé par le script
+(« Intérieur : chambre (1103ea18…) » ou « Galerie »).
 
 Contrat de messages entre la page et l'iframe : `lib/embed-messages.ts`.
 
