@@ -9,9 +9,16 @@
  * - `configurateur` : iframe de l'app (hauteur, retour en haut, redirections —
  *   comportement historique inchangé), entrée depuis le simulateur, annonce des
  *   capacités, simulateur Wizart en surimpression à la demande de l'app ;
- * - `simulateur` : page Simulateur (question « Quelle pièce ? », consignes
- *   photo, simulateur plein écran, retour vers le configurateur) ;
+ * - `simulateur` : page Simulateur (en-tête, « Quelle pièce ? », étapes,
+ *   conseil photo, simulateur plein écran, retour vers le configurateur) ;
  * - `bouton` : bouton « Voir dans ma pièce » d'une fiche teinte.
+ *
+ * Wizart ne sert qu'à visualiser : les teintes appliquées sur les murs
+ * (`PRODUCT_APPLY`) sont retenues par la barre Colibri, seule sortie du
+ * simulateur (« Fermer » / « Utiliser… »). Le panier Wizart n'est pas utilisé.
+ *
+ * Tout le rendu est isolé dans un Shadow DOM : les styles du thème ne
+ * l'atteignent pas (la police reste héritée du site).
  *
  * Contrat de messages : lib/embed-messages.ts. Sans dépendance ; la logique
  * pure est exportée pour les tests (embed/colibri.test.ts) quand le fichier est
@@ -31,21 +38,23 @@
 
   // ===================== Constantes =====================
 
-  // Même liste, mêmes libellés que l'app (lib/pieces.ts — vérifié par test)
+  // Mêmes types, libellés et images que l'app (lib/pieces.ts — vérifié par test)
+  var CDN_PIECES = 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/';
   var PIECES = [
-    ['piece-de-vie', 'Pièce de vie'],
-    ['chambre', 'Chambre'],
-    ['cuisine', 'Cuisine'],
-    ['salle-de-bain', 'Salle de bain'],
-    ['toilettes', 'Toilettes'],
-    ['entree', 'Entrée'],
-    ['couloir', 'Couloir'],
+    ['piece-de-vie', 'Pièce de vie', CDN_PIECES + 'ColibriAssurances_P01_vie.png?v=1769015678'],
+    ['chambre', 'Chambre', CDN_PIECES + 'ColibriAssurances_P02_chambre.png?v=1769015679'],
+    ['cuisine', 'Cuisine', CDN_PIECES + 'ColibriAssurances_P03_cuisine.png?v=1769015679'],
+    ['salle-de-bain', 'Salle de bain', CDN_PIECES + 'ColibriAssurances_P04_salledebain.png?v=1769015678'],
+    ['toilettes', 'Toilettes', CDN_PIECES + 'ColibriAssurances_P05_toilettes.png?v=1769015679'],
+    ['entree', 'Entrée', CDN_PIECES + 'ColibriAssurances_P06_entree.png?v=1769015680'],
+    ['couloir', 'Couloir', CDN_PIECES + 'ColibriAssurances_P07_couloir.png?v=1769015679'],
   ];
 
   var CAPACITE_SIMULATEUR = 'simulateur';
   var MAX_TEINTES = 50;
   var MAX_LONGUEUR_HANDLE = 255;
   var MOTIF_HANDLE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+  var MOTIF_HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 
   // Pièce choisie sur la page Simulateur, relue au retour du PIM Wizart
   // (redirection vers le configurateur avec `vendorCode[]`)
@@ -54,10 +63,16 @@
   var CHEMIN_CONFIGURATEUR = '/pages/configurateur';
   var CHEMIN_SIMULATEUR = '/pages/simulateur';
   var CHEMIN_ARRIVEE_APP = '/calculateur/simulateur';
+  var CHEMIN_API_TEINTES = '/api/embed/teintes';
+  var CHEMIN_LOGO = '/logo-colibri.png';
 
   // Version unique du DepKit : s'il ne charge pas, le simulateur se ferme
   var SCRIPT_DEPKIT = 'https://d18jpdcj6p6zg6.cloudfront.net/wizart-deployment-kit-v1.1.3.min.js';
   var DELAI_SCRIPT_MS = 15000;
+
+  // Événements Wizart écoutés : application d'une teinte, retour (sécurité)
+  var EVENEMENT_APPLICATION = 'PRODUCT_APPLY';
+  var EVENEMENT_RETOUR = 'BACK_BUTTON_CLICK';
 
   // ===================== Logique pure (testée) =====================
 
@@ -77,6 +92,12 @@
     return typeof valeur === 'string'
       && valeur.length <= MAX_LONGUEUR_HANDLE
       && MOTIF_HANDLE.test(valeur);
+  }
+
+  /** Handle normalisé (casse, espaces) ou null s'il est invalide. */
+  function lireHandle(valeur) {
+    var handle = typeof valeur === 'string' ? valeur.trim().toLowerCase() : null;
+    return estHandle(handle) ? handle : null;
   }
 
   /** Handles valides, dans l'ordre, sans doublon. */
@@ -128,7 +149,10 @@
     return reste ? '?' + reste : '';
   }
 
-  /** URL de retour vers le configurateur à la sortie du panier (page Simulateur). */
+  /**
+   * URL du configurateur à la sortie de la page Simulateur : teintes dans
+   * l'ordre d'application (la dernière est la plus récente).
+   */
   function urlConfigurateur(origineBoutique, piece, teintes) {
     return origineBoutique + CHEMIN_CONFIGURATEUR
       + '?piece=' + encodeURIComponent(piece)
@@ -142,8 +166,18 @@
 
   /** Teinte demandée à l'ouverture de la page Simulateur (`?teinte=`). */
   function lireTeinteDemandee(recherche) {
-    var teinte = (new URLSearchParams(recherche || '').get('teinte') || '').trim().toLowerCase();
-    return estHandle(teinte) ? teinte : null;
+    return lireHandle(new URLSearchParams(recherche || '').get('teinte'));
+  }
+
+  /** Visuel de l'en-tête de la page Simulateur (`data-visuel`) : URL http(s) seulement. */
+  function lireVisuel(valeur) {
+    if (typeof valeur !== 'string' || !valeur.trim()) return null;
+    try {
+      var url = new URL(valeur.trim());
+      return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : null;
+    } catch (e) {
+      return null;
+    }
   }
 
   /**
@@ -185,34 +219,100 @@
     return simulateurDisponible(config, kitDejaPresent) ? [CAPACITE_SIMULATEUR] : [];
   }
 
+  /** Nom court d'une teinte : partie de `article_name` avant « - ». */
+  function nomCourt(nom) {
+    if (typeof nom !== 'string') return '';
+    return nom.split(/\s+[-–—]\s+/)[0].trim();
+  }
+
   /**
-   * Handles des produits du panier Wizart (référence produit = handle Shopify).
-   * Forme réelle (DepKit v1.1.3, `OPEN_IN_STORE.data`) : tableaux parallèles,
-   * `article_sku` (= `vendor_code` du PIM = handle), à défaut
-   * `article_custom_sku`. Formes historiques encore acceptées : Array, ou objet
-   * portant `products` / `items` / `cart`. Ordre du panier, sans doublon.
+   * Teintes d'un événement `PRODUCT_APPLY` (DepKit v1.1.3, `evenement.data`) :
+   * `products` = liste d'objets indexés `{collection}_{article}` ; handle
+   * Shopify = `article_sku`, à défaut `article_custom_sku`. Aucun autre champ
+   * n'est lu. Retourne [{ handle, nom }] sans doublon (vide si rien de lisible).
    */
-  function extraireHandles(valeur) {
-    var liste = [];
-    if (Array.isArray(valeur)) {
-      liste = valeur;
-    } else if (estObjet(valeur)) {
-      var cles = ['article_sku', 'article_custom_sku', 'products', 'items', 'cart'];
-      for (var i = 0; i < cles.length; i++) {
-        if (Array.isArray(valeur[cles[i]])) {
-          liste = valeur[cles[i]];
-          break;
+  function lireApplication(donnees) {
+    var teintes = [];
+    if (!estObjet(donnees) || !estObjet(donnees.products)) return teintes;
+    var entrees = Array.isArray(donnees.products) ? donnees.products : [donnees.products];
+    entrees.forEach(function (entree) {
+      if (!estObjet(entree)) return;
+      Object.keys(entree).forEach(function (cle) {
+        var produit = entree[cle];
+        if (!estObjet(produit)) return;
+        var handle = lireHandle(produit.article_sku) || lireHandle(produit.article_custom_sku);
+        if (!handle) return;
+        for (var i = 0; i < teintes.length; i++) {
+          if (teintes[i].handle === handle) return;
         }
-      }
-    }
-    var codes = liste.map(function (element) {
-      if (typeof element === 'string') return element;
-      if (estObjet(element)) {
-        return element.vendor_code || element.vendorCode || element.sku || element.handle;
-      }
-      return null;
+        teintes.push({ handle: handle, nom: nomCourt(produit.article_name) || handle });
+      });
     });
-    return normaliserTeintes(codes);
+    return teintes;
+  }
+
+  /**
+   * Teintes retenues pendant la session, dans l'ordre d'application : une
+   * teinte appliquée à nouveau passe en dernière position (la dernière est
+   * toujours la plus récente). Au-delà de MAX_TEINTES, les plus anciennes
+   * sont oubliées. Retourne une nouvelle liste.
+   */
+  function retenirTeinte(liste, teinte) {
+    var suivante = liste.filter(function (t) { return t.handle !== teinte.handle; });
+    suivante.push(teinte);
+    return suivante.length > MAX_TEINTES ? suivante.slice(suivante.length - MAX_TEINTES) : suivante;
+  }
+
+  /** Libellé du bouton principal de la barre (désactivé à 0 teinte). */
+  function libelleUtiliser(nombre) {
+    return nombre > 1
+      ? 'Utiliser ces teintes (' + nombre + ') →'
+      : 'Utiliser cette teinte →';
+  }
+
+  /** Annonce du nombre de teintes (lecteurs d'écran). */
+  function annonceTeintes(nombre) {
+    if (nombre === 0) return 'Aucune teinte retenue';
+    return nombre === 1 ? '1 teinte retenue' : nombre + ' teintes retenues';
+  }
+
+  /** Couleur d'une pastille : code hexadécimal valide, sinon null (nom seul). */
+  function lireHex(valeur) {
+    return typeof valeur === 'string' && MOTIF_HEX.test(valeur.trim()) ? valeur.trim() : null;
+  }
+
+  /** URL de l'endpoint des couleurs de teintes de l'app. */
+  function urlTeintes(origineApp, handles) {
+    return origineApp + CHEMIN_API_TEINTES + '?handles=' + handles.map(encodeURIComponent).join(',');
+  }
+
+  /**
+   * Valeurs Wizart écoutées : application d'une teinte (retenue par la barre)
+   * et bouton retour (ferme comme « Fermer », par sécurité : il est masqué).
+   * Le panier (`OPEN_IN_STORE`) n'est plus une sortie.
+   */
+  function evenementsEcoutes(evenementsKit) {
+    var resultat = { application: [], retour: [] };
+    Object.keys(evenementsKit || {}).forEach(function (cle) {
+      if (cle === EVENEMENT_APPLICATION) resultat.application.push(evenementsKit[cle]);
+      else if (cle === EVENEMENT_RETOUR) resultat.retour.push(evenementsKit[cle]);
+    });
+    return resultat;
+  }
+
+  /**
+   * Réglages du DepKit : Wizart remplit la zone au-dessus de la barre
+   * (`FILL_PARENT` — `FULL_SCREEN` la recouvrirait), en français, sans bouton
+   * « Retour au site », ouvert sur la teinte demandée le cas échéant.
+   */
+  function reglagesVisualiseur(kit, token, cible, teinte) {
+    var reglages = {
+      token: token,
+      layoutSettings: { targetElement: cible, layout: kit.LAYOUTS && kit.LAYOUTS.FILL_PARENT },
+      integrationSettings: { locale: 'fr', showBackToWebsiteButton: false },
+    };
+    if (teinte) reglages.sceneData = { openWithProduct: teinte };
+    return reglages;
   }
 
   // ===================== Utilitaires navigateur =====================
@@ -255,30 +355,152 @@
     return hote;
   }
 
-  var STYLES = [
-    '.colibri-surimpression{position:fixed;inset:0;z-index:2147483000;background:#fff;}',
-    '.colibri-attente{position:fixed;inset:0;z-index:2147483001;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#fff;font-family:inherit;font-size:16px;line-height:1.4;color:#1e3a34;text-align:center;padding:24px;}',
-    '.colibri-attente-rond{width:32px;height:32px;border-radius:50%;border:3px solid #d2f0ee;border-top-color:#1e3a34;animation:colibri-tourne 1s linear infinite;}',
-    '@keyframes colibri-tourne{to{transform:rotate(360deg)}}',
-    '.colibri-lien{background:none;border:0;padding:4px;color:#1e3a34;text-decoration:underline;cursor:pointer;font:inherit;}',
-    '.colibri-simulateur{max-width:880px;margin:0 auto;padding:24px 16px;color:#1e3a34;}',
-    '.colibri-simulateur h2{font-size:1.5rem;margin:0 0 8px;}',
-    '.colibri-simulateur p{margin:0 0 16px;color:#4b5563;}',
-    '.colibri-pieces{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:0 0 24px;}',
-    '.colibri-piece{padding:14px 12px;border:2px solid #e5e7eb;border-radius:12px;background:#fff;color:#1e3a34;font-family:inherit;font-size:15px;font-weight:600;line-height:1.3;cursor:pointer;}',
-    '.colibri-piece:hover,.colibri-piece:focus-visible{border-color:#007c7a;background:#f0f9f8;}',
-    '.colibri-consignes{background:#f0f9f8;border-radius:12px;padding:16px 20px;}',
-    '.colibri-consignes h3{font-size:1rem;margin:0 0 8px;}',
-    '.colibri-consignes ul{margin:0;padding-left:20px;color:#4b5563;}',
-    '.colibri-consignes li{margin:4px 0;}',
-    '.colibri-message{padding:12px 16px;border-radius:12px;background:#fef3c7;color:#92400e;margin:0 0 16px;}',
-    '.colibri-bouton{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border:2px solid #1e3a34;border-radius:8px;color:#1e3a34;background:#fff;font-weight:600;text-decoration:none;}',
-    '.colibri-bouton:hover{background:#f0f9f8;}',
+  /**
+   * Racine de rendu isolée (Shadow DOM) avec ses styles. Navigateur sans
+   * Shadow DOM : rendu dans l'hôte lui-même (styles du thème non isolés).
+   */
+  function racineIsolee(hote, styles) {
+    var ombre = hote.shadowRoot || (typeof hote.attachShadow === 'function' ? hote.attachShadow({ mode: 'open' }) : hote);
+    ombre.appendChild(creer('style', { texte: styles }));
+    return ombre;
+  }
+
+  // Base commune : police héritée du site, aucun style du thème
+  var STYLES_BASE = [
+    ':host{display:block;font-family:inherit;}',
+    '*,*::before,*::after{box-sizing:border-box;}',
+    'button{font-family:inherit;}',
+    '.colibri-masque{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}',
   ].join('');
 
-  function injecterStyles() {
-    if (document.getElementById('colibri-styles')) return;
-    document.head.appendChild(creer('style', { id: 'colibri-styles', texte: STYLES }));
+  // ===================== Surimpression + barre Colibri =====================
+
+  var STYLES_SURIMPRESSION = STYLES_BASE + [
+    '.surimpression{position:absolute;inset:0;display:flex;flex-direction:column;background:#fff;}',
+    '.zone{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;}',
+    '::slotted(*){position:absolute;inset:0;width:100%;height:100%;}',
+    '.attente{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#fff;font-size:16px;line-height:1.4;color:#13302a;text-align:center;padding:24px;}',
+    '.attente p{margin:0;}',
+    '.attente-rond{width:32px;height:32px;border-radius:50%;border:3px solid #e2f3ee;border-top-color:#13302a;animation:colibri-tourne 1s linear infinite;}',
+    '@keyframes colibri-tourne{to{transform:rotate(360deg)}}',
+    '.lien{background:none;border:0;padding:12px;color:#13302a;text-decoration:underline;cursor:pointer;font-size:15px;}',
+    // Barre Colibri (valeurs de la maquette)
+    '.barre{flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:14px 20px;padding-bottom:calc(14px + env(safe-area-inset-bottom, 0px));background:#13302a;color:#fff;line-height:1.3;}',
+    '.haut{display:flex;align-items:center;gap:12px;min-width:0;}',
+    '.actions{display:contents;}',
+    '.logo{flex:0 0 auto;display:inline-flex;align-items:center;background:#fff;padding:3px 6px;border-radius:4px;}',
+    '.logo img{display:block;height:22px;width:auto;}',
+    '.libelle{flex:0 0 auto;font-size:13px;color:#cfe3dc;white-space:nowrap;}',
+    '.teintes{display:flex;align-items:center;gap:8px;min-width:0;overflow-x:auto;scrollbar-width:none;margin:0;padding:0;list-style:none;}',
+    '.teintes::-webkit-scrollbar{display:none;}',
+    '.pastille{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.12);border-radius:999px;padding:4px 14px 4px 4px;font-size:14px;white-space:nowrap;}',
+    '.pastille.sans-couleur{padding:4px 14px;min-height:36px;}',
+    '.rond{flex:0 0 auto;width:24px;height:24px;box-sizing:content-box;border:2px solid #fff;border-radius:50%;}',
+    '.vide{font-size:13px;color:#cfe3dc;}',
+    '.fermer{margin-left:auto;flex:0 0 auto;background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.6);border-radius:6px;padding:11px 16px;font-size:14px;line-height:1.2;cursor:pointer;}',
+    '.fermer:hover{background:rgba(255,255,255,0.08);}',
+    '.utiliser{flex:0 0 auto;background:#fff;color:#13302a;border:0;border-radius:6px;padding:12px 20px;font-size:15px;font-weight:600;line-height:1.2;cursor:pointer;white-space:nowrap;}',
+    '.utiliser:disabled{opacity:0.45;cursor:not-allowed;}',
+    '.fermer:focus-visible,.utiliser:focus-visible{outline:2px solid #2fae94;outline-offset:2px;}',
+    '@media (max-width:639px){',
+    '.barre{flex-direction:column;align-items:stretch;}',
+    '.haut{width:100%;}',
+    // Ligne du haut réservée au libellé et aux pastilles (maquette mobile)
+    '.logo{display:none;}',
+    '.actions{display:flex;gap:12px;}',
+    '.fermer{margin-left:0;min-height:44px;}',
+    '.utiliser{flex:1 1 auto;min-height:44px;}',
+    '}',
+  ].join('');
+
+  // Couleurs connues (handle → hex, null si indisponible), pour la page
+  var couleursTeintes = {};
+
+  /**
+   * Couleurs des teintes demandées à l'app (une requête par lot inconnu).
+   * Échec : pastilles sans rond de couleur, la sortie n'est jamais bloquée.
+   */
+  function chargerCouleurs(origineApp, handles, rappel) {
+    var inconnus = handles.filter(function (h) { return !(h in couleursTeintes); });
+    if (inconnus.length === 0 || typeof fetch !== 'function') return;
+    inconnus.forEach(function (h) { couleursTeintes[h] = null; });
+    fetch(urlTeintes(origineApp, inconnus), { credentials: 'omit' })
+      .then(function (reponse) {
+        if (!reponse.ok) throw new Error('HTTP ' + reponse.status);
+        return reponse.json();
+      })
+      .then(function (liste) {
+        if (!Array.isArray(liste)) return;
+        liste.forEach(function (t) {
+          if (estObjet(t) && inconnus.indexOf(t.handle) !== -1) couleursTeintes[t.handle] = lireHex(t.hex);
+        });
+        rappel();
+      })
+      .catch(function (erreur) {
+        console.warn('[Colibri] Couleurs des teintes indisponibles', erreur);
+      });
+  }
+
+  /**
+   * Barre Colibri : teintes essayées, « Fermer » et « Utiliser… ».
+   * options : { origineApp, surFermer(), surUtiliser() }.
+   */
+  function creerBarre(options) {
+    var barre = creer('div', { class: 'barre', role: 'region', 'aria-label': 'Teintes essayées' });
+    var logo = creer('span', { class: 'logo' }, [
+      creer('img', { src: options.origineApp + CHEMIN_LOGO, alt: 'Colibri', height: '22' }),
+    ]);
+    var liste = creer('ul', { class: 'teintes' });
+    var annonce = creer('span', { class: 'colibri-masque', 'aria-live': 'polite' });
+    var fermer = creer('button', { type: 'button', class: 'fermer', texte: 'Fermer' });
+    var utiliser = creer('button', { type: 'button', class: 'utiliser' });
+
+    barre.appendChild(creer('div', { class: 'haut' }, [
+      logo,
+      creer('span', { class: 'libelle', texte: 'Teintes essayées' }),
+      liste,
+      annonce,
+    ]));
+    barre.appendChild(creer('div', { class: 'actions' }, [fermer, utiliser]));
+
+    fermer.addEventListener('click', function () { options.surFermer(); });
+    utiliser.addEventListener('click', function () { options.surUtiliser(); });
+
+    var teintes = [];
+
+    function rendre() {
+      liste.textContent = '';
+      if (teintes.length === 0) {
+        liste.appendChild(creer('li', { class: 'vide', texte: 'Appliquez une teinte sur un mur pour la retenir' }));
+      }
+      teintes.forEach(function (teinte) {
+        var hex = couleursTeintes[teinte.handle] || null;
+        var pastille = creer('li', { class: hex ? 'pastille' : 'pastille sans-couleur' });
+        if (hex) {
+          var rond = creer('span', { class: 'rond', 'aria-hidden': 'true' });
+          rond.style.backgroundColor = hex;
+          pastille.appendChild(rond);
+        }
+        pastille.appendChild(creer('span', { texte: teinte.nom }));
+        liste.appendChild(pastille);
+      });
+      utiliser.textContent = libelleUtiliser(teintes.length);
+      utiliser.disabled = teintes.length === 0;
+      annonce.textContent = annonceTeintes(teintes.length);
+      // La plus récente reste visible quand les pastilles débordent
+      liste.scrollLeft = liste.scrollWidth;
+    }
+
+    rendre();
+
+    return {
+      element: barre,
+      definir: function (suivantes) {
+        teintes = suivantes;
+        rendre();
+        chargerCouleurs(options.origineApp, teintes.map(function (t) { return t.handle; }), rendre);
+      },
+    };
   }
 
   // ===================== Simulateur Wizart (DepKit) =====================
@@ -314,36 +536,63 @@
   }
 
   /**
-   * Ouvre le simulateur en surimpression plein écran.
-   * options : { token, teinte, surSelection(handles), surFermeture() }.
+   * Ouvre le simulateur en surimpression plein écran : zone Wizart en haut,
+   * barre Colibri en bas, toujours visible.
+   * options : { origineApp, token, teinte, surSelection(handles), surFermeture() }.
    * Un seul simulateur à la fois ; toute issue appelle exactement un rappel.
+   * Les teintes retenues repartent de zéro à chaque ouverture.
    */
   var simulateurOuvert = null;
 
   function ouvrirSimulateur(options) {
     if (simulateurOuvert) simulateurOuvert.fermer(false);
 
-    injecterStyles();
     var racine = document.documentElement;
     var debordementInitial = racine.style.overflow;
     racine.style.overflow = 'hidden';
 
-    var conteneur = creer('div', { class: 'colibri-surimpression', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Simulateur de teintes' });
-    var cible = creer('div');
-    var boutonFermer = creer('button', { type: 'button', class: 'colibri-lien', texte: 'Fermer' });
-    var attente = creer('div', { class: 'colibri-attente', role: 'status' }, [
-      creer('div', { class: 'colibri-attente-rond' }),
+    // Hôte dans la page (styles en ligne : le thème ne peut pas le déplacer)
+    var hote = creer('div', { 'data-colibri': 'surimpression' });
+    hote.style.cssText = 'position:fixed;inset:0;z-index:2147483000;display:block;margin:0;padding:0;border:0;';
+    var ombre = racineIsolee(hote, STYLES_SURIMPRESSION);
+
+    // Zone Wizart : élément de la page projeté dans la surimpression (slot),
+    // pour que le DepKit y travaille comme dans un document ordinaire
+    var cible = creer('div', { slot: 'wizart' });
+    cible.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;border:0;';
+
+    var boutonAttente = creer('button', { type: 'button', class: 'lien', texte: 'Fermer' });
+    var attente = creer('div', { class: 'attente', role: 'status' }, [
+      creer('div', { class: 'attente-rond' }),
       creer('p', { texte: 'Chargement du simulateur…' }),
-      boutonFermer,
+      boutonAttente,
     ]);
-    conteneur.appendChild(cible);
-    conteneur.appendChild(attente);
-    document.body.appendChild(conteneur);
+    var zone = creer('div', { class: 'zone' });
+    if (ombre === hote) zone.appendChild(cible);
+    else {
+      zone.appendChild(creer('slot', { name: 'wizart' }));
+      hote.appendChild(cible);
+    }
+    zone.appendChild(attente);
+
+    var session = {};
+    var teintes = [];
+    var barre = creerBarre({
+      origineApp: options.origineApp,
+      surFermer: function () { session.fermer(); },
+      surUtiliser: function () {
+        selectionner(teintes.map(function (t) { return t.handle; }));
+      },
+    });
+
+    ombre.appendChild(creer('div', {
+      class: 'surimpression', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Simulateur de teintes',
+    }, [zone, barre.element]));
+    document.body.appendChild(hote);
 
     var visualiseur = null;
     var abonnements = [];
     var termine = false;
-    var session = {};
 
     function nettoyer() {
       var kit = kitPresent();
@@ -353,7 +602,7 @@
       abonnements = [];
       try { if (visualiseur) visualiseur.destroy(); } catch (e) { /* déjà détruit par le DepKit */ }
       visualiseur = null;
-      if (conteneur.parentNode) conteneur.parentNode.removeChild(conteneur);
+      if (hote.parentNode) hote.parentNode.removeChild(hote);
       racine.style.overflow = debordementInitial;
       if (simulateurOuvert === session) simulateurOuvert = null;
     }
@@ -367,50 +616,39 @@
     };
 
     function selectionner(handles) {
-      if (termine) return;
-      if (handles.length === 0) {
-        session.fermer();
-        return;
-      }
+      if (termine || handles.length === 0) return;
       termine = true;
       nettoyer();
       options.surSelection(handles);
     }
 
-    // Sortie du panier : teintes lues dans l'événement, fermeture immédiate
-    // (getShoppingCartState() ne répond pas en v1.1.3)
-    function sortiePanier(donneesEvenement) {
-      selectionner(extraireHandles(donneesEvenement));
+    // Chaque application d'une teinte sur un mur la retient (nettoyer la
+    // surface ne retire rien)
+    function appliquer(donnees) {
+      if (termine) return;
+      var appliquees = lireApplication(donnees);
+      if (appliquees.length === 0) return;
+      appliquees.forEach(function (teinte) { teintes = retenirTeinte(teintes, teinte); });
+      barre.definir(teintes);
     }
 
-    boutonFermer.addEventListener('click', function () { session.fermer(); });
+    boutonAttente.addEventListener('click', function () { session.fermer(); });
     simulateurOuvert = session;
 
     chargerKit().then(function (kit) {
       if (termine) return;
-      var evenements = kit.VISUALIZER_EVENTS || {};
-      Object.keys(evenements).forEach(function (cle) {
-        var valeur = evenements[cle];
-        // OPEN_IN_STORE est émis en premier au clic sur « Calculer mes
-        // quantités » : la sortie ferme le simulateur avant que le menu de
-        // choix Wizart (CHECKOUT_OPTIONS_OPEN) s'affiche
-        var sortie = cle === 'OPEN_IN_STORE' || valeur === 'open_in_store';
-        var retour = cle === 'BACK_BUTTON_CLICK';
-        if (!sortie && !retour) return;
+      var ecoutes = evenementsEcoutes(kit.VISUALIZER_EVENTS);
+      ecoutes.application.forEach(function (valeur) {
         abonnements.push(kit.EventBus.subscribe(function (evenement) {
-          if (sortie) sortiePanier(evenement && evenement.data);
-          // Le DepKit détruit lui-même le visualiseur sur le bouton retour
-          else session.fermer();
+          appliquer(evenement && evenement.data);
         }, valeur, null));
       });
+      ecoutes.retour.forEach(function (valeur) {
+        // Le DepKit détruit lui-même le visualiseur sur le bouton retour
+        abonnements.push(kit.EventBus.subscribe(function () { session.fermer(); }, valeur, null));
+      });
 
-      var reglages = {
-        token: options.token,
-        layoutSettings: { targetElement: cible, layout: kit.LAYOUTS && kit.LAYOUTS.FULL_SCREEN },
-        integrationSettings: { locale: 'fr' },
-      };
-      if (options.teinte) reglages.sceneData = { openWithProduct: options.teinte };
-      visualiseur = new kit.Visualizer(reglages);
+      visualiseur = new kit.Visualizer(reglagesVisualiseur(kit, options.token, cible, options.teinte));
       return Promise.resolve(visualiseur.load()).then(function () {
         return visualiseur.show();
       }).then(function () {
@@ -516,13 +754,16 @@
           envoyer({ type: 'colibri:simulateur:ferme' });
           return;
         }
-        // Si le PIM redirige malgré tout vers le configurateur, la pièce est connue
+        // Tant que le panier Wizart n'est pas désactivé dans le PIM, une
+        // redirection PIM vers le configurateur retrouve la pièce
         ecrireSession(CLE_SESSION_PIECE, data.piece);
         ouvrirSimulateur({
+          origineApp: APP_ORIGIN,
           token: config.tokenWizart,
           teinte: data.teinte,
           surSelection: function (handles) {
             ecrireSession(CLE_SESSION_PIECE, null);
+            // Ordre d'application : la dernière est la plus récente
             envoyer({ type: 'colibri:simulateur:selection', teintes: handles });
           },
           surFermeture: function () {
@@ -536,50 +777,129 @@
     hote.appendChild(iframe);
   }
 
-  // ===================== Mode simulateur =====================
+  // ===================== Mode simulateur (page Simulateur) =====================
 
-  var CONSIGNES_PHOTO = [
-    'Photographiez la pièce de face, à hauteur d’yeux, en cadrant les murs à peindre.',
-    'Privilégiez la lumière du jour et évitez le contre-jour.',
-    'Dégagez si possible les murs (meubles, cadres) pour un rendu plus fidèle.',
-    'Vous pouvez aussi partir d’une pièce d’exemple de la galerie.',
+  var STYLES_PAGE = STYLES_BASE + [
+    '.page{max-width:1120px;margin:0 auto;padding:56px 24px 72px;display:flex;flex-direction:column;gap:44px;}',
+    'h1,h2,h3,p{margin:0;}',
+    '.entete{display:grid;grid-template-columns:1fr;gap:40px;align-items:center;}',
+    '.entete.avec-visuel{grid-template-columns:1fr 1fr;}',
+    '.surtitre{font-size:12px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#17644f;margin-bottom:12px;}',
+    '.titre{font-size:40px;font-weight:400;line-height:1.15;margin-bottom:16px;}',
+    '.intro{font-size:16px;line-height:1.6;color:#45453f;}',
+    '.visuel{display:block;width:100%;height:300px;object-fit:cover;border-radius:12px;}',
+    '.question{font-size:24px;font-weight:500;line-height:1.3;margin-bottom:6px;}',
+    '.sous-titre{font-size:14px;line-height:1.5;color:#55554f;margin-bottom:20px;}',
+    '.pieces{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;}',
+    '.piece{display:flex;flex-direction:column;padding:0;margin:0;background:#fff;border:1px solid #e3e2dc;border-radius:10px;overflow:hidden;cursor:pointer;color:inherit;text-align:center;}',
+    // Bordure 2 px au survol / focus sans décaler la grille
+    '.piece:hover,.piece:focus-visible{border-color:#2fae94;box-shadow:0 0 0 1px #2fae94;outline:none;}',
+    '.piece img{display:block;width:100%;height:170px;object-fit:cover;background:#f3f2ee;}',
+    '.piece span{display:block;font-size:15px;line-height:1.3;padding:13px;}',
+    '.etapes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:0;padding:0;list-style:none;}',
+    '.etape{background:#fff;border:1px solid #e3e2dc;border-radius:10px;padding:20px;}',
+    '.numero{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:#e2f3ee;color:#17644f;font-size:15px;font-weight:600;margin-bottom:12px;}',
+    '.etape h3{font-size:16px;font-weight:600;line-height:1.3;margin-bottom:6px;}',
+    '.etape p{font-size:14px;line-height:1.5;color:#55554f;}',
+    '.conseil{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e3e2dc;border-radius:10px;padding:18px 22px;font-size:14px;line-height:1.5;color:#45453f;}',
+    '.conseil svg{flex:0 0 auto;display:block;}',
+    '.conseil strong{color:#17644f;font-weight:600;}',
+    '.message{padding:12px 16px;border-radius:10px;background:#fef3c7;color:#92400e;margin-bottom:16px;}',
+    '.bouton{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:6px;background:#13302a;color:#fff;font-size:15px;font-weight:600;text-decoration:none;}',
+    '@media (max-width:639px){',
+    '.entete.avec-visuel{grid-template-columns:1fr;}',
+    '.titre{font-size:32px;}',
+    '.pieces{grid-template-columns:repeat(2,minmax(0,1fr));}',
+    '.etapes{grid-template-columns:1fr;}',
+    '}',
+  ].join('');
+
+  var ETAPES = [
+    ['Choisissez votre pièce', 'Votre photo, ou une pièce d’exemple du même type.'],
+    ['Essayez les teintes', 'Une teinte par mur, comparaison avant/après, réglage de la lumière.'],
+    ['Calculez vos quantités', 'Le calculateur reprend vos teintes et compose la commande, −15 % inclus.'],
   ];
+
+  var SVG_APPAREIL = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#17644f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'
+    + '<path d="M14.5 4h-5L7.5 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.5z"/>'
+    + '<circle cx="12" cy="13" r="3.5"/></svg>';
 
   function demarrerSimulateur(config, script) {
     var hote = trouverHote(script, 'colibri-simulateur');
     var teinte = lireTeinteDemandee(window.location.search);
-    injecterStyles();
+    var visuel = lireVisuel(hote.getAttribute('data-visuel'));
+    var ombre = racineIsolee(hote, STYLES_PAGE);
+    var page = creer('div', { class: 'page' });
 
-    var bloc = creer('div', { class: 'colibri-simulateur' });
-    bloc.appendChild(creer('h2', { texte: 'Quelle pièce voulez-vous repeindre ?' }));
+    // 1. En-tête (deux colonnes avec le visuel, une sans)
+    var texte = creer('div', {}, [
+      creer('p', { class: 'surtitre', texte: 'Simulateur de peinture' }),
+      creer('h1', { class: 'titre', texte: 'Essayez nos teintes chez vous, avant d’acheter' }),
+      creer('p', {
+        class: 'intro',
+        texte: 'Prenez votre pièce en photo ou choisissez une pièce d’exemple, appliquez nos teintes mur par mur, '
+          + 'puis calculez les quantités exactes avec −15 % sur votre commande.',
+      }),
+    ]);
+    var entete = creer('header', { class: visuel ? 'entete avec-visuel' : 'entete' }, [texte]);
+    if (visuel) entete.appendChild(creer('img', { class: 'visuel', src: visuel, alt: '', loading: 'eager' }));
+    page.appendChild(entete);
 
     if (!simulateurDisponible(config, kitPresent())) {
-      bloc.appendChild(creer('p', { class: 'colibri-message', texte: 'Le simulateur est momentanément indisponible.' }));
-      bloc.appendChild(creer('a', { class: 'colibri-bouton', href: CHEMIN_CONFIGURATEUR, texte: 'Calculer mes quantités de peinture' }));
-      hote.appendChild(bloc);
+      page.appendChild(creer('section', {}, [
+        creer('p', { class: 'message', texte: 'Le simulateur est momentanément indisponible.' }),
+        creer('a', { class: 'bouton', href: CHEMIN_CONFIGURATEUR, texte: 'Calculer mes quantités de peinture' }),
+      ]));
+      ombre.appendChild(page);
       return;
     }
 
-    bloc.appendChild(creer('p', { texte: 'Choisissez la pièce, puis essayez nos teintes sur une photo de votre intérieur.' }));
-    var grille = creer('div', { class: 'colibri-pieces' });
+    // 2. Choix de la pièce
+    var grille = creer('div', { class: 'pieces' });
     PIECES.forEach(function (piece) {
-      var bouton = creer('button', { type: 'button', class: 'colibri-piece', texte: piece[1] });
+      var bouton = creer('button', { type: 'button', class: 'piece' }, [
+        creer('img', { src: piece[2], alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }),
+        creer('span', { texte: piece[1] }),
+      ]);
       bouton.addEventListener('click', function () { essayer(piece[0]); });
       grille.appendChild(bouton);
     });
-    bloc.appendChild(grille);
+    page.appendChild(creer('section', { 'aria-labelledby': 'colibri-question' }, [
+      creer('h2', { class: 'question', id: 'colibri-question', texte: 'Quelle pièce voulez-vous transformer ?' }),
+      creer('p', {
+        class: 'sous-titre',
+        texte: 'Ce sont les pièces du calculateur : vos quantités seront calculées pour la même pièce.',
+      }),
+      grille,
+    ]));
 
-    var consignes = creer('div', { class: 'colibri-consignes' }, [
-      creer('h3', { texte: 'Pour une photo réussie' }),
-      creer('ul', {}, CONSIGNES_PHOTO.map(function (texte) { return creer('li', { texte: texte }); })),
-    ]);
-    bloc.appendChild(consignes);
-    hote.appendChild(bloc);
+    // 3. Étapes
+    page.appendChild(creer('ol', { class: 'etapes' }, ETAPES.map(function (etape, index) {
+      return creer('li', { class: 'etape' }, [
+        creer('span', { class: 'numero', 'aria-hidden': 'true', texte: String(index + 1) }),
+        creer('h3', { texte: etape[0] }),
+        creer('p', { texte: etape[1] }),
+      ]);
+    })));
+
+    // 4. Conseil photo
+    var icone = creer('span');
+    icone.innerHTML = SVG_APPAREIL;
+    page.appendChild(creer('aside', { class: 'conseil' }, [
+      icone,
+      creer('p', {}, [
+        creer('strong', { texte: 'Pour un rendu réaliste :' }),
+        document.createTextNode(' photographiez la pièce de face, en lumière du jour, avec les murs les plus dégagés possible.'),
+      ]),
+    ]));
+
+    ombre.appendChild(page);
 
     function essayer(piece) {
-      // Relue au retour du PIM Wizart (vendorCode[]) sur le configurateur
+      // Relue en cas de redirection du PIM Wizart (vendorCode[]) vers le configurateur
       ecrireSession(CLE_SESSION_PIECE, piece);
       ouvrirSimulateur({
+        origineApp: config.origineApp,
         token: config.tokenWizart,
         teinte: teinte,
         surSelection: function (handles) {
@@ -595,13 +915,19 @@
 
   // ===================== Mode bouton (fiche teinte) =====================
 
+  var STYLES_BOUTON = STYLES_BASE + [
+    ':host{display:inline-block;}',
+    '.bouton{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border:2px solid #13302a;border-radius:8px;color:#13302a;background:#fff;font-size:15px;font-weight:600;line-height:1.3;text-decoration:none;}',
+    '.bouton:hover{background:#e2f3ee;}',
+  ].join('');
+
   function demarrerBouton(config, script) {
     var hote = trouverHote(script, 'colibri-bouton-teinte');
-    var handle = (hote.getAttribute('data-teinte') || '').trim().toLowerCase();
+    var handle = lireHandle(hote.getAttribute('data-teinte'));
     // Sans simulateur configuré ou sans teinte valide : aucun bouton
-    if (!simulateurDisponible(config, kitPresent()) || !estHandle(handle)) return;
-    injecterStyles();
-    hote.appendChild(creer('a', { class: 'colibri-bouton', href: urlSimulateurTeinte(handle), texte: 'Voir dans ma pièce' }));
+    if (!simulateurDisponible(config, kitPresent()) || !handle) return;
+    racineIsolee(hote, STYLES_BOUTON)
+      .appendChild(creer('a', { class: 'bouton', href: urlSimulateurTeinte(handle), texte: 'Voir dans ma pièce' }));
   }
 
   // ===================== Démarrage =====================
@@ -623,6 +949,7 @@
     PIECES: PIECES,
     CAPACITE_SIMULATEUR: CAPACITE_SIMULATEUR,
     SCRIPT_DEPKIT: SCRIPT_DEPKIT,
+    MAX_TEINTES: MAX_TEINTES,
     estTypePiece: estTypePiece,
     estHandle: estHandle,
     normaliserTeintes: normaliserTeintes,
@@ -632,10 +959,19 @@
     urlConfigurateur: urlConfigurateur,
     urlSimulateurTeinte: urlSimulateurTeinte,
     lireTeinteDemandee: lireTeinteDemandee,
+    lireVisuel: lireVisuel,
     lireMessageApp: lireMessageApp,
     simulateurDisponible: simulateurDisponible,
     capacites: capacites,
-    extraireHandles: extraireHandles,
+    nomCourt: nomCourt,
+    lireApplication: lireApplication,
+    retenirTeinte: retenirTeinte,
+    libelleUtiliser: libelleUtiliser,
+    annonceTeintes: annonceTeintes,
+    lireHex: lireHex,
+    urlTeintes: urlTeintes,
+    evenementsEcoutes: evenementsEcoutes,
+    reglagesVisualiseur: reglagesVisualiseur,
     demarrer: demarrer,
   };
 });
