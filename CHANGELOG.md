@@ -7,6 +7,28 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Simulateur : sortie du panier Wizart (teintes perdues)
+
+#### Corrigé
+- **Sortie du simulateur** (`embed/colibri.js`) : au clic sur « Calculer mes
+  quantités », les teintes du panier Wizart sont lues directement dans
+  l'événement `OPEN_IN_STORE` (tableaux parallèles `article_sku`, à défaut
+  `article_custom_sku`) et transmises au configurateur sans attente. Avant,
+  `getShoppingCartState()` ne répondait jamais (DepKit v1.1.3) : le
+  simulateur se fermait après 5 s sans aucune teinte.
+- La sortie n'écoute plus que `OPEN_IN_STORE` (émis en premier) ;
+  `CHECKOUT_OPTIONS_OPEN` n'est plus traité. Le simulateur se ferme avant que
+  le menu de choix Wizart s'affiche.
+
+#### Supprimé
+- Appel à `getShoppingCartState()`, délai `DELAI_PANIER_MS` et utilitaire
+  `avecDelai`.
+
+#### Tests
+- Charge réelle d'`OPEN_IN_STORE` en fixture
+  (`embed/fixtures/wizart-open-in-store.json`) et cas de repli sur
+  `article_custom_sku`.
+
 ### Simulateur : pont avec le configurateur
 
 #### Ajouté

@@ -1,0 +1,11 @@
+{
+  "number_in_list": [0, 1],
+  "number_of_items": [1, 1],
+  "brand_uuid": ["1113f078-9f23-408a-8a23-61c75b6f4512", "1113f078-9f23-408a-8a23-61c75b6f4512"],
+  "collection_uuid": ["e8534b9d-b2c5-4ba3-80fc-3c85fa2c54be", "e8534b9d-b2c5-4ba3-80fc-3c85fa2c54be"],
+  "article_uuid": ["702ffae8-3791-4ce3-923f-e3ab87b74f4a", "104e5565-08bf-4a3a-95b8-fd5811fe913f"],
+  "article_name": ["Deguesde - Peinture biosourcée murs et plafonds", "Horizon - Peinture biosourcée murs et plafonds"],
+  "article_sku": ["deguesde-peinture-biosourcee-murs-et-plafonds", "horizon-peinture-biosourcee-murs-et-plafonds"],
+  "article_custom_sku": ["deguesde-peinture-biosourcee-murs-et-plafonds", "horizon-peinture-biosourcee-murs-et-plafonds"],
+  "mana": [false, false]
+}
