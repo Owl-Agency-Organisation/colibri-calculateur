@@ -35,7 +35,8 @@ La surimpression (plein écran, au-dessus du site) contient deux parties :
   `openWithProduct`) ;
 - en bas, la **barre Colibri**, toujours visible : « Teintes essayées »
   (pastilles), « Fermer » et « Utiliser cette teinte → » /
-  « Utiliser ces teintes (n) → ».
+  « Utiliser ces teintes (n) → » (« Utiliser mes teintes → », désactivé, tant
+  qu'aucune teinte n'est appliquée).
 
 Chaque teinte appliquée sur un mur (`PRODUCT_APPLY`, handle = `article_sku`, à
 défaut `article_custom_sku`) est retenue dans l'ordre d'application ; une
@@ -49,7 +50,8 @@ Couleur des pastilles : `GET /api/embed/teintes?handles=h1,h2` →
 `[{ handle, nom, hex }]` (metafield `custom.code_hexadecimal`, rien d'autre ;
 CORS limité à `https://www.colibripeinture.com` et à l'origine de l'app ;
 cache 5 min). Si la couleur n'arrive pas, la pastille affiche le nom seul : la
-barre ne bloque jamais la sortie.
+barre ne bloque jamais la sortie. Un échec (réseau, erreur serveur) n'est pas
+mémorisé : la couleur est redemandée au prochain rendu de la barre.
 
 Contrat de messages entre la page et l'iframe : `lib/embed-messages.ts`.
 

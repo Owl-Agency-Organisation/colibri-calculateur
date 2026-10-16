@@ -13,7 +13,9 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 - **Barre Colibri** en bas du simulateur (surimpression et page Simulateur),
   toujours visible : logo, « Teintes essayées » (pastilles avec la couleur de
   la teinte), « Fermer » et « Utiliser cette teinte → » / « Utiliser ces
-  teintes (n) → ». Deux lignes sous 640 px, vrais boutons, région nommée,
+  teintes (n) → » (« Utiliser mes teintes → », désactivé, sans teinte).
+  Un échec de chargement des couleurs n'est pas mémorisé (redemandé au
+  rendu suivant). Deux lignes sous 640 px, vrais boutons, région nommée,
   nombre de teintes annoncé.
 - **Teintes retenues automatiquement** à chaque application sur un mur
   (`PRODUCT_APPLY`) : ordre d'application, une teinte réappliquée passe en
