@@ -332,3 +332,20 @@ Contenus :
 - [ ] Mise en ligne (Philippe) : désactiver le panier Wizart dans le PIM
       (Configuration → Web → « Shopping cart »), renseigner `data-visuel` sur
       `/pages/simulateur`, test de bout en bout avec le vrai simulateur
+
+## Simulateur : intérieur du type de pièce (branche : `feat/simulateur-interieur-piece`)
+
+> Constat (16/10, vrai DepKit, compte Colibri) : la galerie Wizart (11
+> intérieurs) ne se filtre pas par type de pièce ; `sceneData.openInRoom`
+> (`room_uuid`) ouvre directement un intérieur, se combine avec
+> `openWithProduct`, et un UUID inconnu retombe sur la galerie sans erreur.
+
+- [x] Correspondance type de pièce → intérieur Wizart (`openInRoom`), prévue
+      après la signature : vérifiée avec le vrai DepKit le 16/10 et appliquée
+      (table `INTERIEURS_WIZART` de `embed/colibri.js`, testée)
+- [x] Les deux entrées transmettent la pièce : carte de la page Simulateur et
+      `colibri:simulateur:ouvrir` de l'app (contrat de messages inchangé)
+- [x] Labo `/labo/pont` : intérieur demandé affiché, boutons d'ouverture par
+      pièce comme la popup couleur
+- [ ] Pas d'intérieur adapté pour **entrée** et **couloir** : galerie complète
+      (à revoir si Wizart ajoute des intérieurs de ces types au compte)
