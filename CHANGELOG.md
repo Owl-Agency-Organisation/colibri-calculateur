@@ -7,6 +7,17 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Labo pont : faux simulateur aligné sur Wizart
+
+#### Modifié
+- **`/labo/pont`** (`app/labo/pont/PontLabo.tsx`) : « Utiliser ces teintes »
+  émet désormais `OPEN_IN_STORE` avec la charge réelle du DepKit v1.1.3
+  (tableaux parallèles, même forme que
+  `embed/fixtures/wizart-open-in-store.json`, handles des teintes cochées).
+  Le faux kit n'émet plus `CHECKOUT_OPTIONS_OPEN` et ne simule plus
+  `getShoppingCartState()`. Le labo reproduit à nouveau la sortie du panier
+  depuis le correctif du script hébergé.
+
 ### Simulateur : sortie du panier Wizart (teintes perdues)
 
 #### Corrigé

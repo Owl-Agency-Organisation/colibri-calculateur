@@ -9,6 +9,9 @@ import { clearProjetData } from '@/lib/store/projetStore';
  * déploiement en mode `configurateur`, comme la page Shopify, avec un faux
  * `WizartDeploymentKit` qui remplace uniquement Wizart (liste de teintes à
  * cocher, « Utiliser ces teintes » = sortie du panier, « Fermer » = retour).
+ * La sortie reproduit le vrai DepKit v1.1.3 : événement `OPEN_IN_STORE` dont
+ * la charge porte le panier en tableaux parallèles (même forme que
+ * embed/fixtures/wizart-open-in-store.json).
  */
 
 const HANDLE_INCONNU = 'teinte-inconnue-test';
@@ -36,7 +39,6 @@ interface OptionsVisualiseur {
 interface FauxVisualiseur {
   readonly cible: HTMLElement;
   readonly teinteInitiale: string | null;
-  panier: string[];
 }
 
 interface ControleurFaux {
@@ -48,8 +50,39 @@ type RappelEvenement = (evenement: { eventName: string; data: unknown }) => void
 
 const EVENEMENTS = {
   BACK_BUTTON_CLICK: 'back_button_click',
-  CHECKOUT_OPTIONS_OPEN: 'checkout_options_open',
+  OPEN_IN_STORE: 'open_in_store',
 } as const;
+
+/** Charge de `OPEN_IN_STORE` (DepKit v1.1.3) : un indice par article du panier. */
+interface ChargeOpenInStore {
+  number_in_list: number[];
+  number_of_items: number[];
+  brand_uuid: string[];
+  collection_uuid: string[];
+  article_uuid: string[];
+  article_name: string[];
+  article_sku: string[];
+  article_custom_sku: string[];
+  mana: boolean[];
+}
+
+// Identifiants Wizart fictifs : le script ne lit que article_sku / article_custom_sku
+const FAUX_BRAND_UUID = '00000000-0000-4000-8000-000000000001';
+const FAUX_COLLECTION_UUID = '00000000-0000-4000-8000-000000000002';
+
+function chargeOpenInStore(articles: Teinte[]): ChargeOpenInStore {
+  return {
+    number_in_list: articles.map((_, i) => i),
+    number_of_items: articles.map(() => 1),
+    brand_uuid: articles.map(() => FAUX_BRAND_UUID),
+    collection_uuid: articles.map(() => FAUX_COLLECTION_UUID),
+    article_uuid: articles.map((_, i) => `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`),
+    article_name: articles.map((a) => a.titre),
+    article_sku: articles.map((a) => a.handle),
+    article_custom_sku: articles.map((a) => a.handle),
+    mana: articles.map(() => false),
+  };
+}
 
 function installerFauxKit(controleur: { current: ControleurFaux | null }) {
   const abonnes = new Map<symbol, { rappel: RappelEvenement; nom: string | null }>();
@@ -63,7 +96,6 @@ function installerFauxKit(controleur: { current: ControleurFaux | null }) {
   class Visualizer implements FauxVisualiseur {
     readonly cible: HTMLElement;
     readonly teinteInitiale: string | null;
-    panier: string[] = [];
     isLoaded = false;
 
     constructor(options: OptionsVisualiseur) {
@@ -83,10 +115,6 @@ function installerFauxKit(controleur: { current: ControleurFaux | null }) {
 
     destroy() {
       controleur.current?.fermer(this);
-    }
-
-    getShoppingCartState() {
-      return Promise.resolve(this.panier.map((handle) => ({ vendor_code: handle, quantity: 1 })));
     }
   }
 
@@ -210,9 +238,12 @@ export function PontLabo() {
 
   const utiliser = () => {
     if (!fauxOuvert) return;
-    fauxOuvert.panier = coches;
-    consigner('faux Wizart', { evenement: 'CHECKOUT_OPTIONS_OPEN', panier: coches });
-    emettreRef.current?.(EVENEMENTS.CHECKOUT_OPTIONS_OPEN, {});
+    const charge = chargeOpenInStore(coches.map((handle) => ({
+      handle,
+      titre: teintes.find((t) => t.handle === handle)?.titre ?? handle,
+    })));
+    consigner('faux Wizart', { evenement: 'OPEN_IN_STORE', data: charge });
+    emettreRef.current?.(EVENEMENTS.OPEN_IN_STORE, charge);
   };
 
   const fermerFaux = () => {
