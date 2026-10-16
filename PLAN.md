@@ -296,3 +296,39 @@ Contenus :
         checkout ») — Wizart affiche alors un menu de choix au lieu d'ouvrir un
         onglet, et le script ferme le simulateur dès `OPEN_IN_STORE`, avant que
         ce menu soit visible
+
+## Simulateur : barre Colibri, sans panier Wizart (branche : `feat/simulateur-barre-colibri`)
+
+> Décision (16/10, après le test utilisateur sur le vrai site) : Wizart ne sert
+> plus qu'à visualiser. Les teintes appliquées sur les murs (`PRODUCT_APPLY`)
+> sont retenues par une barre Colibri toujours visible en bas du simulateur,
+> seule sortie (« Fermer » / « Utiliser… »). Le panier Wizart sera désactivé
+> dans le PIM après le merge. Remplace la PR #45 (fermée sans merge).
+
+- [x] Surimpression et page Simulateur : zone Wizart en `FILL_PARENT` au-dessus
+      de la barre, `showBackToWebsiteButton: false`, `locale: 'fr'`,
+      `openWithProduct` conservé ; un seul « Fermer » (barre), l'écran de
+      chargement garde le sien
+- [x] Teintes retenues via `PRODUCT_APPLY` (ordre d'application, réappliquée
+      en dernier, liste vide à chaque ouverture, nettoyage sans effet) ;
+      `OPEN_IN_STORE` n'est plus une sortie, `BACK_BUTTON_CLICK` ferme
+- [x] Barre Colibri aux valeurs de la maquette (desktop et mobile < 640 px,
+      accessibilité) ; couleurs des pastilles via `GET /api/embed/teintes`
+      (CORS boutique + app, cache court, nom seul en cas d'échec)
+- [x] Rendu du script isolé en Shadow DOM (page Simulateur, surimpression,
+      barre, bouton de fiche teinte) ; la zone Wizart reste dans le document,
+      projetée par `slot`
+- [x] Page Simulateur fidèle à la maquette (en-tête + `data-visuel`, 7 cartes
+      pièces, 3 étapes, conseil photo) ; images et libellés des pièces partagés
+      avec l'étape « Pièce » (`lib/pieces.ts`, vérifié par test)
+- [x] Popup couleur : la dernière teinte de la sélection est posée sur le mur,
+      toutes rejoignent « Vos teintes essayées », bandeau de confirmation sur
+      la page Surfaces ; contrat `colibri:simulateur:selection` mis à jour
+      (ordre d'application, dernière = plus récente)
+- [x] Labo `/labo/pont` : faux simulateur sans panier, émet `PRODUCT_APPLY`,
+      affiché dans la vraie surimpression avec la vraie barre
+- [x] Tests (PRODUCT_APPLY réel en fixture, ordre, libellés, dernière teinte,
+      endpoint) et `docs/EMBED_SHOPIFY.md` (sortie, `data-visuel`, panier PIM)
+- [ ] Mise en ligne (Philippe) : désactiver le panier Wizart dans le PIM
+      (Configuration → Web → « Shopping cart »), renseigner `data-visuel` sur
+      `/pages/simulateur`, test de bout en bout avec le vrai simulateur

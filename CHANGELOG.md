@@ -7,6 +7,46 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Simulateur : barre Colibri, sans panier Wizart
+
+#### Ajouté
+- **Barre Colibri** en bas du simulateur (surimpression et page Simulateur),
+  toujours visible : logo, « Teintes essayées » (pastilles avec la couleur de
+  la teinte), « Fermer » et « Utiliser cette teinte → » / « Utiliser ces
+  teintes (n) → » (« Utiliser mes teintes → », désactivé, sans teinte).
+  Un échec de chargement des couleurs n'est pas mémorisé (redemandé au
+  rendu suivant). Deux lignes sous 640 px, vrais boutons, région nommée,
+  nombre de teintes annoncé.
+- **Teintes retenues automatiquement** à chaque application sur un mur
+  (`PRODUCT_APPLY`) : ordre d'application, une teinte réappliquée passe en
+  dernier, liste vide à chaque ouverture.
+- **Endpoint `GET /api/embed/teintes?handles=…`** : `[{ handle, nom, hex }]`
+  depuis le catalogue Shopify (aucun prix), CORS limité à la boutique et à
+  l'app, cache 5 min.
+- **Page Simulateur fidèle à la maquette** : en-tête (visuel via `data-visuel`),
+  7 cartes pièces avec images, 3 étapes, conseil photo.
+- **Popup couleur** : la dernière teinte appliquée est posée sur le mur ;
+  bandeau « {Nom}, la dernière teinte appliquée dans le simulateur, est posée
+  sur le Mur {n}. Vos mesures n'ont pas bougé. »
+
+#### Modifié
+- Wizart ne sert plus qu'à visualiser : DepKit en `FILL_PARENT` au-dessus de
+  la barre, bouton « Retour au site » masqué (`showBackToWebsiteButton:
+  false`). La sortie ne passe plus que par la barre.
+- Rendu du script hébergé isolé dans un Shadow DOM (le thème n'écrase plus le
+  titre de la page Simulateur) ; police héritée du site.
+- `colibri:simulateur:selection` : teintes dans l'ordre d'application, la
+  dernière est la plus récente (`normaliserSelection` côté app).
+- Images des pièces partagées entre l'étape « Pièce » et le script
+  (`lib/pieces.ts`, vérifié par test).
+- Labo `/labo/pont` : faux simulateur sans panier, émet `PRODUCT_APPLY`,
+  affiché dans la vraie surimpression avec la vraie barre.
+
+#### Supprimé
+- Sortie par le panier Wizart (`OPEN_IN_STORE`, `extraireHandles`, fixture
+  `wizart-open-in-store.json`) et bouton « Fermer » de l'en-tête de la
+  surimpression.
+
 ### Simulateur : sortie du panier Wizart (teintes perdues)
 
 #### Corrigé

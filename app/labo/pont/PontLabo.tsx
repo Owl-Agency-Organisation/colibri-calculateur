@@ -7,16 +7,22 @@ import { clearProjetData } from '@/lib/store/projetStore';
 /**
  * Labo du pont simulateur : charge le vrai script `/embed/colibri.js` de ce
  * déploiement en mode `configurateur`, comme la page Shopify, avec un faux
- * `WizartDeploymentKit` qui remplace uniquement Wizart (liste de teintes à
- * cocher, « Utiliser ces teintes » = sortie du panier, « Fermer » = retour).
+ * `WizartDeploymentKit` qui remplace uniquement Wizart. Le faux simulateur
+ * s'affiche dans la vraie surimpression, au-dessus de la vraie barre Colibri :
+ * « Appliquer sur le mur » émet `PRODUCT_APPLY` (forme réelle du DepKit
+ * v1.1.3), sans panier ; la sortie passe par la barre (« Fermer » /
+ * « Utiliser… »).
  */
 
 const HANDLE_INCONNU = 'teinte-inconnue-test';
 const CLE_SESSION_PIECE = 'colibri-simulateur-piece';
+const TEINTE_INCONNUE: Teinte = { handle: HANDLE_INCONNU, titre: 'Teinte inconnue (test)', nomComplet: 'Inconnue - Teinte de test' };
 
 interface Teinte {
   handle: string;
   titre: string;
+  /** Titre boutique complet (`article_name` de Wizart) */
+  nomComplet: string;
 }
 
 interface EntreeJournal {
@@ -29,14 +35,15 @@ interface EntreeJournal {
 // ---------- Faux Wizart Deployment Kit ----------
 
 interface OptionsVisualiseur {
-  layoutSettings: { targetElement: HTMLElement };
+  layoutSettings: { targetElement: HTMLElement; layout?: unknown };
+  integrationSettings?: Record<string, unknown>;
   sceneData?: { openWithProduct?: string };
 }
 
 interface FauxVisualiseur {
   readonly cible: HTMLElement;
   readonly teinteInitiale: string | null;
-  panier: string[];
+  readonly options: OptionsVisualiseur;
 }
 
 interface ControleurFaux {
@@ -47,9 +54,35 @@ interface ControleurFaux {
 type RappelEvenement = (evenement: { eventName: string; data: unknown }) => void;
 
 const EVENEMENTS = {
+  PRODUCT_APPLY: 'product_apply',
   BACK_BUTTON_CLICK: 'back_button_click',
-  CHECKOUT_OPTIONS_OPEN: 'checkout_options_open',
 } as const;
+
+/** Charge de `PRODUCT_APPLY`, même forme que le DepKit v1.1.3 (embed/fixtures) */
+function chargeApplication(handle: string, nomComplet: string, interactive: boolean) {
+  return {
+    product_identifiers: [`labo-${handle}`],
+    search: false,
+    use_filters_values: false,
+    mana: false,
+    products: [
+      {
+        [`labo_${handle}`]: {
+          brand_uuid: 'labo',
+          collection_uuid: 'labo',
+          article_uuid: `labo-${handle}`,
+          article_name: nomComplet,
+          article_sku: handle,
+          article_custom_sku: handle,
+          article_image_path: '',
+        },
+      },
+    ],
+    custom_product: null,
+    is_interactive_apply: interactive,
+    room_id: 'labo-piece',
+  };
+}
 
 function installerFauxKit(controleur: { current: ControleurFaux | null }) {
   const abonnes = new Map<symbol, { rappel: RappelEvenement; nom: string | null }>();
@@ -63,10 +96,11 @@ function installerFauxKit(controleur: { current: ControleurFaux | null }) {
   class Visualizer implements FauxVisualiseur {
     readonly cible: HTMLElement;
     readonly teinteInitiale: string | null;
-    panier: string[] = [];
+    readonly options: OptionsVisualiseur;
     isLoaded = false;
 
     constructor(options: OptionsVisualiseur) {
+      this.options = options;
       this.cible = options.layoutSettings.targetElement;
       this.teinteInitiale = options.sceneData?.openWithProduct ?? null;
     }
@@ -84,10 +118,6 @@ function installerFauxKit(controleur: { current: ControleurFaux | null }) {
     destroy() {
       controleur.current?.fermer(this);
     }
-
-    getShoppingCartState() {
-      return Promise.resolve(this.panier.map((handle) => ({ vendor_code: handle, quantity: 1 })));
-    }
   }
 
   Object.assign(window, {
@@ -104,7 +134,7 @@ function installerFauxKit(controleur: { current: ControleurFaux | null }) {
         },
       },
       VISUALIZER_EVENTS: EVENEMENTS,
-      LAYOUTS: { FULL_SCREEN: 'full_screen' },
+      LAYOUTS: { FULL_SCREEN: 'full_screen', FILL_PARENT: 'fill_parent', CUSTOM_SIZE: 'custom_size' },
     },
   });
 
@@ -126,7 +156,9 @@ export function PontLabo() {
   const [erreurCatalogue, setErreurCatalogue] = useState<string | null>(null);
   const [journal, setJournal] = useState<EntreeJournal[]>([]);
   const [fauxOuvert, setFauxOuvert] = useState<FauxVisualiseur | null>(null);
-  const [coches, setCoches] = useState<string[]>([]);
+  // Teinte posée sur chaque mur de la fausse photo (affichage seulement)
+  const [murs, setMurs] = useState<(Teinte | null)[]>([null, null, null]);
+  const [murActif, setMurActif] = useState(0);
   const [retour, setRetour] = useState<string | null>(null);
 
   const controleurRef = useRef<ControleurFaux | null>(null);
@@ -144,11 +176,34 @@ export function PontLabo() {
     setJournal((precedent) => [entree, ...precedent].slice(0, 200));
   }, []);
 
+  // Dernières teintes connues, pour l'ouverture sur une teinte (openWithProduct)
+  const teintesRef = useRef<Teinte[]>([]);
+  teintesRef.current = teintes;
+
+  const appliquer = useCallback((teinte: Teinte, mur: number, interactive: boolean) => {
+    setMurs((precedents) => precedents.map((t, i) => (i === mur ? teinte : t)));
+    const data = chargeApplication(teinte.handle, teinte.nomComplet, interactive);
+    consigner('faux Wizart', { evenement: 'PRODUCT_APPLY', mur: mur + 1, article_sku: teinte.handle });
+    emettreRef.current?.(EVENEMENTS.PRODUCT_APPLY, data);
+  }, [consigner]);
+
   controleurRef.current = {
     ouvrir(visualiseur) {
-      setCoches(visualiseur.teinteInitiale ? [visualiseur.teinteInitiale] : []);
+      setMurs([null, null, null]);
+      setMurActif(0);
       setFauxOuvert(visualiseur);
-      consigner('faux Wizart', { ouvert: true, openWithProduct: visualiseur.teinteInitiale });
+      consigner('faux Wizart', {
+        ouvert: true,
+        layout: visualiseur.options.layoutSettings.layout,
+        integrationSettings: visualiseur.options.integrationSettings,
+        openWithProduct: visualiseur.teinteInitiale,
+      });
+      // Comme Wizart : la teinte d'ouverture est appliquée (non interactive)
+      const initiale = visualiseur.teinteInitiale;
+      if (initiale) {
+        const connue = teintesRef.current.find((t) => t.handle === initiale);
+        appliquer(connue ?? { handle: initiale, titre: initiale, nomComplet: initiale }, 0, false);
+      }
     },
     fermer(visualiseur) {
       setFauxOuvert((courant) => (courant === visualiseur ? null : courant));
@@ -196,26 +251,26 @@ export function PontLabo() {
             return products.slice(0, 6).map((p) => ({
               handle: p.handle,
               titre: p.title.replace(' - Peinture biosourcée murs et plafonds', ''),
+              nomComplet: p.title,
             }));
           })
         );
-        setTeintes([...listes.flat(), { handle: HANDLE_INCONNU, titre: 'Teinte inconnue (test)' }]);
+        setTeintes([...listes.flat(), TEINTE_INCONNUE]);
       } catch (erreur) {
         setErreurCatalogue(erreur instanceof Error ? erreur.message : String(erreur));
-        setTeintes([{ handle: HANDLE_INCONNU, titre: 'Teinte inconnue (test)' }]);
+        setTeintes([TEINTE_INCONNUE]);
       }
     };
     charger();
   }, []);
 
-  const utiliser = () => {
-    if (!fauxOuvert) return;
-    fauxOuvert.panier = coches;
-    consigner('faux Wizart', { evenement: 'CHECKOUT_OPTIONS_OPEN', panier: coches });
-    emettreRef.current?.(EVENEMENTS.CHECKOUT_OPTIONS_OPEN, {});
+  const nettoyer = () => {
+    setMurs((precedents) => precedents.map((t, i) => (i === murActif ? null : t)));
+    // Wizart n'émet rien d'utile ici : la barre garde la teinte
+    consigner('faux Wizart', { surfaceNettoyee: murActif + 1 });
   };
 
-  const fermerFaux = () => {
+  const retourWizart = () => {
     consigner('faux Wizart', { evenement: 'BACK_BUTTON_CLICK' });
     emettreRef.current?.(EVENEMENTS.BACK_BUTTON_CLICK, {});
   };
@@ -307,34 +362,49 @@ export function PontLabo() {
       </section>
 
       {fauxOuvert && createPortal(
-        <div className="flex h-dvh flex-col bg-white">
+        <div className="flex h-full flex-col bg-white">
           <div className="border-b border-gray-200 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Faux simulateur (labo)</p>
-            <h2 className="text-lg font-bold text-gray-900">Cochez les teintes « essayées »</h2>
+            <h2 className="text-lg font-bold text-gray-900">Appliquez des teintes sur les murs de la photo</h2>
+            <p className="mt-1 text-xs text-gray-600">
+              Chaque application émet <code>PRODUCT_APPLY</code>. Aucun panier : la sortie se fait par la barre Colibri, en bas.
+            </p>
+          </div>
+          <div className="flex gap-2 border-b border-gray-200 p-4">
+            {murs.map((teinte, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => setMurActif(index)}
+                aria-pressed={murActif === index}
+                className={`flex-1 rounded border p-3 text-left text-sm ${murActif === index ? 'border-primary-600 ring-2 ring-primary-200' : 'border-gray-200'}`}
+              >
+                <span className="block text-xs text-gray-500">Mur {index + 1}</span>
+                <span className="block truncate font-medium text-gray-900">{teinte ? teinte.titre : '—'}</span>
+              </button>
+            ))}
           </div>
           <ul className="flex-1 space-y-2 overflow-y-auto p-4">
-            {[...teintes, ...coches.filter((h) => !teintes.some((t) => t.handle === h)).map((h) => ({ handle: h, titre: h }))].map((t) => (
-              <li key={t.handle}>
-                <label className="flex items-center gap-3 rounded border border-gray-200 p-3 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={coches.includes(t.handle)}
-                    onChange={(e) => setCoches((c) => (e.target.checked
-                      ? [...c, t.handle]
-                      : c.filter((h) => h !== t.handle)))}
-                  />
-                  <span className="flex-1">{t.titre}</span>
-                  <code className="text-[11px] text-gray-500">{t.handle}</code>
-                </label>
+            {teintes.map((t) => (
+              <li key={t.handle} className="flex items-center gap-3 rounded border border-gray-200 p-3 text-sm">
+                <span className="flex-1">{t.titre}</span>
+                <code className="hidden text-[11px] text-gray-500 sm:inline">{t.handle}</code>
+                <button
+                  type="button"
+                  onClick={() => appliquer(t, murActif, true)}
+                  className="rounded bg-primary-600 px-3 py-1.5 text-xs font-medium text-white"
+                >
+                  Appliquer sur le mur {murActif + 1}
+                </button>
               </li>
             ))}
           </ul>
-          <div className="flex gap-3 border-t border-gray-200 p-4">
-            <button type="button" onClick={utiliser} className="flex-1 rounded-lg bg-primary-600 px-4 py-3 font-medium text-white">
-              Utiliser ces teintes ({coches.length})
+          <div className="flex flex-wrap gap-3 border-t border-gray-200 p-4 text-sm">
+            <button type="button" onClick={nettoyer} className="rounded border border-gray-300 px-3 py-1.5 text-gray-700">
+              Nettoyer le mur {murActif + 1}
             </button>
-            <button type="button" onClick={fermerFaux} className="rounded-lg border border-gray-300 px-4 py-3 font-medium text-gray-700">
-              Fermer
+            <button type="button" onClick={retourWizart} className="rounded border border-gray-300 px-3 py-1.5 text-gray-700">
+              Émettre BACK_BUTTON_CLICK
             </button>
           </div>
         </div>,

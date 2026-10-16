@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { chargerCouleur, chargerCouleurs, choisirFinition, construireCouleur, type DetailProduit } from '@/lib/couleur';
+import {
+  chargerCouleur,
+  chargerCouleurs,
+  choisirFinition,
+  construireCouleur,
+  nomCourtTeinte,
+  type DetailProduit,
+} from '@/lib/couleur';
 
 const variante = (id: string, finition: string | null) => ({
   id,
@@ -23,6 +30,14 @@ const detail: DetailProduit = {
   sousCouche: 'grise',
   codeHex: '#88AACC',
 };
+
+describe('nomCourtTeinte', () => {
+  it('garde la partie du titre avant « - »', () => {
+    expect(nomCourtTeinte('Deguesde - Peinture biosourcée murs et plafonds')).toBe('Deguesde');
+    expect(nomCourtTeinte('Bleu-Nuit - Peinture')).toBe('Bleu-Nuit');
+    expect(nomCourtTeinte('Horizon')).toBe('Horizon');
+  });
+});
 
 describe('choisirFinition', () => {
   it('retient la variante de la finition cible (insensible à la casse)', () => {

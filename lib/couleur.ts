@@ -96,6 +96,15 @@ export function construireCouleur(
   };
 }
 
+/**
+ * Nom court d'une teinte : partie du titre avant « - » (ex. « Deguesde -
+ * Peinture biosourcée murs et plafonds » → « Deguesde »). Même règle que les
+ * pastilles de la barre du simulateur (embed/colibri.js).
+ */
+export function nomCourtTeinte(titre: string): string {
+  return titre.split(/\s+[-–—]\s+/)[0].trim() || titre.trim();
+}
+
 /** Erreur réseau ou serveur (≠ teinte inconnue de la boutique) */
 export class ErreurChargementCouleur extends Error {}
 

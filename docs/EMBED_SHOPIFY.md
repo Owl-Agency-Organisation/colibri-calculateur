@@ -22,6 +22,36 @@ https://calculateur.colibripeinture.com/embed/colibri.js
   `<script>` avec l'attribut `data-colibri` qui fixe le mode.
 - Le simulateur Wizart (Deployment Kit) n'est chargé que sur la page Simulateur
   et à l'ouverture de la surimpression depuis le configurateur.
+- Tout le rendu du script (page Simulateur, surimpression et barre, bouton des
+  fiches teintes) est isolé dans un **Shadow DOM** : les styles du thème ne
+  l'atteignent pas ; seule la police est héritée du site.
+
+### Simulateur : Wizart visualise, Colibri retient les teintes
+
+La surimpression (plein écran, au-dessus du site) contient deux parties :
+
+- en haut, la zone Wizart (DepKit v1.1.3 en `FILL_PARENT`, `locale: 'fr'`,
+  `showBackToWebsiteButton: false`, ouverture sur une teinte avec
+  `openWithProduct`) ;
+- en bas, la **barre Colibri**, toujours visible : « Teintes essayées »
+  (pastilles), « Fermer » et « Utiliser cette teinte → » /
+  « Utiliser ces teintes (n) → » (« Utiliser mes teintes → », désactivé, tant
+  qu'aucune teinte n'est appliquée).
+
+Chaque teinte appliquée sur un mur (`PRODUCT_APPLY`, handle = `article_sku`, à
+défaut `article_custom_sku`) est retenue dans l'ordre d'application ; une
+teinte réappliquée passe en dernier, la dernière est donc toujours la plus
+récente. Nettoyer une surface ne retire rien ; la liste repart de zéro à chaque
+ouverture. La sortie ne passe que par la barre : le panier Wizart
+(`OPEN_IN_STORE`) n'est plus écouté ; `BACK_BUTTON_CLICK` ferme comme
+« Fermer » (sécurité, le bouton est masqué).
+
+Couleur des pastilles : `GET /api/embed/teintes?handles=h1,h2` →
+`[{ handle, nom, hex }]` (metafield `custom.code_hexadecimal`, rien d'autre ;
+CORS limité à `https://www.colibripeinture.com` et à l'origine de l'app ;
+cache 5 min). Si la couleur n'arrive pas, la pastille affiche le nom seul : la
+barre ne bloque jamais la sortie. Un échec (réseau, erreur serveur) n'est pas
+mémorisé : la couleur est redemandée au prochain rendu de la barre.
 
 Contrat de messages entre la page et l'iframe : `lib/embed-messages.ts`.
 
@@ -50,8 +80,11 @@ Ce que fait le script :
   la capacité `simulateur` seulement si le token Wizart est configuré) ;
 - à la demande de l'app (popup couleur d'un mur), ouvre le simulateur en
   surimpression plein écran au-dessus de la page, sur la teinte demandée le cas
-  échéant ; renvoie les teintes du panier Wizart à l'app à la sortie du panier,
-  ou signale la fermeture. La saisie en cours dans l'app n'est jamais perdue.
+  échéant. « Utiliser… » renvoie à l'app les teintes appliquées
+  (`colibri:simulateur:selection`, ordre d'application) : la dernière est
+  posée sur le mur de la popup, toutes rejoignent « Vos teintes essayées ».
+  « Fermer » envoie `colibri:simulateur:ferme`. La saisie en cours dans l'app
+  n'est jamais perdue.
 
 ## 2. Bloc simulateur — page `/pages/simulateur`
 
@@ -59,15 +92,21 @@ Créer une page Shopify `simulateur` (gabarit page standard) avec un bloc
 **HTML personnalisé** :
 
 ```html
-<div id="colibri-simulateur"></div>
+<div id="colibri-simulateur" data-visuel="https://cdn.shopify.com/s/files/…/visuel-simulateur.jpg"></div>
 <script src="https://calculateur.colibripeinture.com/embed/colibri.js" data-colibri="simulateur"></script>
 ```
 
-Ce que fait le script : question « Quelle pièce ? » (7 types, libellés de
-l'app), consignes photo, simulateur plein écran en français ; `?teinte={handle}`
-ouvre le simulateur sur ce produit. À la sortie du panier Wizart, navigation
-vers `/pages/configurateur?piece={type}&teintes={handles}`. Fermeture : retour à
-la question.
+- `data-visuel` (facultatif) : URL de l'image de l'en-tête (à déposer dans
+  Shopify, Contenu → Fichiers). Sans attribut, l'en-tête tient sur une colonne.
+
+Ce que fait le script : en-tête (« Essayez nos teintes chez vous, avant
+d'acheter »), « Quelle pièce voulez-vous transformer ? » (7 cartes, mêmes
+images et libellés que l'étape « Pièce » du configurateur), trois étapes,
+conseil photo ; `?teinte={handle}` ouvre le simulateur sur ce produit. Le clic
+sur une pièce ouvre le simulateur (surimpression et barre Colibri).
+« Utiliser… » : navigation vers
+`/pages/configurateur?piece={type}&teintes={h1},{h2}` (ordre d'application ;
+les teintes vont sur Mur 1, Mur 2…). « Fermer » : retour à la question.
 
 ## 3. Bloc fiche teinte — gabarit produit
 
@@ -174,9 +213,13 @@ redéployer suffit aussi à masquer toutes les entrées vers le simulateur.
    puis redéployer.
 2. Créer la page `/pages/simulateur` (section 2) et le bloc fiche teinte
    (section 3).
-3. Côté Wizart : la référence produit des teintes est le handle Shopify. Si le
-   PIM redirige vers la boutique à la sortie du panier, la cible est
-   `https://www.colibripeinture.com/pages/configurateur` (paramètres
-   `vendorCode[]`, pris en charge par le script).
+3. Côté Wizart : la référence produit des teintes est le handle Shopify.
+   **Désactiver le panier Wizart dans le PIM** : Configuration → Web →
+   « Shopping cart » désactivé. La sortie se fait uniquement par la barre
+   Colibri ; sans cette désactivation, les boutons « Acheter » et le panier
+   Wizart restent visibles dans le simulateur. (Tant qu'il est actif, une
+   redirection PIM vers `/pages/configurateur` avec `vendorCode[]` reste prise
+   en charge par le script.)
 4. Tester avec le vrai simulateur : popup d'un mur (une teinte, plusieurs
-   teintes, fermeture), page Simulateur, bouton d'une fiche teinte.
+   teintes, réapplication, fermeture), page Simulateur (ordinateur et mobile),
+   bouton d'une fiche teinte.

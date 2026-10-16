@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Couleur, TypePiece } from '@/lib/types';
 import { chargerCouleur, chargerCouleurs } from '@/lib/couleur';
-import { getTeintesEssayees, ajouterTeintesEssayees } from '@/lib/store/teintesEssayees';
+import { getTeintesEssayees, ajouterSelectionSimulateur } from '@/lib/store/teintesEssayees';
 import { ecouterSimulateur, useSimulateurDisponible } from '@/lib/embed-parent';
-import { messageOuvrirSimulateur } from '@/lib/embed-messages';
+import { derniereTeinte, messageOuvrirSimulateur } from '@/lib/embed-messages';
 import { postToParent } from '@/lib/navigation';
 
 interface Collection {
@@ -26,10 +26,13 @@ interface Product {
   }[];
 }
 
+/** Origine d'une couleur choisie : la popup, ou le simulateur (dernière teinte appliquée) */
+export type OrigineCouleur = 'popup' | 'simulateur';
+
 interface CouleurModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (couleur: Couleur) => void;
+  onSelect: (couleur: Couleur, origine: OrigineCouleur) => void;
   title?: string;
   targetFinition?: string; // 'Mate', 'Velours', 'Satin'
   /** Type de la pièce : requis pour proposer le simulateur */
@@ -102,7 +105,7 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition,
   // Teintes essayées dans le simulateur (bloc en tête, murs et plafond)
   const [teintesEssayees, setTeintesEssayees] = useState<Couleur[]>([]);
   const [chargementEssayees, setChargementEssayees] = useState(false);
-  // Plusieurs teintes reçues du simulateur : le bloc est mis en avant
+  // Dernière teinte du simulateur inconnue de la boutique : le bloc est mis en avant
   const [essayeesEnAvant, setEssayeesEnAvant] = useState(false);
   const [attenteSimulateur, setAttenteSimulateur] = useState(false);
 
@@ -149,34 +152,36 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition,
       setAttenteSimulateur(false);
       if (evenement.type === 'colibri:simulateur:ferme' || evenement.teintes.length === 0) return;
 
-      ajouterTeintesEssayees(evenement.teintes);
+      // Toutes rejoignent « Vos teintes essayées » (la plus récente en tête)
+      ajouterSelectionSimulateur(evenement.teintes);
       setError(null);
 
-      if (evenement.teintes.length === 1) {
-        // Une seule teinte : posée directement sur le mur ciblé
-        const { targetFinition: finition } = propsRef.current;
-        chargerCouleur(evenement.teintes[0], { targetFinition: finition })
-          .then((couleur) => {
-            if (couleur) {
-              propsRef.current.onSelect(couleur);
-              propsRef.current.onClose();
-            } else {
-              chargerTeintesEssayees();
-            }
-          })
-          .catch((err: unknown) => {
-            console.error(err);
-            setError('Impossible de sélectionner cette couleur');
-            chargerTeintesEssayees();
-          });
-        return;
-      }
-
-      // Plusieurs teintes : le client choisit dans le bloc mis en avant
-      setSelectedCollection(null);
-      setProducts([]);
-      setEssayeesEnAvant(true);
-      chargerTeintesEssayees();
+      // La dernière appliquée (la plus récente) est posée sur le mur ciblé,
+      // quel que soit le nombre de teintes
+      const derniere = derniereTeinte(evenement.teintes);
+      if (!derniere) return;
+      const proposerAuChoix = () => {
+        setSelectedCollection(null);
+        setProducts([]);
+        setEssayeesEnAvant(true);
+        chargerTeintesEssayees();
+      };
+      const { targetFinition: finition } = propsRef.current;
+      chargerCouleur(derniere, { targetFinition: finition })
+        .then((couleur) => {
+          if (couleur) {
+            propsRef.current.onSelect(couleur, 'simulateur');
+            propsRef.current.onClose();
+          } else {
+            // Teinte inconnue de la boutique : le client choisit parmi les autres
+            proposerAuChoix();
+          }
+        })
+        .catch((err: unknown) => {
+          console.error(err);
+          setError('Impossible de sélectionner cette couleur');
+          proposerAuChoix();
+        });
     });
   }, [isOpen, chargerTeintesEssayees]);
 
@@ -269,7 +274,7 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition,
       });
       if (!couleur) throw new Error('Erreur lors du chargement du produit');
 
-      onSelect(couleur);
+      onSelect(couleur, 'popup');
       onClose();
     } catch (err) {
       setError('Impossible de sélectionner cette couleur');
@@ -278,7 +283,7 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition,
   };
 
   const handleSelectTeinteEssayee = (couleur: Couleur) => {
-    onSelect(couleur);
+    onSelect(couleur, 'popup');
     onClose();
   };
 
@@ -339,7 +344,7 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition,
                 <div>
                   <p className="font-medium text-gray-900">Le simulateur est ouvert</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    Essayez vos teintes sur la photo de votre pièce, puis validez votre sélection&nbsp;: elle s&apos;affichera ici.
+                    Appliquez vos teintes sur les murs de la photo, puis cliquez sur «&nbsp;Utiliser&nbsp;»&nbsp;: la dernière teinte appliquée sera posée sur ce mur.
                   </p>
                 </div>
                 <button

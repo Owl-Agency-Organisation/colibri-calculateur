@@ -8,12 +8,13 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { StepIndicator, CALCULATEUR_STEPS } from '@/components/ui/StepIndicator';
 import { useStepperNavigation } from '@/hooks/useStepperNavigation';
-import { CouleurModal } from '@/components/modals/CouleurModal';
+import { CouleurModal, type OrigineCouleur } from '@/components/modals/CouleurModal';
 import { InfoTooltip, getFinitionTooltip } from '@/components/ui/InfoTooltip';
 import { getStoredPieces, setStoredPieces } from '@/lib/store/projetStore';
 import { getCouleursArrivee, clearCouleursArrivee } from '@/lib/store/arriveeSimulateur';
 import type { Piece, Couleur, TypePiece, Mur } from '@/lib/types';
 import { REGLES_FINITION } from '@/lib/calcul';
+import { nomCourtTeinte } from '@/lib/couleur';
 
 const MAX_MURS = 4;
 
@@ -39,6 +40,8 @@ export default function SaisieSurfacesPage() {
   const [hasPieces, setHasPieces] = useState(false);
   // Murs pré-remplis avec les teintes retenues dans le simulateur
   const [depuisSimulateur, setDepuisSimulateur] = useState(false);
+  // Dernière teinte du simulateur posée sur un mur depuis la popup couleur
+  const [posee, setPosee] = useState<{ nom: string; mur: number } | null>(null);
 
   // Charger le type de pièce depuis sessionStorage ou éditer une pièce existante
   useEffect(() => {
@@ -126,6 +129,8 @@ export default function SaisieSurfacesPage() {
 
   const handleRemoveMur = (murId: string) => {
     if (murs.length > 1) {
+      // Les numéros de mur changent : la confirmation du simulateur n'est plus juste
+      setPosee(null);
       setMurs(murs.filter((m) => m.id !== murId));
     }
   };
@@ -135,6 +140,7 @@ export default function SaisieSurfacesPage() {
   };
 
   const handleOpenCouleurModal = (type: 'mur' | 'plafond', murId?: string) => {
+    setPosee(null);
     setCurrentSelection({ type, murId });
     setShowCouleurModal(true);
   };
@@ -149,11 +155,16 @@ export default function SaisieSurfacesPage() {
     return undefined;
   };
 
-  const handleSelectCouleur = (couleur: Couleur) => {
+  const handleSelectCouleur = (couleur: Couleur, origine: OrigineCouleur) => {
     if (!currentSelection) return;
 
     if (currentSelection.type === 'mur' && currentSelection.murId) {
+      // Seule la couleur du mur change : les surfaces saisies ne bougent pas
       setMurs(murs.map((m) => (m.id === currentSelection.murId ? { ...m, couleur } : m)));
+      const index = murs.findIndex((m) => m.id === currentSelection.murId);
+      setPosee(origine === 'simulateur' && index !== -1
+        ? { nom: nomCourtTeinte(couleur.titre), mur: index + 1 }
+        : null);
     } else if (currentSelection.type === 'plafond') {
       setCouleurPlafond(couleur);
     }
@@ -296,6 +307,17 @@ export default function SaisieSurfacesPage() {
               <p>
                 <span className="font-semibold">Teintes reprises du simulateur.</span>{' '}
                 Il ne reste qu&apos;à renseigner la surface de chaque mur.
+              </p>
+            </div>
+          )}
+          {posee && (
+            <div role="status" className="mt-3 flex items-start gap-2 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-600">
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <p>
+                <span className="font-semibold">{posee.nom}</span>, la dernière teinte appliquée dans le simulateur,
+                est posée sur le Mur {posee.mur}. Vos mesures n&apos;ont pas bougé.
               </p>
             </div>
           )}
