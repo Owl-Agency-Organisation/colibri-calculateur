@@ -6,19 +6,43 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { REGLES_FINITION } from '@/lib/calcul';
 import { chargerCouleurs } from '@/lib/couleur';
-import { lireEntreeSimulateur, MAX_TEINTES_ARRIVEE, type EntreeSimulateur } from '@/lib/embed-messages';
+import { lireEntreeSimulateur, type EntreeSimulateur } from '@/lib/embed-messages';
 import { LIBELLES_PIECES } from '@/lib/pieces';
 import { clearProjetData, getStoredPieces } from '@/lib/store/projetStore';
-import { ajouterTeintesEssayees } from '@/lib/store/teintesEssayees';
-import { setCouleursArrivee } from '@/lib/store/arriveeSimulateur';
+import { ajouterSelectionSimulateur } from '@/lib/store/teintesEssayees';
+import { couleursMurArrivee, setArriveeSimulateur } from '@/lib/store/arriveeSimulateur';
 import type { Couleur } from '@/lib/types';
 
 /**
  * Arrivée depuis la page Simulateur du site :
- * `/calculateur/simulateur?piece={TypePiece}&teintes={handle1},{handle2}`.
+ * `/calculateur/simulateur?piece={TypePiece}&teintes={handle1},{handle2}`
+ * (teintes dans l'ordre d'application, la dernière est la plus récente).
+ * Un seul mur est créé, avec la dernière teinte : Wizart n'expose pas l'état
+ * de la scène. Toutes les teintes rejoignent « Vos teintes essayées ».
  * Paramètres invalides ou absents (ou aucune teinte connue de la boutique) :
  * renvoi silencieux vers l'accueil.
  */
+
+const nomAffiche = (titre: string) => titre.replace(' - Peinture biosourcée murs et plafonds', '');
+
+function CarteTeinte({ couleur, mention }: { couleur: Couleur; mention?: string }) {
+  return (
+    <li className="rounded-lg border-2 border-gray-200 p-3 bg-white">
+      <div
+        className="w-full h-20 rounded-md mb-2 border border-gray-100"
+        style={{ backgroundColor: couleur.codeHex || '#fff' }}
+      >
+        {couleur.imageUrl && (
+          <img src={couleur.imageUrl} alt="" className="w-full h-full object-cover rounded-md" />
+        )}
+      </div>
+      <p className="text-xs font-medium text-gray-900 line-clamp-2">{nomAffiche(couleur.titre)}</p>
+      {mention && (
+        <p className="text-[10px] uppercase tracking-widest text-primary-500 font-bold mt-1">{mention}</p>
+      )}
+    </li>
+  );
+}
 export default function ArriveeSimulateurPage() {
   const router = useRouter();
   const [entree, setEntree] = useState<EntreeSimulateur | null>(null);
@@ -54,11 +78,12 @@ export default function ArriveeSimulateurPage() {
     if (!entree) return;
     if (nouveauProjet) clearProjetData();
 
-    ajouterTeintesEssayees(couleurs.map((c) => c.productHandle));
+    // Ordre d'application : la plus récente passe en tête du bloc
+    ajouterSelectionSimulateur(couleurs.map((c) => c.productHandle));
     // Même suite que le choix d'une pièce : type posé pour la page Surfaces
     sessionStorage.removeItem('colibri-edit-piece-id');
     sessionStorage.setItem('colibri-temp-piece-type', entree.piece);
-    setCouleursArrivee(couleurs.slice(0, MAX_TEINTES_ARRIVEE));
+    setArriveeSimulateur({ couleurs: couleursMurArrivee(couleurs), teintesRecues: couleurs.length });
     router.push('/calculateur/surfaces');
   };
 
@@ -71,6 +96,9 @@ export default function ArriveeSimulateurPage() {
   }
 
   const finition = REGLES_FINITION[entree.piece]?.murs;
+  const derniere = couleurs[couleurs.length - 1];
+  // Autres teintes essayées, la plus récente d'abord (ordre du bloc)
+  const autres = couleurs.slice(0, -1).reverse();
 
   return (
     <div className="space-y-6">
@@ -95,43 +123,40 @@ export default function ArriveeSimulateurPage() {
             </span>
           </div>
 
-          <div>
-            <p className="text-sm text-gray-500 mb-3">
-              {couleurs.length > 1 ? `Vos ${couleurs.length} teintes` : 'Votre teinte'}
-              {finition && <> · finition <span className="uppercase">{finition}</span> pour les murs</>}
-            </p>
-            <ul className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {couleurs.map((couleur, index) => (
-                <li
-                  key={couleur.productHandle}
-                  className={`rounded-lg border-2 p-3 bg-white ${index < MAX_TEINTES_ARRIVEE ? 'border-gray-200' : 'border-dashed border-gray-200 opacity-70'}`}
-                >
-                  <div
-                    className="w-full h-20 rounded-md mb-2 border border-gray-100"
-                    style={{ backgroundColor: couleur.codeHex || '#fff' }}
-                  >
-                    {couleur.imageUrl && (
-                      <img src={couleur.imageUrl} alt="" className="w-full h-full object-cover rounded-md" />
-                    )}
-                  </div>
-                  <p className="text-xs font-medium text-gray-900 line-clamp-2">
-                    {couleur.titre.replace(' - Peinture biosourcée murs et plafonds', '')}
-                  </p>
-                  {index < MAX_TEINTES_ARRIVEE && (
-                    <p className="text-[10px] uppercase tracking-widest text-primary-500 font-bold mt-1">
-                      Mur {index + 1}
-                    </p>
-                  )}
-                </li>
-              ))}
-            </ul>
-            {couleurs.length > MAX_TEINTES_ARRIVEE && (
-              <p className="text-xs text-gray-500 mt-3">
-                Une pièce compte au plus {MAX_TEINTES_ARRIVEE} murs&nbsp;: les autres teintes restent
-                disponibles dans le choix des couleurs (« Vos teintes essayées »).
+          {couleurs.length === 1 ? (
+            <div>
+              <p className="text-sm text-gray-500 mb-3">
+                Votre teinte
+                {finition && <> · finition <span className="uppercase">{finition}</span> pour les murs</>}
               </p>
-            )}
-          </div>
+              <ul className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <CarteTeinte couleur={derniere} mention="Mur 1" />
+              </ul>
+            </div>
+          ) : (
+            <>
+              <div>
+                <p className="text-sm text-gray-500 mb-3">
+                  La dernière teinte appliquée
+                  {finition && <> · finition <span className="uppercase">{finition}</span> pour les murs</>}
+                </p>
+                <ul className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <CarteTeinte couleur={derniere} mention="Posée sur le mur 1" />
+                </ul>
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">Vos teintes essayées</h2>
+                <p className="text-sm text-gray-500 mt-1 mb-3">
+                  Vous les retrouverez dans le choix des couleurs de chaque mur.
+                </p>
+                <ul className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {autres.map((couleur) => (
+                    <CarteTeinte key={couleur.productHandle} couleur={couleur} />
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

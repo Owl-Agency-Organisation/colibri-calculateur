@@ -169,9 +169,6 @@ export function messageOuvrirSimulateur(piece: TypePiece, teinte?: string): Mess
 
 // ---------- Entrée depuis la page Simulateur ----------
 
-/** Nombre maximal de murs créés à l'arrivée (limite de la page Surfaces) */
-export const MAX_TEINTES_ARRIVEE = 4;
-
 export interface EntreeSimulateur {
   piece: TypePiece;
   teintes: string[];

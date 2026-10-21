@@ -11,7 +11,7 @@ import { useStepperNavigation } from '@/hooks/useStepperNavigation';
 import { CouleurModal, type OrigineCouleur } from '@/components/modals/CouleurModal';
 import { InfoTooltip, getFinitionTooltip } from '@/components/ui/InfoTooltip';
 import { getStoredPieces, setStoredPieces } from '@/lib/store/projetStore';
-import { getCouleursArrivee, clearCouleursArrivee } from '@/lib/store/arriveeSimulateur';
+import { getArriveeSimulateur, clearCouleursArrivee } from '@/lib/store/arriveeSimulateur';
 import type { Piece, Couleur, TypePiece, Mur } from '@/lib/types';
 import { REGLES_FINITION } from '@/lib/calcul';
 import { nomCourtTeinte } from '@/lib/couleur';
@@ -40,6 +40,8 @@ export default function SaisieSurfacesPage() {
   const [hasPieces, setHasPieces] = useState(false);
   // Murs pré-remplis avec les teintes retenues dans le simulateur
   const [depuisSimulateur, setDepuisSimulateur] = useState(false);
+  // Plusieurs teintes reçues du simulateur : nom de la dernière (posée sur le Mur 1)
+  const [derniereSimulateur, setDerniereSimulateur] = useState<string | null>(null);
   // Dernière teinte du simulateur posée sur un mur depuis la popup couleur
   const [posee, setPosee] = useState<{ nom: string; mur: number } | null>(null);
 
@@ -98,9 +100,10 @@ export default function SaisieSurfacesPage() {
       };
       setNomPiece(`${labels[type]} ${count}`);
 
-      // Arrivée depuis le simulateur : un mur par teinte, dans l'ordre,
-      // surfaces vides (la finition vient de la règle de la pièce)
-      const couleursSimulateur = getCouleursArrivee().slice(0, MAX_MURS);
+      // Arrivée depuis le simulateur : un seul mur, avec la dernière teinte
+      // appliquée, surface vide (la finition vient de la règle de la pièce)
+      const arrivee = getArriveeSimulateur();
+      const couleursSimulateur = arrivee.couleurs.slice(0, MAX_MURS);
       if (couleursSimulateur.length > 0) {
         setMurs(couleursSimulateur.map((couleur, index) => ({
           id: String(index + 1),
@@ -108,6 +111,9 @@ export default function SaisieSurfacesPage() {
           couleur,
         })));
         setDepuisSimulateur(true);
+        setDerniereSimulateur(arrivee.teintesRecues > 1
+          ? nomCourtTeinte(couleursSimulateur[couleursSimulateur.length - 1].titre)
+          : null);
       }
     }
   }, [router]);
@@ -304,10 +310,17 @@ export default function SaisieSurfacesPage() {
               <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              <p>
-                <span className="font-semibold">Teintes reprises du simulateur.</span>{' '}
-                Il ne reste qu&apos;à renseigner la surface de chaque mur.
-              </p>
+              {derniereSimulateur ? (
+                <p>
+                  <span className="font-semibold">{derniereSimulateur}</span>, la dernière teinte appliquée dans le
+                  simulateur, est posée sur le Mur 1. Retrouvez vos autres teintes essayées dans le choix des couleurs.
+                </p>
+              ) : (
+                <p>
+                  <span className="font-semibold">Teintes reprises du simulateur.</span>{' '}
+                  Il ne reste qu&apos;à renseigner la surface de chaque mur.
+                </p>
+              )}
             </div>
           )}
           {posee && (
