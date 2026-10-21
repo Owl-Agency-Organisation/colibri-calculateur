@@ -16,14 +16,14 @@ https://calculateur.colibripeinture.com/embed/colibri.js
     Vercel pilote ce preview ;
   - **token Wizart** = `NEXT_PUBLIC_WIZART_TOKEN` (variable Vercel, lue au build :
     un ajout ou un changement exige un redéploiement). Absent : pas de
-    simulateur (aucune entrée dans l'app, pas de bouton sur les fiches teintes,
+    simulateur (aucune entrée dans l'app, pas de bouton sur les fiches teintes et papier peint,
     message « momentanément indisponible » sur la page Simulateur).
 - Chaque page appelle le script en deux lignes : un élément hôte + la balise
   `<script>` avec l'attribut `data-colibri` qui fixe le mode.
 - Le simulateur Wizart (Deployment Kit) n'est chargé que sur la page Simulateur
   et à l'ouverture de la surimpression depuis le configurateur.
 - Tout le rendu du script (page Simulateur, surimpression et barre, bouton des
-  fiches teintes) est isolé dans un **Shadow DOM** : les styles du thème ne
+  fiches produit) est isolé dans un **Shadow DOM** : les styles du thème ne
   l'atteignent pas ; seule la police est héritée du site.
 
 ### Simulateur : Wizart visualise, Colibri retient les teintes
@@ -46,12 +46,41 @@ ouverture. La sortie ne passe que par la barre : le panier Wizart
 (`OPEN_IN_STORE`) n'est plus écouté ; `BACK_BUTTON_CLICK` ferme comme
 « Fermer » (sécurité, le bouton est masqué).
 
-Couleur des pastilles : `GET /api/embed/teintes?handles=h1,h2` →
-`[{ handle, nom, hex }]` (metafield `custom.code_hexadecimal`, rien d'autre ;
-CORS limité à `https://www.colibripeinture.com` et à l'origine de l'app ;
-cache 5 min). Si la couleur n'arrive pas, la pastille affiche le nom seul : la
-barre ne bloque jamais la sortie. Un échec (réseau, erreur serveur) n'est pas
-mémorisé : la couleur est redemandée au prochain rendu de la barre.
+Couleur des pastilles : `GET /api/embed/teintes?handles=r1,r2` →
+`[{ handle, nom, hex, type, image, lien }]` (CORS limité à
+`https://www.colibripeinture.com` et à l'origine de l'app ; cache 5 min ;
+jamais de prix). Chaque référence est d'abord cherchée comme handle de teinte,
+puis comme SKU de variante papier peint (côté serveur) :
+
+| Référence | `type` | `nom` | `hex` | `image` | `lien` |
+|---|---|---|---|---|---|
+| Teinte (`deguesde-peinture-…`) | `peinture` | nom court (« Deguesde ») | metafield `custom.code_hexadecimal` | `null` | `null` |
+| Papier peint (`pp-montg-terracotta-le`) | `papier-peint` | « {Motif} {Coloris} » (« Montgolfières Terracotta », « Rayures bleues ») | `null` | image de la variante | fiche `…/products/{handle}?variant={id}` |
+| Inconnue | — absente de la réponse | | | | |
+
+La pastille d'une teinte montre un rond de couleur, celle d'un papier peint
+une vignette ronde de l'image (https seulement), puis le nom. Si rien
+n'arrive, la pastille affiche le nom seul : la barre ne bloque jamais la
+sortie. Un échec (réseau, erreur serveur) n'est pas mémorisé : la couleur est
+redemandée au prochain rendu de la barre. Admin API indisponible : les teintes
+sont renvoyées sans les papiers peints (réponse non mise en cache).
+
+### Papiers peints dans le simulateur
+
+Décision du 21/10/2026 : les papiers peints Colibri sont dans le catalogue
+Wizart (même surface « murs » que la peinture). **Référence Wizart d'un
+papier peint = SKU de sa variante « Lé »** (`unique_sku_id`, donc
+`article_sku` dans `PRODUCT_APPLY`), par exemple `pp-montg-terracotta-le` :
+unique, stable, et elle respecte le motif des handles. Le handle produit seul
+ne dirait pas le coloris. Le script ne distingue jamais une teinte d'un papier
+peint : l'app le fait côté serveur (Admin API, la Storefront API ne cherchant
+pas par SKU). Le contrat de messages `colibri:simulateur:*` est inchangé : les
+SKU passent dans `teintes` tels quels.
+
+Un papier peint **ne se calcule pas** : l'app l'affiche avec « Voir la fiche »
+(écran d'arrivée, popup couleur, récapitulatif) et le client le commande
+depuis sa fiche. À l'arrivée, le mur créé reçoit la dernière **peinture**
+appliquée ; avec des papiers peints seuls, le mur reste sans couleur.
 
 ### Intérieur d'exemple selon le type de pièce
 
@@ -156,7 +185,9 @@ essayées »). « Fermer » : retour à la question.
   console, et le chemin par défaut s'applique. Seul le mode `simulateur` le
   lit. Ne jamais le mettre sur la vraie page `/pages/simulateur`.
 
-## 3. Bloc fiche teinte — gabarit produit
+## 3. Blocs fiches produit — gabarit produit
+
+### Fiche teinte
 
 Bloc **Liquid personnalisé** dans le gabarit produit, affiché seulement pour les
 teintes (produits portant le metafield `custom.code_hexadecimal`) :
@@ -170,6 +201,48 @@ teintes (produits portant le metafield `custom.code_hexadecimal`) :
 
 Ce que fait le script : bouton « Voir dans ma pièce » vers
 `/pages/simulateur?teinte={handle}`. Sans token Wizart, rien n'est affiché.
+
+### Fiche papier peint
+
+Bloc **Liquid personnalisé** dans le même gabarit, affiché seulement pour les
+papiers peints. `data-teinte` = SKU de la première variante « Lé » ;
+`data-variantes` = table `{ "{id variante}": "{sku}" }` des seules variantes
+« Lé » (les échantillons A4 ne sont pas dans Wizart) :
+
+```liquid
+{% if product.type == 'Papier peint' %}
+  {%- liquid
+    assign premier_le = ''
+    assign entrees = ''
+    for variante in product.variants
+      if variante.title contains 'Lé :' and variante.sku != blank
+        if premier_le == ''
+          assign premier_le = variante.sku
+        else
+          assign entrees = entrees | append: ','
+        endif
+        assign cle = variante.id | append: '' | json
+        assign valeur = variante.sku | json
+        assign entrees = entrees | append: cle | append: ':' | append: valeur
+      endif
+    endfor
+    assign variantes = '{' | append: entrees | append: '}'
+  -%}
+  {%- if premier_le != '' -%}
+    <div id="colibri-bouton-teinte" data-teinte="{{ premier_le | escape }}" data-variantes="{{ variantes | escape }}"></div>
+    <script src="https://calculateur.colibripeinture.com/embed/colibri.js" data-colibri="bouton"></script>
+  {%- endif -%}
+{% endif %}
+```
+
+Ce que fait le script : au clic sur « Voir dans ma pièce », si l'URL de la
+fiche porte `?variant={id}` (coloris choisi) et que `data-variantes` connaît
+cette variante, le bouton ouvre `/pages/simulateur?teinte={sku}` avec son SKU ;
+sinon il envoie `data-teinte`. L'URL est relue au clic : le thème change
+`?variant=` sans recharger la page. Le SKU est transmis tel quel à Wizart
+(`openWithProduct`). `data-variantes` est facultatif : absent, rien ne change
+(fiches teintes) ; JSON illisible : ignoré avec un avertissement en console ;
+entrées invalides (id non numérique, SKU hors motif) écartées.
 
 ---
 
@@ -271,7 +344,7 @@ entrée vers le simulateur.
 </script>
 ```
 
-Pour la page Simulateur et les fiches teintes : supprimer les blocs (ou
+Pour la page Simulateur et les fiches teintes et papier peint : supprimer les blocs (ou
 dépublier la page). Retirer `NEXT_PUBLIC_WIZART_TOKEN` de Vercel puis
 redéployer suffit aussi à masquer toutes les entrées vers le simulateur.
 
@@ -279,9 +352,11 @@ redéployer suffit aussi à masquer toutes les entrées vers le simulateur.
 
 1. Ajouter `NEXT_PUBLIC_WIZART_TOKEN` dans Vercel (environnement Production),
    puis redéployer.
-2. Créer la page `/pages/simulateur` (section 2) et le bloc fiche teinte
-   (section 3).
-3. Côté Wizart : la référence produit des teintes est le handle Shopify.
+2. Créer la page `/pages/simulateur` (section 2) et les blocs fiche teinte
+   et fiche papier peint (section 3).
+3. Côté Wizart : la référence produit des teintes est le handle Shopify,
+   celle des papiers peints le SKU de la variante « Lé »
+   (`pnpm wizart:export-papiers-peints`, voir `scripts/wizart/README.md`).
    **Désactiver le panier Wizart dans le PIM** : Configuration → Web →
    « Shopping cart » désactivé. La sortie se fait uniquement par la barre
    Colibri ; sans cette désactivation, les boutons « Acheter » et le panier
@@ -290,4 +365,7 @@ redéployer suffit aussi à masquer toutes les entrées vers le simulateur.
    en charge par le script.)
 4. Tester avec le vrai simulateur : popup d'un mur (une teinte, plusieurs
    teintes, réapplication, fermeture), page Simulateur (ordinateur et mobile),
-   bouton d'une fiche teinte.
+   bouton d'une fiche teinte. Papiers peints (une fois les 12 références
+   importées dans le PIM) : vignette dans la barre, arrivée avec teintes et
+   papier peint, popup d'un mur avec un papier peint seul, bouton d'une fiche
+   papier peint sur un coloris choisi (`?variant=`).

@@ -7,6 +7,43 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Simulateur : papiers peints
+
+#### Ajouté
+- **Papiers peints dans le simulateur** (décision du 21/10) : référence Wizart
+  = SKU de la variante « Lé » (`pp-montg-terracotta-le`). L'app distingue
+  teinte et papier peint côté serveur (Admin API) ; contrat de messages
+  inchangé.
+- Route `/api/shopify/papier-peint/{sku}` et module `lib/papierPeint.ts` :
+  motif, coloris, image et fiche de la variante (aucun prix).
+- `/api/embed/teintes` renvoie `{ handle, nom, hex, type, image, lien }` ; la
+  barre du simulateur affiche une vignette ronde de l'image d'un papier peint.
+- Papiers peints essayés (`colibri-projet-papiers-peints-essayes`, 12 au plus,
+  purgés avec le projet) : bloc « Papier peint essayé » sur l'écran d'arrivée,
+  ligne dans la popup couleur, bloc « Papiers peints essayés dans le
+  simulateur » au récapitulatif, avec « Voir la fiche ». Un papier peint ne se
+  calcule pas.
+- Bouton « Voir dans ma pièce » des fiches papier peint : attribut
+  `data-variantes` (SKU de la variante choisie dans `?variant=`).
+- Export WALLPAPER : une ligne par coloris (12), largeur du lé lue dans
+  l'option « Taille », raccord depuis `scripts/wizart/papiers-peints.json`,
+  option `--textures` (fichiers manquants et en trop).
+- Labo `/labo/pont` : deux papiers peints réels, scénarios d'arrivée avec
+  papier peint.
+
+#### Modifié
+- Arrivée depuis le simulateur : le mur reçoit la **dernière peinture**
+  appliquée ; avec des papiers peints seuls, un mur sans couleur et un bandeau
+  sur la page Surfaces. L'écran d'arrivée s'affiche dès qu'une référence est
+  connue (teinte ou papier peint).
+
+#### Tests
+- API (teinte, papier peint, inconnue, mélange, Admin indisponible), tri des
+  références, arrivée (2 teintes + 1 papier peint, papier peint seul, 13
+  papiers peints), stockage, export (12 lignes, largeurs, liens, JSON manquant,
+  textures), script (`data-variantes` absent, valide, invalide, `variant=`
+  inconnu ; `lireApplication` inchangé).
+
 ### Simulateur : arrivée sur un mur, sortie paramétrable des pages de test
 
 #### Modifié
