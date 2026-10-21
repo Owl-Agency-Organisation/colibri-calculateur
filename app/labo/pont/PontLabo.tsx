@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { clearProjetData } from '@/lib/store/projetStore';
 import { LIBELLES_PIECES } from '@/lib/pieces';
+import { libellePapierPeint, type PapierPeint } from '@/lib/papierPeint';
 import type { TypePiece } from '@/lib/types';
 
 /**
@@ -13,18 +14,50 @@ import type { TypePiece } from '@/lib/types';
  * s'affiche dans la vraie surimpression, au-dessus de la vraie barre Colibri :
  * « Appliquer sur le mur » émet `PRODUCT_APPLY` (forme réelle du DepKit
  * v1.1.3), sans panier ; la sortie passe par la barre (« Fermer » /
- * « Utiliser… »).
+ * « Utiliser… »). Il propose aussi deux papiers peints réels (SKU de variante
+ * « Lé »), résolus par la vraie route du preview.
  */
 
 const HANDLE_INCONNU = 'teinte-inconnue-test';
 const CLE_SESSION_PIECE = 'colibri-simulateur-piece';
 const TEINTE_INCONNUE: Teinte = { handle: HANDLE_INCONNU, titre: 'Teinte inconnue (test)', nomComplet: 'Inconnue - Teinte de test' };
 
+// Papiers peints réels de la boutique : référence Wizart = SKU de la variante « Lé »
+const SKUS_PAPIERS_PEINTS = ['pp-montg-terracotta-le', 'pp-ombre-bleunuit-le'];
+
 interface Teinte {
+  /** Référence Wizart (`article_sku`) : handle de teinte ou SKU de papier peint */
   handle: string;
   titre: string;
-  /** Titre boutique complet (`article_name` de Wizart) */
+  /** Nom produit Wizart (`article_name`) */
   nomComplet: string;
+  /** Papier peint : image de la variante (vraie route de résolution) */
+  imageUrl?: string | null;
+  papierPeint?: boolean;
+}
+
+/** Papier peint résolu par `/api/shopify/papier-peint/{sku}` (nom et image réels) */
+async function chargerPapierPeintLabo(sku: string): Promise<Teinte> {
+  try {
+    const reponse = await fetch(`/api/shopify/papier-peint/${sku}`);
+    if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
+    const papier: PapierPeint = await reponse.json();
+    return {
+      handle: sku,
+      titre: `Papier peint ${libellePapierPeint(papier.motif, papier.coloris)}`,
+      nomComplet: libellePapierPeint(papier.motif, papier.coloris, ' - '),
+      imageUrl: papier.imageUrl,
+      papierPeint: true,
+    };
+  } catch (erreur) {
+    // Résolution indisponible (Admin API) : le SKU reste appliquable, sans nom ni image
+    return {
+      handle: sku,
+      titre: `Papier peint ${sku} (résolution : ${erreur instanceof Error ? erreur.message : String(erreur)})`,
+      nomComplet: sku,
+      papierPeint: true,
+    };
+  }
 }
 
 interface EntreeJournal {
@@ -290,10 +323,11 @@ export function PontLabo() {
             }));
           })
         );
-        setTeintes([...listes.flat(), TEINTE_INCONNUE]);
+        const papiers = await Promise.all(SKUS_PAPIERS_PEINTS.map(chargerPapierPeintLabo));
+        setTeintes([...listes.flat(), ...papiers, TEINTE_INCONNUE]);
       } catch (erreur) {
         setErreurCatalogue(erreur instanceof Error ? erreur.message : String(erreur));
-        setTeintes([TEINTE_INCONNUE]);
+        setTeintes([...(await Promise.all(SKUS_PAPIERS_PEINTS.map(chargerPapierPeintLabo))), TEINTE_INCONNUE]);
       }
     };
     charger();
@@ -330,13 +364,27 @@ export function PontLabo() {
     setTimeout(() => setRetour(null), 4000);
   };
 
-  const reels = teintes.filter((t) => t.handle !== HANDLE_INCONNU).map((t) => t.handle);
-  // Résultat attendu à l'arrivée : un mur avec la dernière teinte connue
+  const reels = teintes.filter((t) => t.handle !== HANDLE_INCONNU && !t.papierPeint).map((t) => t.handle);
+  const papiers = teintes.filter((t) => t.papierPeint).map((t) => t.handle);
+  // Résultat attendu à l'arrivée : un mur avec la dernière peinture connue,
+  // les papiers peints au récapitulatif
   const attendu = (handles: string[]) => {
-    const derniere = teintes.find((t) => t.handle === handles[handles.length - 1]);
-    return derniere
-      ? <span className="block text-xs text-gray-500">→ 1 mur : {derniere.titre} ; {handles.length} teinte{handles.length > 1 ? 's' : ''} essayée{handles.length > 1 ? 's' : ''}</span>
-      : null;
+    const peintures = handles.filter((h) => reels.includes(h));
+    const nombrePapiers = handles.filter((h) => papiers.includes(h)).length;
+    const derniere = teintes.find((t) => t.handle === peintures[peintures.length - 1]);
+    const mentionPapiers = nombrePapiers > 0
+      ? ` ; ${nombrePapiers} papier${nombrePapiers > 1 ? 's' : ''} peint${nombrePapiers > 1 ? 's' : ''} au récapitulatif`
+      : '';
+    if (!derniere) {
+      return nombrePapiers > 0
+        ? <span className="block text-xs text-gray-500">→ 1 mur sans couleur{mentionPapiers}</span>
+        : null;
+    }
+    return (
+      <span className="block text-xs text-gray-500">
+        → 1 mur : {derniere.titre} ; {peintures.length} teinte{peintures.length > 1 ? 's' : ''} essayée{peintures.length > 1 ? 's' : ''}{mentionPapiers}
+      </span>
+    );
   };
   const lien = (piece: string, handles: string[]) =>
     `/labo/pont?piece=${piece}&teintes=${handles.map(encodeURIComponent).join(',')}`;
@@ -387,6 +435,12 @@ export function PontLabo() {
           {reels.length >= 1 && (
             <li><a className="text-primary-500 underline" href={lien('chambre', [reels[0], HANDLE_INCONNU])}>Chambre + 1 teinte + 1 inconnue</a>{attendu([reels[0]])}</li>
           )}
+          {reels.length >= 2 && papiers.length >= 1 && (
+            <li><a className="text-primary-500 underline" href={lien('chambre', [reels[0], papiers[0], reels[1]])}>Chambre + 2 teintes + 1 papier peint</a>{attendu([reels[0], papiers[0], reels[1]])}</li>
+          )}
+          {papiers.length >= 1 && (
+            <li><a className="text-primary-500 underline" href={lien('chambre', [papiers[0]])}>Chambre + papier peint seul</a>{attendu([papiers[0]])}</li>
+          )}
           <li><a className="text-primary-500 underline" href={lien('chambre', [HANDLE_INCONNU])}>Teinte inconnue seule (→ accueil)</a></li>
           {reels.length >= 2 && (
             <li>
@@ -406,6 +460,11 @@ export function PontLabo() {
         <div className="space-y-2 border-t border-gray-100 pt-3">
           <p className="text-sm text-gray-700">
             Ouvrir le simulateur comme la popup couleur de l’app, pour la pièce&nbsp;:
+          </p>
+          <p className="text-xs text-gray-600">
+            Popup d’un mur avec un papier peint seul&nbsp;: dans la page Surfaces, ouvrir la couleur d’un mur,
+            «&nbsp;Essayer dans ma pièce&nbsp;», appliquer seulement un papier peint puis «&nbsp;Utiliser…&nbsp;» →
+            la popup reste ouverte avec «&nbsp;Papier peint essayé&nbsp;: …&nbsp;».
           </p>
           <div className="flex flex-wrap gap-2">
             {TYPES_PIECES.map((piece) => (
@@ -472,6 +531,7 @@ export function PontLabo() {
           <ul className="flex-1 space-y-2 overflow-y-auto p-4">
             {teintes.map((t) => (
               <li key={t.handle} className="flex items-center gap-3 rounded border border-gray-200 p-3 text-sm">
+                {t.imageUrl && <img src={t.imageUrl} alt="" className="h-8 w-8 rounded-full object-cover" />}
                 <span className="flex-1">{t.titre}</span>
                 <code className="hidden text-[11px] text-gray-500 sm:inline">{t.handle}</code>
                 <button
