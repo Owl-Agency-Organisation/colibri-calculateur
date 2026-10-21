@@ -110,7 +110,11 @@ Ce que fait le script :
   la page Simulateur), ou les paramètres Wizart `vendorCode[]` (redirection du
   PIM) avec la pièce mémorisée dans la session, l'iframe ouvre l'écran
   « Votre sélection du simulateur » ; les paramètres sont ensuite retirés de
-  l'URL de la page ;
+  l'URL de la page. Un seul mur est créé, avec la dernière teinte appliquée
+  (la plus récente) ; toutes les teintes rejoignent « Vos teintes essayées »
+  (12 au plus, la plus récente en tête). Wizart n'expose pas l'état de la
+  scène (nombre de murs, teinte de chaque mur) : seul l'ordre d'application
+  est connu ;
 - annonce `colibri:parent:pret` à l'app à chaque chargement de l'iframe (avec
   la capacité `simulateur` seulement si le token Wizart est configuré) ;
 - à la demande de l'app (popup couleur d'un mur), ouvre le simulateur en
@@ -141,7 +145,16 @@ conseil photo ; `?teinte={handle}` ouvre le simulateur sur ce produit. Le clic
 sur une pièce ouvre le simulateur (surimpression et barre Colibri).
 « Utiliser… » : navigation vers
 `/pages/configurateur?piece={type}&teintes={h1},{h2}` (ordre d'application ;
-les teintes vont sur Mur 1, Mur 2…). « Fermer » : retour à la question.
+la dernière est posée sur le Mur 1, toutes rejoignent « Vos teintes
+essayées »). « Fermer » : retour à la question.
+
+- `data-configurateur` (facultatif, **pages de test uniquement**, sur la
+  balise `<script>`) : chemin du configurateur vers lequel sortir, à la place
+  de `/pages/configurateur`. Valeur attendue : un chemin absolu du site
+  commençant par `/` (ex. `/pages/test-configurateur`). Toute autre valeur
+  (URL complète, chemin relatif, vide…) est ignorée avec un avertissement en
+  console, et le chemin par défaut s'applique. Seul le mode `simulateur` le
+  lit. Ne jamais le mettre sur la vraie page `/pages/simulateur`.
 
 ## 3. Bloc fiche teinte — gabarit produit
 
@@ -173,6 +186,26 @@ Ce que fait le script : bouton « Voir dans ma pièce » vers
 
 Le pont complet (avec un faux simulateur) se teste sur la page `/labo/pont` de
 chaque preview Vercel (404 en production).
+
+### Pages de test avec le vrai simulateur
+
+Les pages de test chargent le script d'un **preview Vercel** : leur iframe est
+l'app de ce preview, alors que la vraie page `/pages/configurateur` charge
+l'app de production (deux stockages de projet différents). Pour qu'un parcours
+qui passe par la page Simulateur de test reste sur l'app du preview, la page
+`/pages/test-simulateur` sort vers `/pages/test-configurateur` grâce à
+`data-configurateur`.
+
+Bloc **HTML personnalisé** de `/pages/test-simulateur` (remplacer l'adresse
+du preview par celle du preview testé) :
+
+```html
+<div id="colibri-simulateur"></div>
+<script src="https://ADRESSE-DU-PREVIEW.vercel.app/embed/colibri.js" data-colibri="simulateur" data-configurateur="/pages/test-configurateur"></script>
+```
+
+Bloc de `/pages/test-configurateur` : le bloc configurateur (section 1) avec
+la même adresse de preview.
 
 ## Bascule
 

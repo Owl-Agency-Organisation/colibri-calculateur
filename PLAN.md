@@ -349,3 +349,29 @@ Contenus :
       pièce comme la popup couleur
 - [ ] Pas d'intérieur adapté pour **entrée** et **couloir** : galerie complète
       (à revoir si Wizart ajoute des intérieurs de ces types au compte)
+
+## Simulateur : arrivée sur un mur (branche : `feat/simulateur-arrivee-un-mur`)
+
+> Décision (Philippe, 21/10) : à l'arrivée depuis le simulateur, l'app crée
+> **un seul mur, avec la dernière teinte appliquée** ; toutes les teintes de la
+> session rejoignent « Vos teintes essayées » (12 au plus, la plus récente en
+> tête), d'où le client les pose sur les murs qu'il ajoute — comme au retour
+> depuis la popup couleur. Motif : au test du 21/10 (4 teintes essayées, 2
+> gardées), l'app créait 4 murs. Wizart n'expose pas l'état de la scène :
+> `PRODUCT_APPLY` ne porte que la teinte appliquée (aucun identifiant de mur),
+> `CLEAR_SURFACE` arrive vide, `SURFACE_SELECT` ne dit que `surface: "wall"`.
+> Question posée à Wizart le 21/10 (état de la scène exposable ?).
+
+- [x] Arrivée : un mur avec la dernière teinte (`couleursMurArrivee`), toutes
+      les teintes dans le bloc dans l'ordre d'application
+      (`ajouterSelectionSimulateur`) ; `MAX_TEINTES_ARRIVEE` supprimé
+- [x] Écran « Votre sélection du simulateur » : dernière teinte « Posée sur le
+      mur 1 », autres sous « Vos teintes essayées » ; bandeau de la page
+      Surfaces adapté (plusieurs teintes)
+- [x] Script : `data-configurateur` (pages de test, mode `simulateur`) pour
+      sortir vers `/pages/test-configurateur` et rester sur l'app du preview
+- [x] Labo `/labo/pont` : scénarios d'arrivée avec résultat attendu
+- [ ] Pages de test Shopify : ajouter `data-configurateur="/pages/test-configurateur"`
+      au bloc de `/pages/test-simulateur`, puis test de bout en bout
+- [ ] Réponse de Wizart sur l'état de la scène (si exposé : revoir la création
+      des murs)

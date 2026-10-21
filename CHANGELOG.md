@@ -7,6 +7,35 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Simulateur : arrivée sur un mur, sortie paramétrable des pages de test
+
+#### Modifié
+- **Arrivée depuis le simulateur** : un seul mur est créé, avec la dernière
+  teinte appliquée (au lieu d'un mur par teinte essayée, jusqu'à 4). Toutes
+  les teintes rejoignent « Vos teintes essayées », la plus récente en tête
+  (12 au plus). Wizart n'expose pas l'état de la scène : seul l'ordre
+  d'application est connu (décision du 21/10).
+- Écran « Votre sélection du simulateur » : avec plusieurs teintes, la
+  dernière est mise en avant (« Posée sur le mur 1 »), les autres listées sous
+  « Vos teintes essayées ». Avec une seule teinte : inchangé.
+- Bandeau de la page Surfaces avec plusieurs teintes : « {Nom}, la dernière
+  teinte appliquée dans le simulateur, est posée sur le Mur 1. Retrouvez vos
+  autres teintes essayées dans le choix des couleurs. »
+- Labo `/labo/pont` : scénarios d'arrivée avec le résultat attendu.
+
+#### Ajouté
+- Script hébergé : attribut `data-configurateur` (mode `simulateur`, pages de
+  test) pour choisir le chemin de sortie vers le configurateur ; valeur
+  invalide ignorée avec un avertissement.
+
+#### Supprimé
+- `MAX_TEINTES_ARRIVEE` et les libellés « Mur 2 », « Mur 3 »… de l'écran
+  d'arrivée.
+
+#### Tests
+- Arrivée avec 1, 4 et 13 teintes ; relais vers la page Surfaces ;
+  `data-configurateur` absent, valide et invalide.
+
 ### Simulateur : intérieur du type de pièce
 
 #### Ajouté
