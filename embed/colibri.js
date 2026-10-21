@@ -50,6 +50,28 @@
     ['couloir', 'Couloir', CDN_PIECES + 'ColibriAssurances_P07_couloir.png?v=1769015679'],
   ];
 
+  /**
+   * Intérieur d'exemple Wizart ouvert pour chaque type de pièce
+   * (`sceneData.openInRoom`, transmis à Wizart en `room_uuid`) : le client
+   * arrive directement dans une pièce du bon type et garde « Changer
+   * l'intérieur » pour revenir à la galerie et à sa propre photo. La galerie
+   * Wizart ne se filtre pas par type de pièce : c'est le seul moyen.
+   * UUID relevés le 16/10/2026 sur le compte Colibri, dans la réponse de
+   * `rni.wizart.ai/api/rooms` (champs `uuid`, `room_type_title`). Si un
+   * intérieur disparaît ou change d'UUID, Wizart s'ouvre simplement sur la
+   * galerie, sans erreur. `null` : aucun intérieur adapté → galerie.
+   * Toutes les clés de PIECES, et seulement elles (vérifié par test).
+   */
+  var INTERIEURS_WIZART = {
+    'piece-de-vie': '0ccc39c1-6379-4070-934d-f7459ce15247', // Wizart_012, salon, 3 murs
+    'chambre': '1103ea18-8a07-4f59-a1d3-86d08b406755', // Wizart_017, chambre adulte, 2 murs
+    'cuisine': 'fe9bfc03-6fe5-403d-a6a1-5feb5c71c10c', // Wizart_018, cuisine avec mur dégagé
+    'salle-de-bain': '00bb8d0e-5dcc-4893-93bc-d4b1b79ae60f', // Wizart GO-6041 2, salle de bain avec WC
+    'toilettes': '00bb8d0e-5dcc-4893-93bc-d4b1b79ae60f', // le même : seul intérieur avec WC
+    'entree': null,
+    'couloir': null,
+  };
+
   var CAPACITE_SIMULATEUR = 'simulateur';
   var MAX_TEINTES = 50;
   var MAX_LONGUEUR_HANDLE = 255;
@@ -301,18 +323,28 @@
     return resultat;
   }
 
+  /** UUID de l'intérieur Wizart d'un type de pièce, ou null (galerie). */
+  function interieurWizart(piece) {
+    return estTypePiece(piece) ? INTERIEURS_WIZART[piece] || null : null;
+  }
+
   /**
    * Réglages du DepKit : Wizart remplit la zone au-dessus de la barre
    * (`FILL_PARENT` — `FULL_SCREEN` la recouvrirait), en français, sans bouton
-   * « Retour au site », ouvert sur la teinte demandée le cas échéant.
+   * « Retour au site », ouvert dans l'intérieur du type de pièce s'il en a un
+   * et sur la teinte demandée le cas échéant (les deux se combinent).
    */
-  function reglagesVisualiseur(kit, token, cible, teinte) {
+  function reglagesVisualiseur(kit, token, cible, teinte, piece) {
     var reglages = {
       token: token,
       layoutSettings: { targetElement: cible, layout: kit.LAYOUTS && kit.LAYOUTS.FILL_PARENT },
       integrationSettings: { locale: 'fr', showBackToWebsiteButton: false },
     };
-    if (teinte) reglages.sceneData = { openWithProduct: teinte };
+    var scene = {};
+    var interieur = interieurWizart(piece);
+    if (interieur) scene.openInRoom = interieur;
+    if (teinte) scene.openWithProduct = teinte;
+    if (interieur || teinte) reglages.sceneData = scene;
     return reglages;
   }
 
@@ -567,7 +599,7 @@
   /**
    * Ouvre le simulateur en surimpression plein écran : zone Wizart en haut,
    * barre Colibri en bas, toujours visible.
-   * options : { origineApp, token, teinte, surSelection(handles), surFermeture() }.
+   * options : { origineApp, token, piece, teinte, surSelection(handles), surFermeture() }.
    * Un seul simulateur à la fois ; toute issue appelle exactement un rappel.
    * Les teintes retenues repartent de zéro à chaque ouverture.
    */
@@ -677,7 +709,7 @@
         abonnements.push(kit.EventBus.subscribe(function () { session.fermer(); }, valeur, null));
       });
 
-      visualiseur = new kit.Visualizer(reglagesVisualiseur(kit, options.token, cible, options.teinte));
+      visualiseur = new kit.Visualizer(reglagesVisualiseur(kit, options.token, cible, options.teinte, options.piece));
       return Promise.resolve(visualiseur.load()).then(function () {
         return visualiseur.show();
       }).then(function () {
@@ -789,6 +821,7 @@
         ouvrirSimulateur({
           origineApp: APP_ORIGIN,
           token: config.tokenWizart,
+          piece: data.piece,
           teinte: data.teinte,
           surSelection: function (handles) {
             ecrireSession(CLE_SESSION_PIECE, null);
@@ -930,6 +963,7 @@
       ouvrirSimulateur({
         origineApp: config.origineApp,
         token: config.tokenWizart,
+        piece: piece,
         teinte: teinte,
         surSelection: function (handles) {
           ecrireSession(CLE_SESSION_PIECE, null);
@@ -976,6 +1010,7 @@
 
   return {
     PIECES: PIECES,
+    INTERIEURS_WIZART: INTERIEURS_WIZART,
     CAPACITE_SIMULATEUR: CAPACITE_SIMULATEUR,
     SCRIPT_DEPKIT: SCRIPT_DEPKIT,
     MAX_TEINTES: MAX_TEINTES,
@@ -1001,6 +1036,7 @@
     urlTeintes: urlTeintes,
     creerCouleursTeintes: creerCouleursTeintes,
     evenementsEcoutes: evenementsEcoutes,
+    interieurWizart: interieurWizart,
     reglagesVisualiseur: reglagesVisualiseur,
     demarrer: demarrer,
   };

@@ -24,7 +24,7 @@ interface Reglages {
   token: string;
   layoutSettings: { targetElement: unknown; layout: unknown };
   integrationSettings: Record<string, unknown>;
-  sceneData?: { openWithProduct: string };
+  sceneData?: { openWithProduct?: string; openInRoom?: string };
 }
 
 interface ReponseFetch {
@@ -64,7 +64,15 @@ interface LogiqueColibri {
   urlTeintes(origineApp: string, handles: string[]): string;
   creerCouleursTeintes(requete: (url: string) => Promise<ReponseFetch>): CouleursTeintes;
   evenementsEcoutes(evenements: Record<string, string> | undefined): { application: string[]; retour: string[] };
-  reglagesVisualiseur(kit: { LAYOUTS?: Record<string, string> }, token: string, cible: unknown, teinte?: string | null): Reglages;
+  INTERIEURS_WIZART: Record<string, string | null>;
+  interieurWizart(piece: unknown): string | null;
+  reglagesVisualiseur(
+    kit: { LAYOUTS?: Record<string, string> },
+    token: string,
+    cible: unknown,
+    teinte?: string | null,
+    piece?: unknown,
+  ): Reglages;
 }
 
 const colibri = createRequire(import.meta.url)('./colibri.js') as LogiqueColibri;
@@ -373,5 +381,54 @@ describe('script hébergé — DepKit', () => {
     expect(colibri.SCRIPT_DEPKIT).toBe('https://d18jpdcj6p6zg6.cloudfront.net/wizart-deployment-kit-v1.1.3.min.js');
     const source = readFileSync(new URL('./colibri.js', import.meta.url), 'utf8');
     expect(source.match(/wizart-deployment-kit-v[\d.]+\.min\.js/g)).toEqual(['wizart-deployment-kit-v1.1.3.min.js']);
+  });
+});
+
+describe('script hébergé — intérieur Wizart du type de pièce', () => {
+  const cible = {};
+  const kit = { LAYOUTS: { FILL_PARENT: 'fill_parent' } };
+  const CHAMBRE = '1103ea18-8a07-4f59-a1d3-86d08b406755';
+
+  it('chaque type de PIECES a une entrée dans la table, aucune en trop', () => {
+    expect(Object.keys(colibri.INTERIEURS_WIZART).sort()).toEqual(colibri.PIECES.map(([type]) => type).sort());
+  });
+
+  it('correspondance relevée le 16/10/2026', () => {
+    expect(colibri.INTERIEURS_WIZART).toEqual({
+      'piece-de-vie': '0ccc39c1-6379-4070-934d-f7459ce15247',
+      'chambre': CHAMBRE,
+      'cuisine': 'fe9bfc03-6fe5-403d-a6a1-5feb5c71c10c',
+      'salle-de-bain': '00bb8d0e-5dcc-4893-93bc-d4b1b79ae60f',
+      'toilettes': '00bb8d0e-5dcc-4893-93bc-d4b1b79ae60f',
+      'entree': null,
+      'couloir': null,
+    });
+  });
+
+  it('pièce avec intérieur : sceneData.openInRoom vaut l’UUID attendu', () => {
+    expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, null, 'chambre').sceneData).toEqual({ openInRoom: CHAMBRE });
+    expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, null, 'toilettes').sceneData)
+      .toEqual({ openInRoom: '00bb8d0e-5dcc-4893-93bc-d4b1b79ae60f' });
+  });
+
+  it('pièce avec intérieur et teinte : openInRoom et openWithProduct', () => {
+    expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, 'bleu-ciel', 'chambre').sceneData)
+      .toEqual({ openInRoom: CHAMBRE, openWithProduct: 'bleu-ciel' });
+  });
+
+  it('entrée et couloir : pas d’openInRoom (galerie), la teinte reste transmise', () => {
+    for (const piece of ['entree', 'couloir']) {
+      expect(colibri.interieurWizart(piece)).toBeNull();
+      expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, null, piece).sceneData).toBeUndefined();
+      expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, 'bleu-ciel', piece).sceneData)
+        .toEqual({ openWithProduct: 'bleu-ciel' });
+    }
+  });
+
+  it('type inconnu ou absent : pas d’openInRoom', () => {
+    for (const piece of ['garage', 'toString', '__proto__', '', null, undefined, 42]) {
+      expect(colibri.interieurWizart(piece)).toBeNull();
+      expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, null, piece).sceneData).toBeUndefined();
+    }
   });
 });

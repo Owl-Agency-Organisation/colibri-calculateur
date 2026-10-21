@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { clearProjetData } from '@/lib/store/projetStore';
+import { LIBELLES_PIECES } from '@/lib/pieces';
+import type { TypePiece } from '@/lib/types';
 
 /**
  * Labo du pont simulateur : charge le vrai script `/embed/colibri.js` de ce
@@ -37,12 +39,14 @@ interface EntreeJournal {
 interface OptionsVisualiseur {
   layoutSettings: { targetElement: HTMLElement; layout?: unknown };
   integrationSettings?: Record<string, unknown>;
-  sceneData?: { openWithProduct?: string };
+  sceneData?: { openWithProduct?: string; openInRoom?: string };
 }
 
 interface FauxVisualiseur {
   readonly cible: HTMLElement;
   readonly teinteInitiale: string | null;
+  /** `sceneData.openInRoom` reçu (UUID d'intérieur Wizart), null = galerie */
+  readonly interieur: string | null;
   readonly options: OptionsVisualiseur;
 }
 
@@ -96,6 +100,7 @@ function installerFauxKit(controleur: { current: ControleurFaux | null }) {
   class Visualizer implements FauxVisualiseur {
     readonly cible: HTMLElement;
     readonly teinteInitiale: string | null;
+    readonly interieur: string | null;
     readonly options: OptionsVisualiseur;
     isLoaded = false;
 
@@ -103,6 +108,7 @@ function installerFauxKit(controleur: { current: ControleurFaux | null }) {
       this.options = options;
       this.cible = options.layoutSettings.targetElement;
       this.teinteInitiale = options.sceneData?.openWithProduct ?? null;
+      this.interieur = options.sceneData?.openInRoom ?? null;
     }
 
     load() {
@@ -141,6 +147,24 @@ function installerFauxKit(controleur: { current: ControleurFaux | null }) {
   return emettre;
 }
 
+// Intérieurs du compte Colibri (relevés le 16/10/2026), pour afficher ce que
+// le script a demandé à Wizart. Référence de contrôle indépendante de la table
+// du script : un écart s'y voit tout de suite.
+const INTERIEURS_CONNUS: Record<string, string> = {
+  '0ccc39c1-6379-4070-934d-f7459ce15247': 'pièce de vie (salon Wizart_012)',
+  '1103ea18-8a07-4f59-a1d3-86d08b406755': 'chambre (Wizart_017)',
+  'fe9bfc03-6fe5-403d-a6a1-5feb5c71c10c': 'cuisine (Wizart_018)',
+  '00bb8d0e-5dcc-4893-93bc-d4b1b79ae60f': 'salle de bain / toilettes (GO-6041 2)',
+};
+
+function libelleInterieur(uuid: string | null): string {
+  if (!uuid) return 'Galerie (aucun intérieur demandé)';
+  const nom = INTERIEURS_CONNUS[uuid] ?? 'inconnu';
+  return `Intérieur : ${nom} (${uuid.slice(0, 8)}…)`;
+}
+
+const TYPES_PIECES = Object.keys(LIBELLES_PIECES) as TypePiece[];
+
 // Une seule installation par page (double effet du mode strict compris)
 let installe = false;
 
@@ -160,6 +184,8 @@ export function PontLabo() {
   const [murs, setMurs] = useState<(Teinte | null)[]>([null, null, null]);
   const [murActif, setMurActif] = useState(0);
   const [retour, setRetour] = useState<string | null>(null);
+  // Dernière pièce transmise par colibri:simulateur:ouvrir (journal du script)
+  const [pieceDemandee, setPieceDemandee] = useState<string | null>(null);
 
   const controleurRef = useRef<ControleurFaux | null>(null);
   const emettreRef = useRef<((nom: string, data: unknown) => void) | null>(null);
@@ -197,6 +223,7 @@ export function PontLabo() {
         layout: visualiseur.options.layoutSettings.layout,
         integrationSettings: visualiseur.options.integrationSettings,
         openWithProduct: visualiseur.teinteInitiale,
+        openInRoom: visualiseur.interieur,
       });
       // Comme Wizart : la teinte d'ouverture est appliquée (non interactive)
       const initiale = visualiseur.teinteInitiale;
@@ -222,6 +249,14 @@ export function PontLabo() {
       if (evenement instanceof CustomEvent) {
         const detail: { sens?: string; message?: unknown } = evenement.detail ?? {};
         consigner(detail.sens ?? '?', detail.message);
+        const message = detail.message;
+        if (
+          typeof message === 'object' && message !== null
+          && 'type' in message && message.type === 'colibri:simulateur:ouvrir'
+          && 'piece' in message && typeof message.piece === 'string'
+        ) {
+          setPieceDemandee(message.piece);
+        }
       }
     });
 
@@ -273,6 +308,20 @@ export function PontLabo() {
   const retourWizart = () => {
     consigner('faux Wizart', { evenement: 'BACK_BUTTON_CLICK' });
     emettreRef.current?.(EVENEMENTS.BACK_BUTTON_CLICK, {});
+  };
+
+  // Envoie colibri:simulateur:ouvrir depuis l'iframe de l'app, exactement
+  // comme la popup couleur (le script n'accepte que les messages de l'iframe)
+  const ouvrirCommeApp = (piece: TypePiece) => {
+    const iframe = hoteRef.current?.querySelector('iframe');
+    const fenetre = iframe?.contentWindow as (Window & typeof globalThis) | null | undefined;
+    if (!fenetre) {
+      consigner('labo', { erreur: 'iframe de l’app introuvable' });
+      return;
+    }
+    const message = JSON.stringify({ type: 'colibri:simulateur:ouvrir', piece });
+    // Fonction créée dans l'iframe : le message part bien de sa fenêtre
+    new fenetre.Function(`window.parent.postMessage(${message}, window.location.origin);`)();
   };
 
   const viderProjet = () => {
@@ -339,6 +388,23 @@ export function PontLabo() {
           </button>
           {retour && <span className="text-sm text-gray-600">{retour}</span>}
         </div>
+        <div className="space-y-2 border-t border-gray-100 pt-3">
+          <p className="text-sm text-gray-700">
+            Ouvrir le simulateur comme la popup couleur de l’app, pour la pièce&nbsp;:
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {TYPES_PIECES.map((piece) => (
+              <button
+                key={piece}
+                type="button"
+                onClick={() => ouvrirCommeApp(piece)}
+                className="rounded border border-primary-200 bg-primary-50 px-3 py-1.5 text-sm text-primary-600"
+              >
+                {LIBELLES_PIECES[piece]}
+              </button>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* Hôte du configurateur : le script y insère l'iframe */}
@@ -366,6 +432,10 @@ export function PontLabo() {
           <div className="border-b border-gray-200 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Faux simulateur (labo)</p>
             <h2 className="text-lg font-bold text-gray-900">Appliquez des teintes sur les murs de la photo</h2>
+            <p className="mt-2 inline-block rounded bg-amber-50 px-2 py-1 text-sm font-medium text-amber-800" data-labo="interieur">
+              {libelleInterieur(fauxOuvert.interieur)}
+              {pieceDemandee && <span className="font-normal"> — pièce demandée&nbsp;: {pieceDemandee}</span>}
+            </p>
             <p className="mt-1 text-xs text-gray-600">
               Chaque application émet <code>PRODUCT_APPLY</code>. Aucun panier : la sortie se fait par la barre Colibri, en bas.
             </p>

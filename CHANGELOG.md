@@ -7,6 +7,22 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Simulateur : intérieur du type de pièce
+
+#### Ajouté
+- Wizart s'ouvre directement dans un intérieur d'exemple du type de pièce
+  choisi (`sceneData.openInRoom`), combiné avec la teinte demandée
+  (`openWithProduct`). Pièce de vie, chambre, cuisine, salle de bain et
+  toilettes ont un intérieur ; entrée et couloir gardent la galerie complète.
+  « Changer l'intérieur » reste disponible dans Wizart.
+- Table `INTERIEURS_WIZART` (`embed/colibri.js`) et tests : chaque type de
+  pièce a une entrée, intérieur et teinte combinés, types sans intérieur ou
+  inconnus.
+- Labo `/labo/pont` : intérieur demandé affiché dans le faux simulateur,
+  boutons pour ouvrir le simulateur comme la popup couleur, pièce par pièce.
+- `docs/EMBED_SHOPIFY.md` : correspondance, méthode pour retrouver les UUID,
+  comportement en cas d'UUID inconnu.
+
 ### Simulateur : barre Colibri, sans panier Wizart
 
 #### Ajouté
