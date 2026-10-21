@@ -1,18 +1,24 @@
 import { shopifyFetch } from '@/lib/shopify';
+import { resoudrePapiersPeints } from '@/lib/shopify-papiers-peints';
+import type { PapierPeint } from '@/lib/papierPeint';
 import {
   lireHandlesDemandes,
   origineAutorisee,
   requeteTeintes,
-  versTeinteEmbed,
+  versReferencePapierPeint,
+  versReferencePeinture,
   type ProduitTeinte,
-  type TeinteEmbed,
+  type ReferenceEmbed,
 } from '@/lib/embed-teintes';
 
 /**
- * Couleurs des teintes de la barre du simulateur (script hébergé
- * `/embed/colibri.js`) : `GET /api/embed/teintes?handles=h1,h2`.
- * CORS limité à la boutique et à l'app (labo) ; handles invalides ou inconnus
- * ignorés ; cache court. En cas d'échec, la barre affiche le nom seul.
+ * Références de la barre du simulateur (script hébergé `/embed/colibri.js`) :
+ * `GET /api/embed/teintes?handles=r1,r2`. Chaque référence est d'abord
+ * cherchée comme handle de teinte (Storefront), puis, à défaut, comme SKU de
+ * variante papier peint (Admin, côté serveur). CORS limité à la boutique et à
+ * l'app (labo) ; références invalides ou inconnues ignorées ; cache court.
+ * En cas d'échec, la barre affiche le nom seul. Admin indisponible : les
+ * teintes sont renvoyées sans les papiers peints, sans cache.
  */
 export const dynamic = 'force-dynamic';
 
@@ -53,11 +59,26 @@ export async function GET(request: Request) {
       query: requeteTeintes(handles.length),
       variables,
     });
-    const teintes: TeinteEmbed[] = handles
-      .map((_, i) => data?.[`t${i}`])
-      .filter((produit): produit is ProduitTeinte => !!produit)
-      .map(versTeinteEmbed);
-    return Response.json(teintes, { headers: entetes(origine, CACHE_CONTROL) });
+    const teintes = handles.map((_, i) => data?.[`t${i}`] ?? null);
+    const autres = handles.filter((_, i) => !teintes[i]);
+
+    let papiers = new Map<string, PapierPeint>();
+    let cache = CACHE_CONTROL;
+    try {
+      papiers = await resoudrePapiersPeints(autres);
+    } catch (erreur) {
+      console.error('[api/embed/teintes] Papiers peints indisponibles', erreur);
+      cache = 'no-store';
+    }
+
+    const references: ReferenceEmbed[] = [];
+    handles.forEach((handle, i) => {
+      const teinte: ProduitTeinte | null = teintes[i];
+      const papier = papiers.get(handle);
+      if (teinte) references.push(versReferencePeinture(teinte));
+      else if (papier) references.push(versReferencePapierPeint(papier));
+    });
+    return Response.json(references, { headers: entetes(origine, cache) });
   } catch (erreur) {
     console.error('[api/embed/teintes] Catalogue indisponible', erreur);
     return Response.json([], { status: 502, headers: entetes(origine, 'no-store') });
