@@ -1,0 +1,75 @@
+{
+  "_lisezmoi": "Valeurs que Shopify n'a pas, à saisir depuis les fichiers de Colibri (une entrée par SKU de variante « Lé »). Mesures en mètres. largeurMotif → repeat_width (largeur du motif de la texture fournie, requis par Wizart) ; hauteurRaccord → pattern_repeat ; raccord : « droit », « saute » ou « libre » → pattern_offset (0, ou moitié du raccord si sauté) ; decalage : décalage explicite, prioritaire. null = pas encore renseigné (cellule vide, signalée dans le rapport).",
+  "pp-montg-terracotta-le": {
+    "largeurMotif": null,
+    "hauteurRaccord": null,
+    "raccord": null,
+    "decalage": null
+  },
+  "pp-montg-blanc-le": {
+    "largeurMotif": null,
+    "hauteurRaccord": null,
+    "raccord": null,
+    "decalage": null
+  },
+  "pp-montg-rose-le": {
+    "largeurMotif": null,
+    "hauteurRaccord": null,
+    "raccord": null,
+    "decalage": null
+  },
+  "pp-montg-bleu-le": {
+    "largeurMotif": null,
+    "hauteurRaccord": null,
+    "raccord": null,
+    "decalage": null
+  },
+  "pp-rayur-bleu-le": {
+    "largeurMotif": null,
+    "hauteurRaccord": null,
+    "raccord": null,
+    "decalage": null
+  },
+  "pp-rayur-jaune-le": {
+    "largeurMotif": null,
+    "hauteurRaccord": null,
+    "raccord": null,
+    "decalage": null
+  },
+  "pp-rayur-terracotta-le": {
+    "largeurMotif": null,
+    "hauteurRaccord": null,
+    "raccord": null,
+    "decalage": null
+  },
+  "pp-rayur-vert-le": {
+    "largeurMotif": null,
+    "hauteurRaccord": null,
+    "raccord": null,
+    "decalage": null
+  },
+  "pp-ombre-bleunuit-le": {
+    "largeurMotif": null,
+    "hauteurRaccord": null,
+    "raccord": null,
+    "decalage": null
+  },
+  "pp-ombre-vertforet-le": {
+    "largeurMotif": null,
+    "hauteurRaccord": null,
+    "raccord": null,
+    "decalage": null
+  },
+  "pp-ombre-bleu-le": {
+    "largeurMotif": null,
+    "hauteurRaccord": null,
+    "raccord": null,
+    "decalage": null
+  },
+  "pp-ombre-jaune-le": {
+    "largeurMotif": null,
+    "hauteurRaccord": null,
+    "raccord": null,
+    "decalage": null
+  }
+}

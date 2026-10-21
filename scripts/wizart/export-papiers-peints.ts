@@ -1,9 +1,11 @@
 /**
- * Squelette d'export des papiers peints Colibri au gabarit WALLPAPER de Wizart.
+ * Export des papiers peints Colibri au gabarit WALLPAPER de Wizart : une
+ * ligne par coloris, c'est-à-dire par variante « Lé » (les variantes
+ * « Echantillon » ne vont pas dans Wizart).
  *
  * Usage :
- *   pnpm wizart:export-papiers-peints
- *   pnpm wizart:export-papiers-peints --collection papiers-peints --tag "Papier peint"
+ *   pnpm wizart:export-papiers-peints --product-type "Papier peint"
+ *   pnpm wizart:export-papiers-peints --product-type "Papier peint" --textures ~/textures-colibri
  *
  * Repérage par défaut (cumulatif, chaque produit garde la trace du critère) :
  *   1. collections dont le titre ou le handle contient « papier(s) peint(s) » ;
@@ -12,61 +14,36 @@
  * Options `--collection <handle>`, `--product-type <valeur>`, `--tag <valeur>`
  * (répétables) : remplacent le repérage par défaut par des critères exacts.
  *
- * Les images Shopify ne sont PAS des textures raccordables : elles sont
- * seulement listées dans le rapport. `product_image` = handle (sans
- * extension), nom attendu du fichier texture fourni par le fabricant.
+ * Référence Wizart = SKU de la variante « Lé » (`unique_sku_id`, et
+ * `product_image` = nom du fichier texture sans extension). Largeur du lé lue
+ * dans l'option « Taille » ; raccord lu dans le fichier manuel
+ * `papiers-peints.json` (Shopify ne l'a pas). `--textures <dossier>` vérifie
+ * que chaque SKU a son fichier `{sku}.png` ou `{sku}.jpg` (aucun traitement
+ * d'image). Prix vides.
  *
- * Sorties : scripts/wizart/out/colibri-papiers-peints-squelette.{csv,md}
+ * Sorties : scripts/wizart/out/colibri-papiers-peints.{csv,md}
  */
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
-import type { Connection, WallpaperProduct } from './common';
+import type { Connection, WallpaperManualData, WallpaperVariantRows } from './common';
 
 // Import dynamique avec extension : exécuté par Node (type stripping natif),
 // qui ne résout pas les imports relatifs sans extension.
 const common = (await import(new URL('./common.ts', import.meta.url).href)) as typeof import('./common');
 
-const CSV_FILE = 'colibri-papiers-peints-squelette.csv';
-const REPORT_FILE = 'colibri-papiers-peints-squelette.md';
-
-/**
- * Metafields candidats (namespace.key), lus dans l'ordre : le premier non vide
- * l'emporte. Ils doivent être exposés au Storefront API dans l'admin Shopify
- * (Paramètres → Données personnalisées → accès Storefront), sinon ils
- * remontent vides.
- */
-const PRODUCT_WIDTH_KEYS = [
-  'custom.largeur',
-  'custom.largeur_rouleau',
-  'custom.largeur_lai',
-  'custom.laize',
-  'custom.product_width',
-] as const;
-const REPEAT_WIDTH_KEYS = [
-  'custom.raccord',
-  'custom.largeur_raccord',
-  'custom.raccord_motif',
-  'custom.repeat',
-  'custom.repeat_width',
-] as const;
-
-const METAFIELD_IDENTIFIERS = [...PRODUCT_WIDTH_KEYS, ...REPEAT_WIDTH_KEYS]
-  .map((id) => {
-    const [namespace, key] = id.split('.');
-    return `{ namespace: "${namespace}", key: "${key}" }`;
-  })
-  .join(', ');
+const CSV_FILE = 'colibri-papiers-peints.csv';
+const REPORT_FILE = 'colibri-papiers-peints.md';
+const MANUAL_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'papiers-peints.json');
 
 const PRODUCT_FIELDS = `
   handle
   title
   productType
   tags
-  featuredImage { url }
-  images(first: 20) { nodes { url } }
-  collections(first: 20) { nodes { title handle } }
-  metafields(identifiers: [${METAFIELD_IDENTIFIERS}]) { namespace key value type }
+  variants(first: 50) { nodes { id sku selectedOptions { name value } } }
 `;
 
 const ALL_COLLECTIONS_QUERY = `
@@ -108,10 +85,7 @@ interface ProductNode {
   title: string;
   productType: string;
   tags: string[];
-  featuredImage: { url: string } | null;
-  images: { nodes: { url: string }[] };
-  collections: { nodes: CollectionRef[] };
-  metafields: ({ namespace: string; key: string; value: string; type: string } | null)[];
+  variants: { nodes: { id: string; sku: string | null; selectedOptions: { name: string; value: string }[] }[] };
 }
 
 interface CollectionsData {
@@ -131,19 +105,21 @@ interface Detected {
   criteria: Set<string>;
 }
 
-interface Criteria {
+interface Options {
   custom: boolean;
   collections: string[];
   productTypes: string[];
   tags: string[];
+  textures: string | null;
 }
 
-function readCriteria(): Criteria {
+function readOptions(): Options {
   const { values } = parseArgs({
     options: {
       collection: { type: 'string', multiple: true },
       'product-type': { type: 'string', multiple: true },
       tag: { type: 'string', multiple: true },
+      textures: { type: 'string' },
     },
   });
   const collections = values.collection ?? [];
@@ -154,6 +130,7 @@ function readCriteria(): Criteria {
     collections,
     productTypes,
     tags,
+    textures: values.textures ?? null,
   };
 }
 
@@ -162,16 +139,22 @@ function searchTerm(field: string, value: string): string {
   return `${field}:"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 }
 
-function readMetafield(product: ProductNode, keys: readonly string[]): { key: string; value: string } | null {
-  for (const id of keys) {
-    const found = product.metafields.find((m) => m && `${m.namespace}.${m.key}` === id && m.value);
-    if (found) return { key: id, value: found.value };
+function readManual(): { data: WallpaperManualData; notes: string[] } {
+  if (!existsSync(MANUAL_FILE)) {
+    return { data: {}, notes: [`${path.basename(MANUAL_FILE)} absent : raccords vides`] };
   }
-  return null;
+  return common.parseWallpaperManualData(readFileSync(MANUAL_FILE, 'utf8'));
+}
+
+function readTextureDir(dir: string): string[] {
+  if (!existsSync(dir) || !statSync(dir).isDirectory()) {
+    throw new Error(`--textures : dossier introuvable « ${dir} »`);
+  }
+  return readdirSync(dir).filter((name) => statSync(path.join(dir, name)).isFile());
 }
 
 async function main(): Promise<void> {
-  const criteria = readCriteria();
+  const options = readOptions();
   const shopifyFetch = await common.loadShopifyClient();
   const detected = new Map<string, Detected>();
   const add = (product: ProductNode, criterion: string) => {
@@ -182,8 +165,8 @@ async function main(): Promise<void> {
 
   // 1. Collections
   let wallpaperCollections: CollectionRef[];
-  if (criteria.custom) {
-    wallpaperCollections = criteria.collections.map((handle) => ({ title: handle, handle }));
+  if (options.custom) {
+    wallpaperCollections = options.collections.map((handle) => ({ title: handle, handle }));
   } else {
     const all = await common.fetchAllPages<CollectionsData, CollectionRef>(
       shopifyFetch,
@@ -209,8 +192,8 @@ async function main(): Promise<void> {
 
   // 2 et 3. productType et tags (recherche Storefront, confirmée côté script
   // car la recherche plein texte est permissive)
-  const productTypes = criteria.custom ? criteria.productTypes : ['Papier peint', 'Papiers peints'];
-  const tags = criteria.custom ? criteria.tags : ['Papier peint', 'Papiers peints'];
+  const productTypes = options.custom ? options.productTypes : ['Papier peint', 'Papiers peints'];
+  const tags = options.custom ? options.tags : ['Papier peint', 'Papiers peints'];
   const searchParts = [
     ...productTypes.map((value) => searchTerm('product_type', value)),
     ...tags.map((value) => searchTerm('tag', value)),
@@ -224,81 +207,63 @@ async function main(): Promise<void> {
     );
     const sameLabel = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
     for (const product of results) {
-      const typeMatch = criteria.custom
+      const typeMatch = options.custom
         ? productTypes.some((t) => sameLabel(t, product.productType))
         : common.isWallpaperLabel(product.productType);
       if (typeMatch) add(product, `productType:${product.productType}`);
       const matchingTags = product.tags.filter((tag) =>
-        criteria.custom ? tags.some((t) => sameLabel(t, tag)) : common.isWallpaperLabel(tag),
+        options.custom ? tags.some((t) => sameLabel(t, tag)) : common.isWallpaperLabel(tag),
       );
       for (const tag of matchingTags) add(product, `tag:${tag}`);
     }
   }
 
-  const wallpaperHandles = new Set(wallpaperCollections.map((c) => c.handle));
   const entries = [...detected.values()].sort((a, b) => a.product.title.localeCompare(b.product.title, 'fr'));
-  const rows: WallpaperProduct[] = [];
-  const notes = new Map<string, string[]>();
+  const manual = readManual();
+  const result = common.buildWallpaperVariantRows(
+    entries.map(({ product }) => ({ handle: product.handle, title: product.title, variants: product.variants.nodes })),
+    manual.data,
+  );
+  const textures = options.textures
+    ? { dir: options.textures, ...common.compareTextures(readTextureDir(options.textures), result.rows.map((r) => r.sku)) }
+    : null;
 
-  for (const { product } of entries) {
-    const productNotes: string[] = [];
-    // Collection « de gamme » : la première qui n'est pas une collection
-    // générique papiers peints ; à défaut la première tout court
-    const ranged = product.collections.nodes.filter(
-      (c) => !wallpaperHandles.has(c.handle) && !common.isWallpaperLabel(c.title),
-    );
-    const collection = ranged[0] ?? product.collections.nodes[0];
-    if (!collection) productNotes.push('aucune collection : collection_name vide');
-
-    const width = readMetafield(product, PRODUCT_WIDTH_KEYS);
-    const repeat = readMetafield(product, REPEAT_WIDTH_KEYS);
-    const widthParse = common.parseLengthToMeters(width?.value);
-    const repeatParse = common.parseLengthToMeters(repeat?.value);
-    if (widthParse.note) productNotes.push(`product_width : ${widthParse.note}${width ? ` (${width.key})` : ''}`);
-    if (repeatParse.note) productNotes.push(`repeat_width : ${repeatParse.note}${repeat ? ` (${repeat.key})` : ''}`);
-    notes.set(product.handle, productNotes);
-
-    rows.push({
-      handle: product.handle,
-      title: product.title,
-      collectionTitle: collection?.title ?? '',
-      productWidth: widthParse.meters,
-      repeatWidth: repeatParse.meters,
-    });
-  }
-
-  const csv = common.toCsv(common.WALLPAPER_COLUMNS, rows.map(common.toWallpaperRow));
+  const csv = common.toCsv(common.WALLPAPER_EXPORT_COLUMNS, result.rows.map((r) => r.row));
   const csvPath = common.writeOutput(CSV_FILE, csv);
-  const report = buildReport({ criteria, wallpaperCollections, collectionSizes, productTypes, tags, entries, rows, notes });
+  const report = buildReport({ options, wallpaperCollections, collectionSizes, productTypes, tags, entries, result, manualNotes: manual.notes, textures });
   const reportPath = common.writeOutput(REPORT_FILE, report);
 
-  console.log(`✔ ${rows.length} papier(s) peint(s) repéré(s)`);
+  const flagged = result.rows.filter((r) => r.notes.length > 0).length;
+  console.log(`✔ ${result.rows.length} coloris de papier peint exporté(s) (${entries.length} produit(s))`);
+  if (flagged > 0) console.log(`⚠ ${flagged} ligne(s) avec signalements (voir le rapport)`);
+  if (textures) console.log(`Textures : ${textures.missing.length} manquante(s), ${textures.extra.length} fichier(s) en trop`);
   console.log(`→ ${path.relative(process.cwd(), csvPath)}`);
   console.log(`→ ${path.relative(process.cwd(), reportPath)}`);
 }
 
 function buildReport(input: {
-  criteria: Criteria;
+  options: Options;
   wallpaperCollections: CollectionRef[];
   collectionSizes: Map<string, number>;
   productTypes: string[];
   tags: string[];
   entries: Detected[];
-  rows: WallpaperProduct[];
-  notes: Map<string, string[]>;
+  result: WallpaperVariantRows;
+  manualNotes: string[];
+  textures: { dir: string; missing: string[]; extra: string[] } | null;
 }): string {
   const { mdCell } = common;
-  const { criteria, wallpaperCollections, collectionSizes, productTypes, tags, entries, rows, notes } = input;
+  const { options, wallpaperCollections, collectionSizes, productTypes, tags, entries, result, manualNotes, textures } = input;
   const lines: string[] = [];
 
-  lines.push('# Papiers peints Colibri — squelette export Wizart (gabarit WALLPAPER)');
+  lines.push('# Papiers peints Colibri — export Wizart (gabarit WALLPAPER)');
   lines.push('');
-  lines.push(`Généré le ${new Date().toISOString()} depuis la Storefront API.`);
+  lines.push(`Généré le ${new Date().toISOString()} depuis la Storefront API. Une ligne par coloris (variante « Lé »).`);
   lines.push('');
 
   lines.push('## Repérage dans Shopify');
   lines.push('');
-  lines.push(criteria.custom ? 'Critères fournis en ligne de commande (correspondance exacte) :' : 'Critères par défaut (« papier(s) peint(s) », insensible à la casse) :');
+  lines.push(options.custom ? 'Critères fournis en ligne de commande (correspondance exacte) :' : 'Critères par défaut (« papier(s) peint(s) », insensible à la casse) :');
   lines.push('');
   if (wallpaperCollections.length === 0) {
     lines.push('- Collections : aucune collection correspondante');
@@ -310,48 +275,55 @@ function buildReport(input: {
   lines.push(`- productType recherchés : ${productTypes.map((t) => `« ${t} »`).join(', ') || '—'}`);
   lines.push(`- Tags recherchés : ${tags.map((t) => `« ${t} »`).join(', ') || '—'}`);
   lines.push('');
-
-  const byCriterion = new Map<string, number>();
-  for (const entry of entries) {
-    for (const criterion of entry.criteria) byCriterion.set(criterion, (byCriterion.get(criterion) ?? 0) + 1);
-  }
-  lines.push('Produits repérés par critère :');
-  lines.push('');
-  if (byCriterion.size === 0) {
-    lines.push('- aucun produit repéré : préciser le mode de repérage avec `--collection`, `--product-type` ou `--tag`.');
+  if (entries.length === 0) {
+    lines.push('Aucun produit repéré : préciser le mode de repérage avec `--collection`, `--product-type` ou `--tag`.');
   } else {
-    for (const [criterion, count] of [...byCriterion].sort((a, b) => b[1] - a[1])) {
-      lines.push(`- \`${mdCell(criterion)}\` : ${count}`);
+    for (const { product, criteria } of entries) {
+      lines.push(`- \`${product.handle}\` (${mdCell(product.title)}) : ${[...criteria].map((c) => `\`${mdCell(c)}\``).join(', ')}`);
     }
   }
   lines.push('');
 
-  lines.push(`## Lignes exportées (${rows.length})`);
+  lines.push(`## Lignes exportées (${result.rows.length})`);
   lines.push('');
-  if (rows.length > 0) {
-    lines.push('| Produit | Handle | Collection | product_width (m) | repeat_width (m) | Signalements |');
-    lines.push('| --- | --- | --- | ---: | ---: | --- |');
-    for (const row of rows) {
+  if (result.rows.length > 0) {
+    lines.push('| SKU | product_name | product_width | repeat_width | pattern_repeat | pattern_offset | Signalements |');
+    lines.push('| --- | --- | ---: | ---: | ---: | ---: | --- |');
+    for (const { sku, row, notes } of result.rows) {
       lines.push(
-        `| ${mdCell(row.title)} | \`${row.handle}\` | ${mdCell(row.collectionTitle)} | ${common.formatMeters(row.productWidth)} | ${common.formatMeters(row.repeatWidth)} | ${mdCell((notes.get(row.handle) ?? []).join(' ; '))} |`,
+        `| \`${sku}\` | ${mdCell(row.product_name)} | ${row.product_width} | ${row.repeat_width} | ${row.pattern_repeat} | ${row.pattern_offset} | ${mdCell(notes.join(' ; '))} |`,
       );
     }
     lines.push('');
   }
+  if (result.skipped.length > 0) {
+    lines.push('Variantes « Lé » écartées :');
+    lines.push('');
+    for (const note of result.skipped) lines.push(`- ${mdCell(note)}`);
+    lines.push('');
+  }
+
+  lines.push('## Fichier manuel `papiers-peints.json`');
+  lines.push('');
+  lines.push('Raccords saisis à la main depuis les fichiers de Colibri (Shopify ne les a pas).');
+  lines.push('');
+  const missing = result.rows.filter((r) => r.notes.some((n) => n.startsWith('papiers-peints.json'))).map((r) => r.sku);
+  lines.push(`- Entrées absentes : ${missing.length === 0 ? 'aucune' : missing.map((s) => `\`${s}\``).join(', ')}`);
+  lines.push(`- Entrées sans variante « Lé » correspondante : ${result.unusedManual.length === 0 ? 'aucune' : result.unusedManual.map((s) => `\`${s}\``).join(', ')}`);
+  for (const note of manualNotes) lines.push(`- ${mdCell(note)}`);
+  lines.push('');
 
   lines.push('## Textures');
   lines.push('');
-  lines.push(
-    "Les textures raccordables viennent du fournisseur : un fichier par produit, nommé d'après la colonne `product_image` (= handle) avec son extension.",
-  );
-  lines.push('Les images Shopify ci-dessous sont des visuels produits (photos, mises en situation), listées pour information : ne pas les utiliser comme textures.');
+  lines.push('Un fichier par ligne, nommé `{sku}.png` ou `{sku}.jpg` (colonne `product_image` + extension), préparé par Owl à partir des motifs raccordables de Colibri. Les images Shopify (mises en situation) ne sont pas des textures.');
   lines.push('');
-  for (const { product } of entries) {
-    const urls = [
-      ...new Set([product.featuredImage?.url, ...product.images.nodes.map((image) => image.url)].filter((url): url is string => Boolean(url))),
-    ];
-    lines.push(`- \`${product.handle}\`${urls.length === 0 ? ' : aucune image' : ''}`);
-    for (const url of urls) lines.push(`  - ${url}`);
+  if (!textures) {
+    lines.push('Vérification non demandée : relancer avec `--textures <dossier>`.');
+  } else {
+    lines.push(`Dossier vérifié : \`${mdCell(textures.dir)}\``);
+    lines.push('');
+    lines.push(`- Manquantes (${textures.missing.length}) : ${textures.missing.length === 0 ? 'aucune' : textures.missing.map((s) => `\`${s}\``).join(', ')}`);
+    lines.push(`- Fichiers en trop (${textures.extra.length}) : ${textures.extra.length === 0 ? 'aucun' : textures.extra.map((s) => `\`${mdCell(s)}\``).join(', ')}`);
   }
   lines.push('');
 
