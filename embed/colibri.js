@@ -83,6 +83,8 @@
   var CLE_SESSION_PIECE = 'colibri-simulateur-piece';
 
   var CHEMIN_CONFIGURATEUR = '/pages/configurateur';
+  // Chemin absolu du site : `/` suivi de caractères d'URL sûrs (jamais `//`)
+  var MOTIF_CHEMIN_SITE = /^\/(?!\/)[A-Za-z0-9\-._~\/]*$/;
   var CHEMIN_SIMULATEUR = '/pages/simulateur';
   var CHEMIN_ARRIVEE_APP = '/calculateur/simulateur';
   var CHEMIN_API_TEINTES = '/api/embed/teintes';
@@ -172,11 +174,27 @@
   }
 
   /**
+   * Chemin du configurateur de la page Simulateur : attribut
+   * `data-configurateur` de la balise du script (pages de test Shopify, pour
+   * rester sur l'app du même preview), sinon `/pages/configurateur`. Seul un
+   * chemin absolu du site est accepté ; toute autre valeur est signalée
+   * (`avertir`) et le chemin par défaut s'applique.
+   */
+  function cheminConfigurateur(valeur, avertir) {
+    if (valeur === null || valeur === undefined) return CHEMIN_CONFIGURATEUR;
+    if (typeof valeur === 'string' && MOTIF_CHEMIN_SITE.test(valeur)) return valeur;
+    if (avertir) {
+      avertir('[Colibri] data-configurateur ignoré (chemin absolu du site attendu, ex. /pages/test-configurateur) :', valeur);
+    }
+    return CHEMIN_CONFIGURATEUR;
+  }
+
+  /**
    * URL du configurateur à la sortie de la page Simulateur : teintes dans
    * l'ordre d'application (la dernière est la plus récente).
    */
-  function urlConfigurateur(origineBoutique, piece, teintes) {
-    return origineBoutique + CHEMIN_CONFIGURATEUR
+  function urlConfigurateur(origineBoutique, piece, teintes, chemin) {
+    return origineBoutique + (chemin || CHEMIN_CONFIGURATEUR)
       + '?piece=' + encodeURIComponent(piece)
       + '&teintes=' + teintes.map(encodeURIComponent).join(',');
   }
@@ -888,6 +906,10 @@
 
   function demarrerSimulateur(config, script) {
     var hote = trouverHote(script, 'colibri-simulateur');
+    var configurateur = cheminConfigurateur(
+      script ? script.getAttribute('data-configurateur') : null,
+      function () { console.warn.apply(console, arguments); }
+    );
     var teinte = lireTeinteDemandee(window.location.search);
     var visuel = lireVisuel(hote.getAttribute('data-visuel'));
     var ombre = racineIsolee(hote, STYLES_PAGE);
@@ -910,7 +932,7 @@
     if (!simulateurDisponible(config, kitPresent())) {
       page.appendChild(creer('section', {}, [
         creer('p', { class: 'message', texte: 'Le simulateur est momentanément indisponible.' }),
-        creer('a', { class: 'bouton', href: CHEMIN_CONFIGURATEUR, texte: 'Calculer mes quantités de peinture' }),
+        creer('a', { class: 'bouton', href: configurateur, texte: 'Calculer mes quantités de peinture' }),
       ]));
       ombre.appendChild(page);
       return;
@@ -967,7 +989,7 @@
         teinte: teinte,
         surSelection: function (handles) {
           ecrireSession(CLE_SESSION_PIECE, null);
-          window.location.href = urlConfigurateur(window.location.origin, piece, handles);
+          window.location.href = urlConfigurateur(window.location.origin, piece, handles, configurateur);
         },
         surFermeture: function () {
           // Retour à la question « Quelle pièce ? »
@@ -1020,6 +1042,7 @@
     lireEntreeConfigurateur: lireEntreeConfigurateur,
     cheminIframe: cheminIframe,
     rechercheSansEntree: rechercheSansEntree,
+    cheminConfigurateur: cheminConfigurateur,
     urlConfigurateur: urlConfigurateur,
     urlSimulateurTeinte: urlSimulateurTeinte,
     lireTeinteDemandee: lireTeinteDemandee,
