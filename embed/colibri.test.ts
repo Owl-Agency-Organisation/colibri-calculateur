@@ -48,7 +48,8 @@ interface LogiqueColibri {
   lireEntreeConfigurateur(recherche: string, pieceSession: string | null): Entree | null;
   cheminIframe(entree: Entree | null): string;
   rechercheSansEntree(recherche: string): string;
-  urlConfigurateur(origine: string, piece: string, teintes: string[]): string;
+  urlConfigurateur(origine: string, piece: string, teintes: string[], chemin?: string): string;
+  cheminConfigurateur(valeur: unknown, avertir?: (...args: unknown[]) => void): string;
   urlSimulateurTeinte(handle: string): string;
   lireTeinteDemandee(recherche: string): string | null;
   lireMessageApp(donnees: unknown): Record<string, unknown> | null;
@@ -430,5 +431,44 @@ describe('script hébergé — intérieur Wizart du type de pièce', () => {
       expect(colibri.interieurWizart(piece)).toBeNull();
       expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, null, piece).sceneData).toBeUndefined();
     }
+  });
+});
+
+describe('script hébergé — data-configurateur (pages de test)', () => {
+  it('absent : chemin par défaut, sans avertissement', () => {
+    const avertir = vi.fn();
+    expect(colibri.cheminConfigurateur(null, avertir)).toBe('/pages/configurateur');
+    expect(colibri.cheminConfigurateur(undefined, avertir)).toBe('/pages/configurateur');
+    expect(avertir).not.toHaveBeenCalled();
+  });
+
+  it('valide : chemin utilisé pour la sortie', () => {
+    const avertir = vi.fn();
+    const chemin = colibri.cheminConfigurateur('/pages/test-configurateur', avertir);
+    expect(chemin).toBe('/pages/test-configurateur');
+    expect(avertir).not.toHaveBeenCalled();
+    expect(colibri.urlConfigurateur('https://www.colibripeinture.com', 'chambre', ['bleu-ciel', 'vert-sauge'], chemin))
+      .toBe('https://www.colibripeinture.com/pages/test-configurateur?piece=chambre&teintes=bleu-ciel,vert-sauge');
+  });
+
+  it('invalide (URL absolue, chemin relatif, vide…) : ignoré avec avertissement', () => {
+    for (const valeur of [
+      'https://evil.example/pages/configurateur',
+      '//evil.example/pages',
+      'pages/test-configurateur',
+      '',
+      ' /pages/test',
+      '/pages/test?x=1',
+      'javascript:alert(1)',
+    ]) {
+      const avertir = vi.fn();
+      expect(colibri.cheminConfigurateur(valeur, avertir)).toBe('/pages/configurateur');
+      expect(avertir).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('sans chemin, l’URL de sortie reste celle d’aujourd’hui', () => {
+    expect(colibri.urlConfigurateur('https://www.colibripeinture.com', 'cuisine', ['ocre']))
+      .toBe('https://www.colibripeinture.com/pages/configurateur?piece=cuisine&teintes=ocre');
   });
 });
