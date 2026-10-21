@@ -331,6 +331,13 @@ export function PontLabo() {
   };
 
   const reels = teintes.filter((t) => t.handle !== HANDLE_INCONNU).map((t) => t.handle);
+  // Résultat attendu à l'arrivée : un mur avec la dernière teinte connue
+  const attendu = (handles: string[]) => {
+    const derniere = teintes.find((t) => t.handle === handles[handles.length - 1]);
+    return derniere
+      ? <span className="block text-xs text-gray-500">→ 1 mur : {derniere.titre} ; {handles.length} teinte{handles.length > 1 ? 's' : ''} essayée{handles.length > 1 ? 's' : ''}</span>
+      : null;
+  };
   const lien = (piece: string, handles: string[]) =>
     `/labo/pont?piece=${piece}&teintes=${handles.map(encodeURIComponent).join(',')}`;
   const allerPim = (piece: string, handles: string[]) => {
@@ -358,19 +365,27 @@ export function PontLabo() {
         {erreurCatalogue && (
           <p className="text-sm text-red-700">Catalogue indisponible ({erreurCatalogue}) : liens réduits.</p>
         )}
+        <p className="text-xs text-gray-600">
+          Arrivée depuis la page Simulateur : un seul mur est créé, avec la dernière teinte de la liste
+          (la plus récente) ; toutes rejoignent « Vos teintes essayées », la plus récente en tête. Videz le
+          projet avant un scénario pour partir d’un bloc vide.
+        </p>
         <ul className="grid gap-2 text-sm sm:grid-cols-2">
           <li><a className="text-primary-500 underline" href="/labo/pont">Sans entrée (accueil de l’app)</a></li>
           {reels.length >= 2 && (
-            <li><a className="text-primary-500 underline" href={lien('chambre', reels.slice(0, 2))}>Chambre + 2 teintes</a></li>
+            <li><a className="text-primary-500 underline" href={lien('chambre', reels.slice(0, 2))}>Chambre + 2 teintes</a>{attendu(reels.slice(0, 2))}</li>
           )}
           {reels.length >= 3 && (
-            <li><a className="text-primary-500 underline" href={lien('cuisine', reels.slice(0, 3))}>Cuisine + 3 teintes</a></li>
+            <li><a className="text-primary-500 underline" href={lien('cuisine', reels.slice(0, 3))}>Cuisine + 3 teintes</a>{attendu(reels.slice(0, 3))}</li>
           )}
-          {reels.length >= 5 && (
-            <li><a className="text-primary-500 underline" href={lien('piece-de-vie', reels.slice(0, 5))}>Pièce de vie + 5 teintes (4 murs max)</a></li>
+          {reels.length >= 4 && (
+            <li><a className="text-primary-500 underline" href={lien('piece-de-vie', reels.slice(0, 4))}>Pièce de vie + 4 teintes</a>{attendu(reels.slice(0, 4))}</li>
+          )}
+          {reels.length >= 12 && (
+            <li><a className="text-primary-500 underline" href={lien('chambre', reels.slice(0, 12))}>Chambre + 12 teintes (plafond du bloc)</a>{attendu(reels.slice(0, 12))}</li>
           )}
           {reels.length >= 1 && (
-            <li><a className="text-primary-500 underline" href={lien('chambre', [reels[0], HANDLE_INCONNU])}>Chambre + 1 teinte + 1 inconnue</a></li>
+            <li><a className="text-primary-500 underline" href={lien('chambre', [reels[0], HANDLE_INCONNU])}>Chambre + 1 teinte + 1 inconnue</a>{attendu([reels[0]])}</li>
           )}
           <li><a className="text-primary-500 underline" href={lien('chambre', [HANDLE_INCONNU])}>Teinte inconnue seule (→ accueil)</a></li>
           {reels.length >= 2 && (
