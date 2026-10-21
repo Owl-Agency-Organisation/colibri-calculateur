@@ -33,8 +33,16 @@ interface ReponseFetch {
   json(): Promise<unknown>;
 }
 
+interface ReferenceConnue {
+  type: 'peinture' | 'papier-peint';
+  hex: string | null;
+  image: string | null;
+  nom: string | null;
+}
+
 interface CouleursTeintes {
   hex(handle: string): string | null;
+  reference(handle: string): ReferenceConnue | null;
   chargerCouleurs(origineApp: string, handles: string[], rappel: () => void): Promise<void> | null;
 }
 
@@ -52,6 +60,8 @@ interface LogiqueColibri {
   cheminConfigurateur(valeur: unknown, avertir?: (...args: unknown[]) => void): string;
   urlSimulateurTeinte(handle: string): string;
   lireTeinteDemandee(recherche: string): string | null;
+  lireVariantes(valeur: unknown, avertir?: (...args: unknown[]) => void): Record<string, string>;
+  referenceBouton(parDefaut: string, variantes: Record<string, string>, recherche: string): string;
   lireMessageApp(donnees: unknown): Record<string, unknown> | null;
   simulateurDisponible(config: Config, kitDejaPresent: boolean): boolean;
   capacites(config: Config, kitDejaPresent: boolean): string[];
@@ -62,6 +72,8 @@ interface LogiqueColibri {
   libelleUtiliser(nombre: number): string;
   annonceTeintes(nombre: number): string;
   lireHex(valeur: unknown): string | null;
+  lireImage(valeur: unknown): string | null;
+  lireReference(t: Record<string, unknown>): ReferenceConnue;
   urlTeintes(origineApp: string, handles: string[]): string;
   creerCouleursTeintes(requete: (url: string) => Promise<ReponseFetch>): CouleursTeintes;
   evenementsEcoutes(evenements: Record<string, string> | undefined): { application: string[]; retour: string[] };
@@ -470,5 +482,84 @@ describe('script hébergé — data-configurateur (pages de test)', () => {
   it('sans chemin, l’URL de sortie reste celle d’aujourd’hui', () => {
     expect(colibri.urlConfigurateur('https://www.colibripeinture.com', 'cuisine', ['ocre']))
       .toBe('https://www.colibripeinture.com/pages/configurateur?piece=cuisine&teintes=ocre');
+  });
+});
+
+describe('script hébergé — papiers peints dans la barre', () => {
+  const APP = 'https://calculateur.colibripeinture.com';
+  const IMAGE = 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/mockup_bebe_-_motif_1_-_terracotta.png';
+  const reponse = (corps: unknown): ReponseFetch => ({ ok: true, status: 200, json: () => Promise.resolve(corps) });
+
+  it('lireApplication inchangé : un SKU de papier peint est lu comme toute référence', () => {
+    const donnees = {
+      products: [{
+        colibri_pp: { article_name: 'Montgolfières - Terracotta', article_sku: 'pp-montg-terracotta-le', article_custom_sku: 'autre' },
+      }],
+    };
+    expect(colibri.lireApplication(donnees)).toEqual([{ handle: 'pp-montg-terracotta-le', nom: 'Montgolfières' }]);
+  });
+
+  it('mémorise par référence ce que l’API a renvoyé : teinte (hex) et papier peint (image, nom)', async () => {
+    const requete = vi.fn((_url: string) => Promise.resolve(reponse([
+      { handle: 'horizon', nom: 'Horizon', hex: '#8fa9b8', type: 'peinture', image: null, lien: null },
+      {
+        handle: 'pp-montg-terracotta-le', nom: 'Montgolfières Terracotta', hex: null, type: 'papier-peint',
+        image: IMAGE, lien: 'https://www.colibripeinture.com/products/papier-peint-montgolfiere?variant=57106064965977',
+      },
+    ])));
+    const couleurs = colibri.creerCouleursTeintes(requete);
+    await couleurs.chargerCouleurs(APP, ['horizon', 'pp-montg-terracotta-le'], () => {});
+    expect(couleurs.reference('horizon')).toEqual({ type: 'peinture', hex: '#8fa9b8', image: null, nom: 'Horizon' });
+    expect(couleurs.reference('pp-montg-terracotta-le')).toEqual({
+      type: 'papier-peint', hex: null, image: IMAGE, nom: 'Montgolfières Terracotta',
+    });
+    expect(couleurs.hex('pp-montg-terracotta-le')).toBeNull();
+  });
+
+  it('n’accepte qu’une image https pour la vignette', () => {
+    expect(colibri.lireImage(IMAGE)).toBe(IMAGE);
+    expect(colibri.lireImage('http://cdn.shopify.com/x.png')).toBeNull();
+    expect(colibri.lireImage('javascript:alert(1)')).toBeNull();
+    expect(colibri.lireImage(null)).toBeNull();
+    expect(colibri.lireReference({ type: 'papier-peint', image: 'data:image/png;base64,x', nom: 'X' }).image).toBeNull();
+  });
+
+  it('une référence sans type reste une teinte', () => {
+    expect(colibri.lireReference({ handle: 'horizon', hex: '#fff' })).toEqual({ type: 'peinture', hex: '#fff', image: null, nom: null });
+  });
+});
+
+describe('script hébergé — bouton des fiches papier peint (data-variantes)', () => {
+  const TABLE = '{"57106064965977":"pp-montg-terracotta-le","57106064933209":"pp-montg-blanc-le"}';
+
+  it('absent : table vide, data-teinte envoyé (fiches teintes inchangées)', () => {
+    const avertir = vi.fn();
+    expect(colibri.lireVariantes(null, avertir)).toEqual({});
+    expect(colibri.referenceBouton('deguesde', colibri.lireVariantes(null), '?variant=123')).toBe('deguesde');
+    expect(colibri.urlSimulateurTeinte('deguesde')).toBe('/pages/simulateur?teinte=deguesde');
+    expect(avertir).not.toHaveBeenCalled();
+  });
+
+  it('valide : la variante de l’URL envoie son SKU', () => {
+    const variantes = colibri.lireVariantes(TABLE);
+    expect(variantes).toEqual({ '57106064965977': 'pp-montg-terracotta-le', '57106064933209': 'pp-montg-blanc-le' });
+    expect(colibri.referenceBouton('pp-montg-terracotta-le', variantes, '?variant=57106064933209')).toBe('pp-montg-blanc-le');
+    expect(colibri.referenceBouton('pp-montg-terracotta-le', variantes, '')).toBe('pp-montg-terracotta-le');
+  });
+
+  it('variant= inconnu de la table : data-teinte', () => {
+    const variantes = colibri.lireVariantes(TABLE);
+    expect(colibri.referenceBouton('pp-montg-terracotta-le', variantes, '?variant=99999')).toBe('pp-montg-terracotta-le');
+    expect(colibri.referenceBouton('pp-montg-terracotta-le', variantes, '?variant=__proto__')).toBe('pp-montg-terracotta-le');
+  });
+
+  it('invalide : JSON illisible ignoré avec console.warn, entrées invalides écartées', () => {
+    const avertir = vi.fn();
+    expect(colibri.lireVariantes('{pas du json', avertir)).toEqual({});
+    expect(colibri.lireVariantes('["pp-montg-blanc-le"]', avertir)).toEqual({});
+    expect(avertir).toHaveBeenCalledTimes(2);
+    expect(avertir.mock.calls[0][0]).toContain('data-variantes');
+    expect(colibri.lireVariantes('{"12":"Pas Un SKU!","abc":"pp-montg-blanc-le","34":"PP-MONTG-ROSE-LE"}'))
+      .toEqual({ '34': 'pp-montg-rose-le' });
   });
 });

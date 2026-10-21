@@ -11,11 +11,14 @@
  *   capacités, simulateur Wizart en surimpression à la demande de l'app ;
  * - `simulateur` : page Simulateur (en-tête, « Quelle pièce ? », étapes,
  *   conseil photo, simulateur plein écran, retour vers le configurateur) ;
- * - `bouton` : bouton « Voir dans ma pièce » d'une fiche teinte.
+ * - `bouton` : bouton « Voir dans ma pièce » d'une fiche teinte ou papier peint.
  *
- * Wizart ne sert qu'à visualiser : les teintes appliquées sur les murs
- * (`PRODUCT_APPLY`) sont retenues par la barre Colibri, seule sortie du
+ * Wizart ne sert qu'à visualiser : les produits appliqués sur les murs
+ * (`PRODUCT_APPLY`) sont retenus par la barre Colibri, seule sortie du
  * simulateur (« Fermer » / « Utiliser… »). Le panier Wizart n'est pas utilisé.
+ * Une référence est un handle de teinte ou le SKU d'une variante papier peint
+ * (`pp-montg-terracotta-le`) : le script ne les distingue pas, l'app le fait
+ * (`/api/embed/teintes` renvoie le type de chaque référence).
  *
  * Tout le rendu est isolé dans un Shadow DOM : les styles du thème ne
  * l'atteignent pas (la police reste héritée du site).
@@ -77,6 +80,9 @@
   var MAX_LONGUEUR_HANDLE = 255;
   var MOTIF_HANDLE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
   var MOTIF_HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
+  // Identifiant numérique d'une variante Shopify (`?variant=` des fiches)
+  var MOTIF_ID_VARIANTE = /^[0-9]{1,20}$/;
+  var TYPE_PAPIER_PEINT = 'papier-peint';
 
   // Pièce choisie sur la page Simulateur, relue au retour du PIM Wizart
   // (redirection vers le configurateur avec `vendorCode[]`)
@@ -204,6 +210,41 @@
     return CHEMIN_SIMULATEUR + '?teinte=' + encodeURIComponent(handle);
   }
 
+  /**
+   * Table `data-variantes` d'une fiche papier peint, rendue par Liquid :
+   * JSON `{ "{id variante}": "{sku}" }` (variantes « Lé » seulement). Entrées
+   * invalides ignorées ; attribut absent : table vide ; JSON illisible : table
+   * vide, signalé (`avertir`).
+   */
+  function lireVariantes(valeur, avertir) {
+    var table = {};
+    if (valeur === null || valeur === undefined) return table;
+    var donnees = null;
+    try {
+      donnees = JSON.parse(valeur);
+    } catch (e) {
+      donnees = null;
+    }
+    if (!estObjet(donnees) || Array.isArray(donnees)) {
+      if (avertir) avertir('[Colibri] data-variantes ignoré (JSON { "id de variante": "sku" } attendu) :', valeur);
+      return table;
+    }
+    Object.keys(donnees).forEach(function (id) {
+      var sku = lireHandle(donnees[id]);
+      if (MOTIF_ID_VARIANTE.test(id) && sku) table[id] = sku;
+    });
+    return table;
+  }
+
+  /**
+   * Référence envoyée par le bouton d'une fiche : le SKU de la variante de
+   * l'URL (`?variant={id}`) si la table la connaît, sinon `data-teinte`.
+   */
+  function referenceBouton(parDefaut, variantes, recherche) {
+    var id = new URLSearchParams(recherche || '').get('variant');
+    return id && Object.prototype.hasOwnProperty.call(variantes, id) ? variantes[id] : parDefaut;
+  }
+
   /** Teinte demandée à l'ouverture de la page Simulateur (`?teinte=`). */
   function lireTeinteDemandee(recherche) {
     return lireHandle(new URLSearchParams(recherche || '').get('teinte'));
@@ -320,6 +361,32 @@
   /** Couleur d'une pastille : code hexadécimal valide, sinon null (nom seul). */
   function lireHex(valeur) {
     return typeof valeur === 'string' && MOTIF_HEX.test(valeur.trim()) ? valeur.trim() : null;
+  }
+
+  /** Image d'une pastille (papier peint) : URL https seulement, sinon null. */
+  function lireImage(valeur) {
+    if (typeof valeur !== 'string' || !valeur.trim()) return null;
+    try {
+      var url = new URL(valeur.trim());
+      return url.protocol === 'https:' ? url.href : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
+   * Ce que l'app a renvoyé pour une référence, réduit à ce que la barre
+   * affiche : `{ type, hex, image, nom }`. Type `papier-peint` : vignette de
+   * l'image et nom « {Motif} {Coloris} » ; sinon `peinture` (rond de couleur).
+   */
+  function lireReference(t) {
+    var papierPeint = t.type === TYPE_PAPIER_PEINT;
+    return {
+      type: papierPeint ? TYPE_PAPIER_PEINT : 'peinture',
+      hex: papierPeint ? null : lireHex(t.hex),
+      image: papierPeint ? lireImage(t.image) : null,
+      nom: typeof t.nom === 'string' && t.nom.trim() ? t.nom.trim() : null,
+    };
   }
 
   /** URL de l'endpoint des couleurs de teintes de l'app. */
@@ -447,6 +514,7 @@
     '.pastille{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.12);border-radius:999px;padding:4px 14px 4px 4px;font-size:14px;white-space:nowrap;}',
     '.pastille.sans-couleur{padding:4px 14px;min-height:36px;}',
     '.rond{flex:0 0 auto;width:24px;height:24px;box-sizing:content-box;border:2px solid #fff;border-radius:50%;}',
+    '.vignette{display:block;object-fit:cover;background:#fff;}',
     '.vide{font-size:13px;color:#cfe3dc;}',
     '.fermer{margin-left:auto;flex:0 0 auto;background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.6);border-radius:6px;padding:11px 16px;font-size:14px;line-height:1.2;cursor:pointer;}',
     '.fermer:hover{background:rgba(255,255,255,0.08);}',
@@ -465,19 +533,26 @@
   ].join('');
 
   /**
-   * Couleurs des teintes, demandées à l'app par lots (`requete(url)` → Promise
-   * d'une réponse fetch). Seules les réponses obtenues sont mémorisées : une
-   * teinte absente de la réponse (inconnue du catalogue) reste sans couleur ;
-   * un échec (réseau, HTTP, réponse illisible) n'est pas retenu, les handles
-   * sont redemandés au prochain rendu de la barre. Les pastilles restent
+   * Couleurs des teintes (et vignettes des papiers peints), demandées à l'app
+   * par lots (`requete(url)` → Promise d'une réponse fetch). Par référence,
+   * ce que l'API a renvoyé est mémorisé (`lireReference`) : une référence
+   * absente de la réponse (inconnue du catalogue) reste sans couleur ; un
+   * échec (réseau, HTTP, réponse illisible) n'est pas retenu, les références
+   * sont redemandées au prochain rendu de la barre. Les pastilles restent
    * sans rond de couleur en attendant : la sortie n'est jamais bloquée.
    */
   function creerCouleursTeintes(requete) {
     var connues = {};
     var enCours = {};
 
-    function hex(handle) {
+    /** Ce que l'API a renvoyé pour la référence, ou null (inconnue, pas encore reçue). */
+    function reference(handle) {
       return Object.prototype.hasOwnProperty.call(connues, handle) ? connues[handle] : null;
+    }
+
+    function hex(handle) {
+      var connue = reference(handle);
+      return connue ? connue.hex : null;
     }
 
     /** Retourne la Promise de la requête lancée, ou null s'il n'y avait rien à demander. */
@@ -499,7 +574,7 @@
           if (!Array.isArray(liste)) throw new Error('réponse illisible');
           var recues = {};
           liste.forEach(function (t) {
-            if (estObjet(t) && aDemander.indexOf(t.handle) !== -1) recues[t.handle] = lireHex(t.hex);
+            if (estObjet(t) && aDemander.indexOf(t.handle) !== -1) recues[t.handle] = lireReference(t);
           });
           aDemander.forEach(function (h) { connues[h] = recues[h] || null; });
           liberer();
@@ -512,7 +587,7 @@
         });
     }
 
-    return { hex: hex, chargerCouleurs: chargerCouleurs };
+    return { hex: hex, reference: reference, chargerCouleurs: chargerCouleurs };
   }
 
   // Couleurs des teintes pour la page (une seule instance)
@@ -553,14 +628,20 @@
         liste.appendChild(creer('li', { class: 'vide', texte: 'Appliquez une teinte sur un mur pour la retenir' }));
       }
       teintes.forEach(function (teinte) {
-        var hex = couleursTeintes.hex(teinte.handle);
-        var pastille = creer('li', { class: hex ? 'pastille' : 'pastille sans-couleur' });
-        if (hex) {
+        var connue = couleursTeintes.reference(teinte.handle);
+        var papierPeint = !!connue && connue.type === TYPE_PAPIER_PEINT;
+        var hex = connue ? connue.hex : null;
+        var image = papierPeint ? connue.image : null;
+        var pastille = creer('li', { class: hex || image ? 'pastille' : 'pastille sans-couleur' });
+        if (image) {
+          // Papier peint : vignette ronde de l'image de la variante
+          pastille.appendChild(creer('img', { class: 'rond vignette', src: image, alt: '', 'aria-hidden': 'true' }));
+        } else if (hex) {
           var rond = creer('span', { class: 'rond', 'aria-hidden': 'true' });
           rond.style.backgroundColor = hex;
           pastille.appendChild(rond);
         }
-        pastille.appendChild(creer('span', { texte: teinte.nom }));
+        pastille.appendChild(creer('span', { texte: papierPeint && connue.nom ? connue.nom : teinte.nom }));
         liste.appendChild(pastille);
       });
       utiliser.textContent = libelleUtiliser(teintes.length);
@@ -998,7 +1079,7 @@
     }
   }
 
-  // ===================== Mode bouton (fiche teinte) =====================
+  // ===================== Mode bouton (fiche teinte ou papier peint) =====================
 
   var STYLES_BOUTON = STYLES_BASE + [
     ':host{display:inline-block;}',
@@ -1011,8 +1092,17 @@
     var handle = lireHandle(hote.getAttribute('data-teinte'));
     // Sans simulateur configuré ou sans teinte valide : aucun bouton
     if (!simulateurDisponible(config, kitPresent()) || !handle) return;
-    racineIsolee(hote, STYLES_BOUTON)
-      .appendChild(creer('a', { class: 'bouton', href: urlSimulateurTeinte(handle), texte: 'Voir dans ma pièce' }));
+    // Fiche papier peint : SKU de la variante choisie (data-variantes, facultatif)
+    var variantes = lireVariantes(hote.getAttribute('data-variantes'), function () {
+      console.warn.apply(console, arguments);
+    });
+    function cible() {
+      return urlSimulateurTeinte(referenceBouton(handle, variantes, window.location.search));
+    }
+    var lien = creer('a', { class: 'bouton', href: cible(), texte: 'Voir dans ma pièce' });
+    // Le thème change `?variant=` sans recharger la page : lien relu au clic
+    lien.addEventListener('click', function () { lien.setAttribute('href', cible()); });
+    racineIsolee(hote, STYLES_BOUTON).appendChild(lien);
   }
 
   // ===================== Démarrage =====================
@@ -1046,6 +1136,8 @@
     urlConfigurateur: urlConfigurateur,
     urlSimulateurTeinte: urlSimulateurTeinte,
     lireTeinteDemandee: lireTeinteDemandee,
+    lireVariantes: lireVariantes,
+    referenceBouton: referenceBouton,
     lireVisuel: lireVisuel,
     lireMessageApp: lireMessageApp,
     simulateurDisponible: simulateurDisponible,
@@ -1056,6 +1148,8 @@
     libelleUtiliser: libelleUtiliser,
     annonceTeintes: annonceTeintes,
     lireHex: lireHex,
+    lireImage: lireImage,
+    lireReference: lireReference,
     urlTeintes: urlTeintes,
     creerCouleursTeintes: creerCouleursTeintes,
     evenementsEcoutes: evenementsEcoutes,

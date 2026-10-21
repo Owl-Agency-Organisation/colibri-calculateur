@@ -13,6 +13,9 @@ import type { Piece, TypePiece } from '@/lib/types';
 import { REGLES_FINITION } from '@/lib/calcul';
 import { PARENT_ORIGIN, redirectTop } from '@/lib/navigation';
 import { useSimulateurDisponible } from '@/lib/embed-parent';
+import { CartePapierPeint } from '@/components/simulateur/CartePapierPeint';
+import { chargerPapiersPeints, type PapierPeint } from '@/lib/papierPeint';
+import { getPapiersPeintsEssayes } from '@/lib/store/papiersPeintsEssayes';
 
 // Page Simulateur du site : le projet reste dans le localStorage, le retour
 // se fait par l'écran d'arrivée (« Ajouter cette pièce à mon projet »)
@@ -36,6 +39,8 @@ export default function RecapitulatifPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [pieceToDelete, setPieceToDelete] = useState<string | null>(null);
   const simulateurDisponible = useSimulateurDisponible();
+  // Papiers peints essayés dans le simulateur : ni calcul ni prix, lien vers la fiche
+  const [papiersPeints, setPapiersPeints] = useState<PapierPeint[]>([]);
 
   useEffect(() => {
     const stored = getStoredPieces();
@@ -45,6 +50,15 @@ export default function RecapitulatifPage() {
     }
     setPieces(stored);
     setIsLoaded(true);
+
+    let annule = false;
+    const skus = getPapiersPeintsEssayes();
+    if (skus.length > 0) {
+      chargerPapiersPeints(skus).then((charges) => {
+        if (!annule) setPapiersPeints(charges);
+      });
+    }
+    return () => { annule = true; };
   }, [router]);
 
   const handleAddPiece = () => {
@@ -261,6 +275,23 @@ export default function RecapitulatifPage() {
           </Card>
         ))}
       </div>
+
+      {/* Papiers peints essayés : affichés seulement s'il y en a, sans calcul */}
+      {papiersPeints.length > 0 && (
+        <Card>
+          <CardContent className="p-6">
+            <h2 className="text-lg font-semibold text-gray-900">Papiers peints essayés dans le simulateur</h2>
+            <p className="text-sm text-gray-500 mt-1 mb-4">
+              Le papier peint ne se calcule pas ici&nbsp;: vous le commandez depuis sa fiche.
+            </p>
+            <ul className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {papiersPeints.map((papier) => (
+                <CartePapierPeint key={papier.sku} papierPeint={papier} />
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Visualiser une autre pièce : seulement si la page parente a annoncé le simulateur */}
       {simulateurDisponible && (

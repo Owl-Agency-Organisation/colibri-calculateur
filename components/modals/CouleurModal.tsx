@@ -4,9 +4,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Couleur, TypePiece } from '@/lib/types';
 import { chargerCouleur, chargerCouleurs } from '@/lib/couleur';
 import { getTeintesEssayees, ajouterSelectionSimulateur } from '@/lib/store/teintesEssayees';
+import { ajouterPapiersPeintsSimulateur } from '@/lib/store/papiersPeintsEssayes';
 import { ecouterSimulateur, useSimulateurDisponible } from '@/lib/embed-parent';
-import { derniereTeinte, messageOuvrirSimulateur } from '@/lib/embed-messages';
-import { postToParent } from '@/lib/navigation';
+import { messageOuvrirSimulateur } from '@/lib/embed-messages';
+import { postToParent, redirectTop } from '@/lib/navigation';
+import { libellePapierPeint, type PapierPeint } from '@/lib/papierPeint';
+import { trierReferences } from '@/lib/referencesSimulateur';
 
 interface Collection {
   id: string;
@@ -108,6 +111,8 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition,
   // Dernière teinte du simulateur inconnue de la boutique : le bloc est mis en avant
   const [essayeesEnAvant, setEssayeesEnAvant] = useState(false);
   const [attenteSimulateur, setAttenteSimulateur] = useState(false);
+  // Papiers peints reçus du simulateur pendant cette ouverture (le plus récent d'abord)
+  const [papiersPeintsRecus, setPapiersPeintsRecus] = useState<PapierPeint[]>([]);
 
   const simulateurDisponible = useSimulateurDisponible();
   const pieceSimulateur = simulateur && simulateurDisponible && typePiece ? typePiece : null;
@@ -139,6 +144,7 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition,
       setError(null);
       setEssayeesEnAvant(false);
       setAttenteSimulateur(false);
+      setPapiersPeintsRecus([]);
       loadCollections();
       chargerTeintesEssayees();
     }
@@ -151,15 +157,8 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition,
     return ecouterSimulateur((evenement) => {
       setAttenteSimulateur(false);
       if (evenement.type === 'colibri:simulateur:ferme' || evenement.teintes.length === 0) return;
-
-      // Toutes rejoignent « Vos teintes essayées » (la plus récente en tête)
-      ajouterSelectionSimulateur(evenement.teintes);
       setError(null);
 
-      // La dernière appliquée (la plus récente) est posée sur le mur ciblé,
-      // quel que soit le nombre de teintes
-      const derniere = derniereTeinte(evenement.teintes);
-      if (!derniere) return;
       const proposerAuChoix = () => {
         setSelectedCollection(null);
         setProducts([]);
@@ -167,21 +166,38 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition,
         chargerTeintesEssayees();
       };
       const { targetFinition: finition } = propsRef.current;
-      chargerCouleur(derniere, { targetFinition: finition })
-        .then((couleur) => {
-          if (couleur) {
-            propsRef.current.onSelect(couleur, 'simulateur');
-            propsRef.current.onClose();
-          } else {
-            // Teinte inconnue de la boutique : le client choisit parmi les autres
-            proposerAuChoix();
-          }
-        })
-        .catch((err: unknown) => {
-          console.error(err);
-          setError('Impossible de sélectionner cette couleur');
-          proposerAuChoix();
-        });
+      // Références triées par la boutique : teintes et papiers peints
+      trierReferences(evenement.teintes, { targetFinition: finition }).then(({ references, papiersPeints }) => {
+        // Papiers peints : récapitulatif et ligne dans la popup, jamais dans
+        // « Vos teintes essayées » ni sur un mur
+        if (papiersPeints.length > 0) {
+          ajouterPapiersPeintsSimulateur(papiersPeints.map((p) => p.sku));
+          setPapiersPeintsRecus([...papiersPeints].reverse());
+        }
+
+        // Toutes les teintes rejoignent « Vos teintes essayées » (la plus récente en tête)
+        const teintes = references.filter((r) => r.type !== 'papier-peint');
+        ajouterSelectionSimulateur(teintes.map((r) => r.reference));
+
+        // La dernière teinte appliquée (la plus récente) est posée sur le mur
+        // ciblé, quel que soit le nombre de teintes
+        const derniere = teintes[teintes.length - 1];
+        if (!derniere) {
+          // Papiers peints seuls : la popup reste ouverte, aucune teinte posée
+          setSelectedCollection(null);
+          setProducts([]);
+          chargerTeintesEssayees();
+          return;
+        }
+        if (derniere.type === 'peinture') {
+          propsRef.current.onSelect(derniere.couleur, 'simulateur');
+          propsRef.current.onClose();
+          return;
+        }
+        // Teinte inconnue de la boutique ou en erreur : le client choisit parmi les autres
+        if (derniere.type === 'erreur') setError('Impossible de sélectionner cette couleur');
+        proposerAuChoix();
+      });
     });
   }, [isOpen, chargerTeintesEssayees]);
 
@@ -365,6 +381,22 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition,
 
             {!attenteSimulateur && !loading && !selectedCollection && (
               <div>
+                {papiersPeintsRecus.length > 0 && (
+                  <ul className="mb-6 space-y-1 rounded-lg border border-primary-200 bg-primary-50 p-4 text-sm text-primary-600" role="status">
+                    {papiersPeintsRecus.map((papier) => (
+                      <li key={papier.sku}>
+                        Papier peint essayé&nbsp;: <span className="font-semibold">{libellePapierPeint(papier.motif, papier.coloris)}</span>{' '}
+                        (<button
+                          type="button"
+                          onClick={() => redirectTop(papier.lien)}
+                          className="underline underline-offset-2 hover:text-primary-500"
+                        >
+                          voir la fiche
+                        </button>)
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 {(teintesEssayees.length > 0 || chargementEssayees) && (
                   <section
                     className={`mb-6 rounded-lg ${essayeesEnAvant ? 'border-2 border-primary-500 bg-primary-50 p-4' : ''}`}

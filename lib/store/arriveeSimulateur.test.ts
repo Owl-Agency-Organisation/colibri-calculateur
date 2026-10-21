@@ -1,6 +1,20 @@
-import { describe, expect, it } from 'vitest';
-import { couleursMurArrivee, lireArriveeStockee } from '@/lib/store/arriveeSimulateur';
-import { MAX_TEINTES_ESSAYEES, fusionnerSelectionSimulateur } from '@/lib/store/teintesEssayees';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  couleursMurArrivee,
+  enregistrerArriveeSimulateur,
+  getArriveeSimulateur,
+  lireArriveeStockee,
+} from '@/lib/store/arriveeSimulateur';
+import { getPapiersPeintsEssayes } from '@/lib/store/papiersPeintsEssayes';
+import { MAX_TEINTES_ESSAYEES, fusionnerSelectionSimulateur, getTeintesEssayees } from '@/lib/store/teintesEssayees';
+import { trierReferences } from '@/lib/referencesSimulateur';
+import {
+  MONTGOLFIERE_TERRACOTTA,
+  OMBRELLE_BLEU_NUIT,
+  papierPeint,
+  stubRoutesBoutique,
+  stubStockages,
+} from '@/lib/test/simulateurFixtures';
 import type { Couleur } from '@/lib/types';
 
 const couleur = (handle: string): Couleur => ({
@@ -68,6 +82,67 @@ describe('relais vers la page Surfaces', () => {
     expect(lireArriveeStockee('{pas du json')).toEqual({ couleurs: [], teintesRecues: 0 });
     expect(lireArriveeStockee('[]')).toEqual({ couleurs: [], teintesRecues: 0 });
     expect(lireArriveeStockee(JSON.stringify({ couleurs: [{ x: 1 }], teintesRecues: 'deux' })))
+      .toEqual({ couleurs: [], teintesRecues: 0 });
+  });
+});
+
+describe('arrivée depuis le simulateur — papiers peints', () => {
+  beforeEach(() => {
+    stubStockages();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  /** Écran d'arrivée puis « Calculer les quantités » : tri par la boutique, enregistrement */
+  async function arriverAvec(references: string[], teintes: string[], papiers = [MONTGOLFIERE_TERRACOTTA, OMBRELLE_BLEU_NUIT]) {
+    stubRoutesBoutique(teintes, papiers);
+    const { couleurs, papiersPeints } = await trierReferences(references, { targetFinition: 'Mate' });
+    const arrivee = enregistrerArriveeSimulateur(couleurs, papiersPeints);
+    return {
+      murs: arrivee.couleurs.map((c) => c.productHandle),
+      essayees: getTeintesEssayees(),
+      papiersPeints: getPapiersPeintsEssayes(),
+      relais: getArriveeSimulateur(),
+    };
+  }
+
+  it('2 teintes + 1 papier peint : 1 mur avec la 2e teinte, 2 teintes essayées, 1 papier peint stocké', async () => {
+    const resultat = await arriverAvec(['t1', 't2', 'pp-montg-terracotta-le'], ['t1', 't2']);
+    expect(resultat.murs).toEqual(['t2']);
+    expect(resultat.essayees).toEqual(['t2', 't1']);
+    expect(resultat.papiersPeints).toEqual(['pp-montg-terracotta-le']);
+    expect(resultat.relais.teintesRecues).toBe(2);
+    expect(resultat.relais.papiersPeintsRecus).toBe(1);
+  });
+
+  it('la dernière peinture appliquée, même si un papier peint a été appliqué après', async () => {
+    const resultat = await arriverAvec(['t1', 'pp-montg-terracotta-le', 't2', 'pp-ombre-bleunuit-le'], ['t1', 't2']);
+    expect(resultat.murs).toEqual(['t2']);
+    expect(resultat.papiersPeints).toEqual(['pp-ombre-bleunuit-le', 'pp-montg-terracotta-le']);
+  });
+
+  it('papier peint seul : 1 mur sans couleur (aucune couleur relayée), papier peint stocké', async () => {
+    const resultat = await arriverAvec(['pp-montg-terracotta-le'], []);
+    expect(resultat.murs).toEqual([]);
+    expect(resultat.essayees).toEqual([]);
+    expect(resultat.papiersPeints).toEqual(['pp-montg-terracotta-le']);
+    expect(resultat.relais).toEqual({ couleurs: [], teintesRecues: 0, papiersPeintsRecus: 1 });
+  });
+
+  it('13 papiers peints : 12 stockés, les plus récents', async () => {
+    const papiers = Array.from({ length: 13 }, (_, i) =>
+      papierPeint(`pp-test-${i + 1}-le`, 'Test', `Coloris ${i + 1}`, String(1000 + i), 'papier-peint-test'));
+    const resultat = await arriverAvec(papiers.map((p) => p.sku), [], papiers);
+    expect(resultat.papiersPeints).toHaveLength(12);
+    expect(resultat.papiersPeints[0]).toBe('pp-test-13-le');
+    expect(resultat.papiersPeints).not.toContain('pp-test-1-le');
+  });
+
+  it('relais : un nombre de papiers peints invalide est ignoré', () => {
+    expect(lireArriveeStockee(JSON.stringify({ couleurs: [], teintesRecues: 0, papiersPeintsRecus: 'deux' })))
       .toEqual({ couleurs: [], teintesRecues: 0 });
   });
 });

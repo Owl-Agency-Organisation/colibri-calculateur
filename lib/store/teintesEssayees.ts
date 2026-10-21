@@ -40,23 +40,36 @@ export function lireTeintesStockees(brut: string | null): string[] {
   }
 }
 
-export function getTeintesEssayees(): string[] {
+/**
+ * Lecture et écriture d'une liste de références du simulateur sous une clé
+ * du projet (teintes essayées ici, papiers peints essayés dans
+ * `papiersPeintsEssayes.ts`).
+ */
+export function lireListeEssayee(cle: string): string[] {
   if (typeof window === 'undefined') return [];
   try {
-    return lireTeintesStockees(localStorage.getItem(STORAGE_KEYS.TEINTES_ESSAYEES));
+    return lireTeintesStockees(localStorage.getItem(cle));
   } catch {
     return [];
   }
 }
 
-function enregistrer(suivantes: string[]): string[] {
+export function enregistrerListeEssayee(cle: string, suivantes: string[]): string[] {
   if (typeof window === 'undefined') return suivantes;
   try {
-    localStorage.setItem(STORAGE_KEYS.TEINTES_ESSAYEES, JSON.stringify(suivantes));
+    localStorage.setItem(cle, JSON.stringify(suivantes));
   } catch (error) {
-    console.error('Error saving tried colors to localStorage:', error);
+    console.error('Error saving tried references to localStorage:', error);
   }
   return suivantes;
+}
+
+export function getTeintesEssayees(): string[] {
+  return lireListeEssayee(STORAGE_KEYS.TEINTES_ESSAYEES);
+}
+
+function enregistrer(suivantes: string[]): string[] {
+  return enregistrerListeEssayee(STORAGE_KEYS.TEINTES_ESSAYEES, suivantes);
 }
 
 /** Ajoute des teintes (en tête, dans leur ordre) et retourne la liste à jour. */

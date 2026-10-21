@@ -4,23 +4,26 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { CartePapierPeint } from '@/components/simulateur/CartePapierPeint';
 import { REGLES_FINITION } from '@/lib/calcul';
-import { chargerCouleurs } from '@/lib/couleur';
 import { lireEntreeSimulateur, type EntreeSimulateur } from '@/lib/embed-messages';
+import type { PapierPeint } from '@/lib/papierPeint';
 import { LIBELLES_PIECES } from '@/lib/pieces';
+import { trierReferences } from '@/lib/referencesSimulateur';
 import { clearProjetData, getStoredPieces } from '@/lib/store/projetStore';
-import { ajouterSelectionSimulateur } from '@/lib/store/teintesEssayees';
-import { couleursMurArrivee, setArriveeSimulateur } from '@/lib/store/arriveeSimulateur';
+import { enregistrerArriveeSimulateur } from '@/lib/store/arriveeSimulateur';
 import type { Couleur } from '@/lib/types';
 
 /**
  * Arrivée depuis la page Simulateur du site :
  * `/calculateur/simulateur?piece={TypePiece}&teintes={handle1},{handle2}`
- * (teintes dans l'ordre d'application, la dernière est la plus récente).
- * Un seul mur est créé, avec la dernière teinte : Wizart n'expose pas l'état
- * de la scène. Toutes les teintes rejoignent « Vos teintes essayées ».
- * Paramètres invalides ou absents (ou aucune teinte connue de la boutique) :
- * renvoi silencieux vers l'accueil.
+ * (références dans l'ordre d'application, la dernière est la plus récente).
+ * Chaque référence est une teinte ou un papier peint (SKU de variante), triée
+ * par la boutique. Un seul mur est créé, avec la dernière peinture appliquée :
+ * Wizart n'expose pas l'état de la scène. Toutes les teintes rejoignent « Vos
+ * teintes essayées » ; les papiers peints, qui ne se calculent pas, rejoignent
+ * le récapitulatif avec un lien vers leur fiche. Paramètres invalides ou
+ * absents (ou rien de connu de la boutique) : renvoi silencieux vers l'accueil.
  */
 
 const nomAffiche = (titre: string) => titre.replace(' - Peinture biosourcée murs et plafonds', '');
@@ -47,6 +50,7 @@ export default function ArriveeSimulateurPage() {
   const router = useRouter();
   const [entree, setEntree] = useState<EntreeSimulateur | null>(null);
   const [couleurs, setCouleurs] = useState<Couleur[]>([]);
+  const [papiersPeints, setPapiersPeints] = useState<PapierPeint[]>([]);
   const [nombrePieces, setNombrePieces] = useState(0);
   const [pret, setPret] = useState(false);
 
@@ -60,14 +64,15 @@ export default function ArriveeSimulateurPage() {
     setEntree(lue);
     setNombrePieces(getStoredPieces().length);
 
-    chargerCouleurs(lue.teintes, { targetFinition: REGLES_FINITION[lue.piece]?.murs })
-      .then((chargees) => {
+    trierReferences(lue.teintes, { targetFinition: REGLES_FINITION[lue.piece]?.murs })
+      .then((triees) => {
         if (annule) return;
-        if (chargees.length === 0) {
+        if (triees.couleurs.length === 0 && triees.papiersPeints.length === 0) {
           router.replace('/');
           return;
         }
-        setCouleurs(chargees);
+        setCouleurs(triees.couleurs);
+        setPapiersPeints(triees.papiersPeints);
         setPret(true);
       });
 
@@ -78,12 +83,12 @@ export default function ArriveeSimulateurPage() {
     if (!entree) return;
     if (nouveauProjet) clearProjetData();
 
-    // Ordre d'application : la plus récente passe en tête du bloc
-    ajouterSelectionSimulateur(couleurs.map((c) => c.productHandle));
     // Même suite que le choix d'une pièce : type posé pour la page Surfaces
     sessionStorage.removeItem('colibri-edit-piece-id');
     sessionStorage.setItem('colibri-temp-piece-type', entree.piece);
-    setArriveeSimulateur({ couleurs: couleursMurArrivee(couleurs), teintesRecues: couleurs.length });
+    // Ordre d'application : la plus récente passe en tête des listes ;
+    // un mur avec la dernière peinture appliquée
+    enregistrerArriveeSimulateur(couleurs, papiersPeints);
     router.push('/calculateur/surfaces');
   };
 
@@ -99,6 +104,8 @@ export default function ArriveeSimulateurPage() {
   const derniere = couleurs[couleurs.length - 1];
   // Autres teintes essayées, la plus récente d'abord (ordre du bloc)
   const autres = couleurs.slice(0, -1).reverse();
+  // Papiers peints, le plus récent d'abord (ordre du récapitulatif)
+  const papiersRecents = [...papiersPeints].reverse();
 
   return (
     <div className="space-y-6">
@@ -123,7 +130,7 @@ export default function ArriveeSimulateurPage() {
             </span>
           </div>
 
-          {couleurs.length === 1 ? (
+          {couleurs.length === 1 && (
             <div>
               <p className="text-sm text-gray-500 mb-3">
                 Votre teinte
@@ -133,7 +140,8 @@ export default function ArriveeSimulateurPage() {
                 <CarteTeinte couleur={derniere} mention="Mur 1" />
               </ul>
             </div>
-          ) : (
+          )}
+          {couleurs.length > 1 && (
             <>
               <div>
                 <p className="text-sm text-gray-500 mb-3">
@@ -156,6 +164,23 @@ export default function ArriveeSimulateurPage() {
                 </ul>
               </div>
             </>
+          )}
+
+          {papiersRecents.length > 0 && (
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">
+                {papiersRecents.length > 1 ? 'Papiers peints essayés' : 'Papier peint essayé'}
+              </h2>
+              <p className="text-sm text-gray-500 mt-1 mb-3">
+                Le papier peint ne se calcule pas ici&nbsp;: vous le commandez depuis sa fiche. Vous le retrouverez
+                dans votre récapitulatif.
+              </p>
+              <ul className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {papiersRecents.map((papier) => (
+                  <CartePapierPeint key={papier.sku} papierPeint={papier} />
+                ))}
+              </ul>
+            </div>
           )}
         </CardContent>
       </Card>

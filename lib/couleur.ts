@@ -114,11 +114,17 @@ export class ErreurChargementCouleur extends Error {}
  */
 export async function chargerCouleur(
   handle: string,
-  options: { targetFinition?: string; collection?: string; produit?: ProduitChoisi } = {},
+  options: {
+    targetFinition?: string;
+    collection?: string;
+    produit?: ProduitChoisi;
+    /** false : pas d'avertissement si inconnue (l'appelant essaie un papier peint) */
+    signalerInconnue?: boolean;
+  } = {},
 ): Promise<Couleur | null> {
   const response = await fetch(`/api/shopify/product/${encodeURIComponent(handle)}`);
   if (response.status === 404) {
-    console.warn(`Teinte inconnue de la boutique, ignorée : ${handle}`);
+    if (options.signalerInconnue !== false) console.warn(`Teinte inconnue de la boutique, ignorée : ${handle}`);
     return null;
   }
   if (!response.ok) throw new ErreurChargementCouleur('Erreur lors du chargement du produit');

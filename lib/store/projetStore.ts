@@ -11,6 +11,8 @@ export const STORAGE_KEYS = {
   SHOPIFY_DATA: 'colibri-projet-shopify-data',
   // Teintes essayées dans le simulateur (lib/store/teintesEssayees.ts)
   TEINTES_ESSAYEES: 'colibri-projet-teintes-essayees',
+  // Papiers peints essayés dans le simulateur (lib/store/papiersPeintsEssayes.ts)
+  PAPIERS_PEINTS_ESSAYES: 'colibri-projet-papiers-peints-essayes',
 } as const;
 
 // Clés localStorage héritées des anciennes versions (étape identification,
