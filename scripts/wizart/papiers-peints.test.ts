@@ -6,7 +6,7 @@ import {
   buildWallpaperVariantRows,
   compareTextures,
   isLeVariant,
-  parseLeWidth,
+  parseLeSize,
   parseWallpaperManualData,
   patternOffset,
   toCsv,
@@ -14,7 +14,7 @@ import {
   type WallpaperVariantSource,
 } from './common';
 
-/** Les 3 papiers peints de la boutique, relevés sur l'Admin API le 21/10/2026 */
+/** Les 3 papiers peints de la boutique, relevés sur l'Admin API (option « Taille » corrigée le 22/10/2026) */
 function produit(handle: string, title: string, largeur: number, coloris: [string, string, string][]): WallpaperVariantSource {
   return {
     handle,
@@ -35,13 +35,13 @@ function produit(handle: string, title: string, largeur: number, coloris: [strin
 }
 
 const PRODUITS: WallpaperVariantSource[] = [
-  produit('papier-peint-montgolfiere', 'Montgolfières - Papier peint écologique enfant', 60, [
+  produit('papier-peint-montgolfiere', 'Montgolfières - Papier peint écologique enfant', 53, [
     ['Terracotta', 'pp-montg-terracotta', '57106064965977'],
     ['Blanc', 'pp-montg-blanc', '57106064933209'],
     ['Rose', 'pp-montg-rose', '57106064998745'],
     ['Bleu', 'pp-montg-bleu', '57106065031513'],
   ]),
-  produit('rayures-papier-peint-ecologique', 'Rayures - Papier peint écologique', 60, [
+  produit('rayures-papier-peint-ecologique', 'Rayures - Papier peint écologique', 53, [
     ['Rayures bleues', 'pp-rayur-bleu', '57166674919769'],
     ['Rayures jaunes', 'pp-rayur-jaune', '57166674723161'],
     ['Rayures terracotta', 'pp-rayur-terracotta', '57166674788697'],
@@ -68,30 +68,50 @@ describe('export WALLPAPER — une ligne par coloris', () => {
     expect(rows.some((r) => r.sku.endsWith('-ech'))).toBe(false);
   });
 
-  it('largeurs du lé : 0.6 (Montgolfières, Rayures) et 0.53 (Ombrelle)', () => {
+  it('lé de 53 × 280 cm (confirmé le 22/10/2026) : product_width 0.53, wallpaper_roll_length 2.8', () => {
     const { rows } = buildWallpaperVariantRows(PRODUITS, MANUEL);
-    const largeurs = Object.fromEntries(rows.map((r) => [r.sku, r.row.product_width]));
-    expect(largeurs['pp-montg-terracotta-le']).toBe('0.6');
-    expect(largeurs['pp-rayur-vert-le']).toBe('0.6');
-    expect(largeurs['pp-ombre-bleunuit-le']).toBe('0.53');
+    expect(rows.every((r) => r.row.product_width === '0.53' && r.row.wallpaper_roll_length === '2.8')).toBe(true);
   });
 
-  it('ligne complète : nom du motif et coloris, collection, fiche sur la variante, prix vides', () => {
+  it('largeur et longueur suivent l’option « Taille » de chaque produit', () => {
+    const source = produit('test', 'Test - Papier peint', 60, [['Bleu', 'pp-test-bleu', '1']]);
+    source.variants[0].selectedOptions[1].value = 'Lé : 60x1000cm';
+    const { rows } = buildWallpaperVariantRows([source], MANUEL);
+    expect(rows[0].row).toMatchObject({ product_width: '0.6', wallpaper_roll_length: '10' });
+  });
+
+  it('dimensions illisibles : product_width et wallpaper_roll_length vides, signalées', () => {
+    const source = produit('test', 'Test - Papier peint', 53, [['Bleu', 'pp-test-bleu', '1']]);
+    source.variants[0].selectedOptions[1].value = 'Lé : grand format';
+    const { rows } = buildWallpaperVariantRows([source], MANUEL);
+    expect(rows[0].row).toMatchObject({ product_width: '', wallpaper_roll_length: '' });
+    expect(rows[0].notes[0]).toContain('dimensions illisibles');
+  });
+
+  it('ligne complète : 35 colonnes, valeurs par défaut, prix et colonnes non renseignées vides', () => {
     const { rows } = buildWallpaperVariantRows(PRODUITS, MANUEL);
+    const vides = Object.fromEntries(WALLPAPER_EXPORT_COLUMNS.map((c) => [c, '']));
     expect(rows[0].row).toEqual({
+      ...vides,
       brand_name: 'Colibri Peinture',
       collection_name: 'Papiers peints',
       product_name: 'Montgolfières - Terracotta',
       unique_sku_id: 'pp-montg-terracotta-le',
       product_image: 'pp-montg-terracotta-le',
-      product_width: '0.6',
+      product_width: '0.53',
       repeat_width: '0.53',
       pattern_repeat: '0.64',
       pattern_offset: '0',
       product_link: 'https://www.colibripeinture.com/products/papier-peint-montgolfiere?variant=57106064965977',
       product_regular_price: '',
       product_promotional_price: '',
+      wallpaper_roll_length: '2.8',
+      reverse: 'no',
+      mural: 'no',
+      product_layout: 'vertical',
+      application_surface: 'wall',
     });
+    expect(Object.keys(rows[0].row)).toHaveLength(35);
     expect(rows.every((r) => r.row.product_link.includes('?variant='))).toBe(true);
     expect(rows.find((r) => r.sku === 'pp-rayur-bleu-le')?.row.product_name).toBe('Rayures bleues');
   });
@@ -132,24 +152,31 @@ describe('export WALLPAPER — une ligne par coloris', () => {
     expect(rows.find((r) => r.sku === 'pp-rayur-bleu-le')?.row.pattern_offset).toBe('0');
   });
 
-  it('CSV : colonnes requises puis facultatives, une ligne par coloris', () => {
+  it('CSV : en-tête exact des 35 colonnes du mapping « default » Wallpaper, une ligne par coloris', () => {
     const { rows } = buildWallpaperVariantRows(PRODUITS, MANUEL);
     const csv = toCsv(WALLPAPER_EXPORT_COLUMNS, rows.map((r) => r.row));
     const lignes = csv.trimEnd().split('\r\n');
     expect(lignes).toHaveLength(13);
     expect(lignes[0]).toBe(
       'brand_name,collection_name,product_name,unique_sku_id,product_image,product_width,repeat_width,'
-      + 'pattern_repeat,pattern_offset,product_link,product_regular_price,product_promotional_price',
+      + 'pattern_repeat,pattern_offset,product_link,product_regular_price,product_promotional_price,'
+      + 'wallpaper_roll_length,color,base,coating,interior_type,style,pattern,product_description,texture,'
+      + 'country_of_origin,removal_type,product_transparency,reverse,mural,product_availability,product_layout,'
+      + 'application_surface,product_context,context_currency,features,pattern_scale,installation_method,'
+      + 'additional_data',
     );
+    expect(lignes[0].split(',')).toHaveLength(35);
+    expect(lignes.slice(1).every((ligne) => ligne.split(',').length === 35)).toBe(true);
   });
 });
 
 describe('export WALLPAPER — lecture', () => {
-  it('lé : largeur lue dans l’option « Taille »', () => {
-    expect(parseLeWidth('Lé : 60x280cm')).toBe(0.6);
-    expect(parseLeWidth('Lé : 53x280cm')).toBe(0.53);
-    expect(parseLeWidth('Lé : 0,53 x 2,8 m')).toBe(0.53);
-    expect(parseLeWidth('Echantillon : A4')).toBeNull();
+  it('lé : largeur et longueur lues dans l’option « Taille »', () => {
+    expect(parseLeSize('Lé : 53x280cm')).toEqual({ width: 0.53, length: 2.8 });
+    expect(parseLeSize('Lé : 60x280cm')).toEqual({ width: 0.6, length: 2.8 });
+    expect(parseLeSize('Lé : 0,53 x 2,8 m')).toEqual({ width: 0.53, length: 2.8 });
+    expect(parseLeSize('Lé : 530 x 2800 mm')).toEqual({ width: 0.53, length: 2.8 });
+    expect(parseLeSize('Echantillon : A4')).toBeNull();
     expect(isLeVariant([{ name: 'Taille', value: 'Lé : 60x280cm' }])).toBe(true);
     expect(isLeVariant([{ name: 'Taille', value: 'Echantillon : A4' }])).toBe(false);
   });
