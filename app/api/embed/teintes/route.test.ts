@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MONTGOLFIERES_ADMIN, reponseCatalogue } from '@/lib/test/papiersPeintsAdmin';
 
 const shopifyFetch = vi.fn();
 vi.mock('@/lib/shopify', () => ({ shopifyFetch: (...args: unknown[]) => shopifyFetch(...args) }));
-// Admin API (résolution des SKU papier peint) : aucune variante par défaut
+// Admin API (catalogue des papiers peints) : catalogue vide par défaut
 const callAdminAPI = vi.fn();
 vi.mock('@/lib/shopify-admin', () => ({ callAdminAPI: (...args: unknown[]) => callAdminAPI(...args) }));
 
 const { GET, OPTIONS } = await import('./route');
+const { viderCachePapiersPeints } = await import('@/lib/shopify-papiers-peints');
 
 const APP = 'https://calculateur.colibripeinture.com';
 const BOUTIQUE = 'https://www.colibripeinture.com';
@@ -21,7 +23,8 @@ describe('GET /api/embed/teintes', () => {
   beforeEach(() => {
     shopifyFetch.mockReset();
     callAdminAPI.mockReset();
-    callAdminAPI.mockResolvedValue({});
+    callAdminAPI.mockResolvedValue(reponseCatalogue([]));
+    viderCachePapiersPeints();
   });
 
   it('renvoie [{ handle, nom, hex }] dans l’ordre demandé, inconnus et invalides ignorés', async () => {
@@ -78,24 +81,6 @@ describe('GET /api/embed/teintes', () => {
   });
 });
 
-/** Variante « Lé » telle que renvoyée par l'Admin API (données réelles du 21/10/2026) */
-const VARIANTE_MONTGOLFIERE = {
-  id: 'gid://shopify/ProductVariant/57106064965977',
-  legacyResourceId: '57106064965977',
-  sku: 'pp-montg-terracotta-le',
-  selectedOptions: [
-    { name: 'Couleur', value: 'Terracotta' },
-    { name: 'Taille', value: 'Lé : 60x280cm' },
-  ],
-  image: { url: 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/mockup_bebe_-_motif_1_-_terracotta.png' },
-  product: {
-    handle: 'papier-peint-montgolfiere',
-    title: 'Montgolfières - Papier peint écologique enfant',
-    productType: 'Papier peint',
-    featuredImage: null,
-  },
-};
-
 const REFERENCE_MONTGOLFIERE = {
   handle: 'pp-montg-terracotta-le',
   nom: 'Montgolfières Terracotta',
@@ -109,6 +94,8 @@ describe('GET /api/embed/teintes — papiers peints', () => {
   beforeEach(() => {
     shopifyFetch.mockReset();
     callAdminAPI.mockReset();
+    callAdminAPI.mockResolvedValue(reponseCatalogue([MONTGOLFIERES_ADMIN]));
+    viderCachePapiersPeints();
   });
 
   it('référence teinte seule : type peinture, sans appel Admin', async () => {
@@ -122,24 +109,21 @@ describe('GET /api/embed/teintes — papiers peints', () => {
 
   it('référence papier peint : type, image, lien de la variante, hex null', async () => {
     shopifyFetch.mockResolvedValue({ data: { t0: null } });
-    callAdminAPI.mockResolvedValue({ v0: { nodes: [VARIANTE_MONTGOLFIERE] } });
     const reponse = await GET(requete('pp-montg-terracotta-le', BOUTIQUE));
     expect(reponse.status).toBe(200);
     expect(await reponse.json()).toEqual([REFERENCE_MONTGOLFIERE]);
-    const [, variables] = callAdminAPI.mock.calls[0];
-    expect(variables).toEqual({ q0: 'sku:"pp-montg-terracotta-le"' });
     expect(reponse.headers.get('Cache-Control')).toBe('public, max-age=300');
   });
 
-  it('référence inconnue (ni teinte ni papier peint) : absente', async () => {
+  it('référence inconnue (ni teinte ni papier peint) : absente, aucun appel Admin une fois le catalogue en cache', async () => {
     shopifyFetch.mockResolvedValue({ data: { t0: null } });
-    // La recherche Admin est permissive : un SKU voisin n'est pas retenu
-    callAdminAPI.mockResolvedValue({ v0: { nodes: [{ ...VARIANTE_MONTGOLFIERE, sku: 'pp-montg-terracotta-ech' }] } });
-    const reponse = await GET(requete('pp-montg-terracotta', BOUTIQUE));
+    await GET(requete('pp-montg-terracotta-le', BOUTIQUE));
+    const reponse = await GET(requete('zz-random-sku', BOUTIQUE));
     expect(await reponse.json()).toEqual([]);
+    expect(callAdminAPI).toHaveBeenCalledTimes(1);
   });
 
-  it('mélange : ordre demandé, teintes et papiers peints, inconnue absente, Admin interrogé pour les seules non-teintes', async () => {
+  it('mélange : ordre demandé, teintes et papiers peints, inconnue absente', async () => {
     shopifyFetch.mockResolvedValue({
       data: {
         t0: { handle: 'horizon', title: 'Horizon - Peinture', hex: { value: '#8fa9b8' } },
@@ -148,23 +132,13 @@ describe('GET /api/embed/teintes — papiers peints', () => {
         t3: { handle: 'deguesde', title: 'Deguesde - Peinture', hex: null },
       },
     });
-    callAdminAPI.mockResolvedValue({ v0: { nodes: [VARIANTE_MONTGOLFIERE] }, v1: { nodes: [] } });
     const reponse = await GET(requete('horizon,pp-montg-terracotta-le,inconnue,deguesde', BOUTIQUE));
     expect((await reponse.json()).map((r: { handle: string; type: string }) => `${r.type}:${r.handle}`)).toEqual([
       'peinture:horizon',
       'papier-peint:pp-montg-terracotta-le',
       'peinture:deguesde',
     ]);
-    const [, variables] = callAdminAPI.mock.calls[0];
-    expect(variables).toEqual({ q0: 'sku:"pp-montg-terracotta-le"', q1: 'sku:"inconnue"' });
-  });
-
-  it('un produit qui n’est pas un papier peint n’est pas retenu', async () => {
-    shopifyFetch.mockResolvedValue({ data: { t0: null } });
-    callAdminAPI.mockResolvedValue({
-      v0: { nodes: [{ ...VARIANTE_MONTGOLFIERE, product: { ...VARIANTE_MONTGOLFIERE.product, productType: 'Peinture' } }] },
-    });
-    expect(await (await GET(requete('pp-montg-terracotta-le', BOUTIQUE))).json()).toEqual([]);
+    expect(callAdminAPI).toHaveBeenCalledTimes(1);
   });
 
   it('Admin indisponible : teintes renvoyées sans les papiers peints, sans cache', async () => {

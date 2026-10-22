@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  REQUETE_CATALOGUE_PAPIERS_PEINTS,
+  cataloguePapiersPeints,
   chargerPapierPeint,
   chargerPapiersPeints,
   estTypePapierPeint,
   libellePapierPeint,
   lienFichePapierPeint,
-  requetePapiersPeints,
   versPapierPeint,
   type VariantePapierPeintAdmin,
 } from '@/lib/papierPeint';
@@ -73,11 +74,21 @@ describe('papier peint — logique pure', () => {
       .toBe('https://www.colibripeinture.com/products/papier-peint-montgolfiere?variant=57106064965977');
   });
 
-  it('requête Admin : un alias par SKU, valeurs en variables, aucun prix', () => {
-    const requete = requetePapiersPeints(2);
-    expect(requete).toContain('query PapiersPeints($q0: String!, $q1: String!)');
-    expect(requete).toContain('v1: productVariants(first: 5, query: $q1)');
-    expect(requete).not.toMatch(/price/i);
+  it('requête Admin du catalogue : produits « Papier peint » et variantes, paginée, aucun prix', () => {
+    expect(REQUETE_CATALOGUE_PAPIERS_PEINTS).toContain(`products(first: 50, after: $after, query: "product_type:'Papier peint'")`);
+    expect(REQUETE_CATALOGUE_PAPIERS_PEINTS).toContain('pageInfo { hasNextPage endCursor }');
+    expect(REQUETE_CATALOGUE_PAPIERS_PEINTS).not.toMatch(/price/i);
+  });
+
+  it('catalogue : table SKU → papier peint, toutes variantes avec SKU, autres produits écartés', () => {
+    const { product, ...varianteSeule } = variante;
+    const produit = { ...product, variants: { nodes: [varianteSeule, { ...varianteSeule, id: 'x', sku: null }] } };
+    const table = cataloguePapiersPeints([
+      produit,
+      { ...produit, handle: 'peinture', productType: 'Peinture', variants: { nodes: [{ ...varianteSeule, sku: 'horizon' }] } },
+    ]);
+    expect([...table.keys()]).toEqual(['pp-rayur-bleu-le']);
+    expect(table.get('pp-rayur-bleu-le')).toEqual(versPapierPeint('pp-rayur-bleu-le', variante));
   });
 });
 

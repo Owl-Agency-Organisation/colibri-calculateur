@@ -8,8 +8,9 @@ import { PARENT_ORIGIN } from '@/lib/navigation';
  * Référence Wizart d'un papier peint = SKU Shopify de sa variante « Lé »
  * (ex. `pp-montg-terracotta-le`) : une référence reçue du simulateur est soit
  * un handle de teinte, soit un SKU de variante papier peint. La résolution
- * d'un SKU se fait côté serveur (Admin API, `lib/shopify-papiers-peints.ts`) :
- * la Storefront API ne filtre pas les produits par SKU.
+ * d'un SKU se fait côté serveur, dans le catalogue des papiers peints lu dans
+ * l'Admin API et gardé en cache (`lib/shopify-papiers-peints.ts`) : la
+ * Storefront API ne filtre pas les produits par SKU.
  *
  * Un papier peint ne se calcule pas : il s'affiche avec un lien vers sa fiche
  * boutique, où le client le commande. Aucun prix ici.
@@ -54,7 +55,7 @@ export function estTypePapierPeint(productType: string | null | undefined): bool
   return typeof productType === 'string' && /^\s*papiers?[\s-]+peints?\s*$/i.test(productType);
 }
 
-/** Fiche boutique d'une variante, dans la fenêtre principale. */
+/** Fiche boutique d'une variante. */
 export function lienFichePapierPeint(handle: string, idVariante: string): string {
   return `${PARENT_ORIGIN}/products/${encodeURIComponent(handle)}?variant=${encodeURIComponent(idVariante)}`;
 }
@@ -75,9 +76,9 @@ function valeurOption(options: readonly { name: string; value: string }[], nom: 
 }
 
 /**
- * Papier peint à partir de la variante trouvée pour un SKU. Null si la
- * variante est absente, si son SKU ne correspond pas exactement (la recherche
- * Shopify est permissive) ou si son produit n'est pas un papier peint.
+ * Papier peint à partir d'une variante et de son SKU. Null si la variante est
+ * absente, si son SKU ne correspond pas exactement ou si son produit n'est
+ * pas un papier peint.
  */
 export function versPapierPeint(sku: string, variante: VariantePapierPeintAdmin | null | undefined): PapierPeint | null {
   if (!variante || variante.sku?.trim().toLowerCase() !== sku) return null;
@@ -95,28 +96,60 @@ export function versPapierPeint(sku: string, variante: VariantePapierPeintAdmin 
   };
 }
 
-/** Terme de recherche Admin `sku:"…"` (valeur déjà validée : handle Shopify). */
-export function rechercheSku(sku: string): string {
-  return `sku:"${sku}"`;
+/** Produit papier peint tel que lu dans l'Admin API, avec ses variantes */
+export interface ProduitPapierPeintAdmin {
+  handle: string;
+  title: string;
+  productType: string;
+  featuredImage: { url: string } | null;
+  variants: { nodes: Omit<VariantePapierPeintAdmin, 'product'>[] };
 }
 
 /**
- * Requête Admin : un alias par SKU (valeurs en variables, jamais
- * interpolées). Quelques résultats par SKU : la correspondance exacte est
- * vérifiée par `versPapierPeint`.
+ * Requête Admin du catalogue des papiers peints : tous les produits de type
+ * « Papier peint » et leurs variantes, en une fois (paginée par curseur).
+ * Aucune valeur reçue de l'extérieur n'y entre : une référence inconnue ne
+ * déclenche jamais de requête.
  */
-export function requetePapiersPeints(nombre: number): string {
-  const variables = Array.from({ length: nombre }, (_, i) => `$q${i}: String!`).join(', ');
-  const champs = Array.from({ length: nombre }, (_, i) =>
-    `v${i}: productVariants(first: 5, query: $q${i}) { nodes { ...VariantePapierPeint } }`,
-  ).join('\n');
-  return `query PapiersPeints(${variables}) {\n${champs}\n}
-fragment VariantePapierPeint on ProductVariant {
-  id legacyResourceId sku
-  selectedOptions { name value }
-  image { url }
-  product { handle title productType featuredImage { url } }
+export const REQUETE_CATALOGUE_PAPIERS_PEINTS = `query CataloguePapiersPeints($after: String) {
+  products(first: 50, after: $after, query: "product_type:'Papier peint'") {
+    pageInfo { hasNextPage endCursor }
+    nodes {
+      handle title productType featuredImage { url }
+      variants(first: 100) {
+        nodes { id legacyResourceId sku selectedOptions { name value } image { url } }
+      }
+    }
+  }
 }`;
+
+/**
+ * Table SKU → papier peint du catalogue (toutes les variantes portant un
+ * SKU). Les produits qui ne sont pas des papiers peints sont écartés
+ * (`versPapierPeint`) ; à SKU en double, la première variante l'emporte.
+ */
+export function cataloguePapiersPeints(produits: readonly ProduitPapierPeintAdmin[]): Map<string, PapierPeint> {
+  const table = new Map<string, PapierPeint>();
+  for (const { variants, ...product } of produits) {
+    for (const variante of variants.nodes) {
+      const sku = variante.sku?.trim().toLowerCase();
+      if (!sku || table.has(sku)) continue;
+      const papier = versPapierPeint(sku, { ...variante, product });
+      if (papier) table.set(sku, papier);
+    }
+  }
+  return table;
+}
+
+/** Libellé accessible de « Voir la fiche » (la fiche s'ouvre dans un nouvel onglet). */
+export const LIBELLE_VOIR_FICHE = 'Voir la fiche (nouvel onglet)';
+
+/**
+ * Ouvre la fiche boutique dans un nouvel onglet : l'app tourne dans une
+ * iframe, et quitter la page ferait perdre la saisie en cours (page Surfaces).
+ */
+export function ouvrirFichePapierPeint(lien: string): void {
+  window.open(lien, '_blank', 'noopener');
 }
 
 /** Erreur réseau ou serveur (≠ papier peint inconnu de la boutique) */
