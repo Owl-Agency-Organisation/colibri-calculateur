@@ -5,8 +5,10 @@ import {
   chargerPapierPeint,
   chargerPapiersPeints,
   estTypePapierPeint,
+  LIBELLE_VOIR_FICHE,
   libellePapierPeint,
   lienFichePapierPeint,
+  ouvrirFichePapierPeint,
   versPapierPeint,
   type VariantePapierPeintAdmin,
 } from '@/lib/papierPeint';
@@ -89,6 +91,20 @@ describe('papier peint — logique pure', () => {
     ]);
     expect([...table.keys()]).toEqual(['pp-rayur-bleu-le']);
     expect(table.get('pp-rayur-bleu-le')).toEqual(versPapierPeint('pp-rayur-bleu-le', variante));
+  });
+});
+
+describe('« Voir la fiche »', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('ouvre la fiche dans un nouvel onglet, sans quitter la page (saisie conservée)', () => {
+    const open = vi.fn();
+    vi.stubGlobal('window', { open });
+    ouvrirFichePapierPeint(MONTGOLFIERE_TERRACOTTA.lien);
+    expect(open).toHaveBeenCalledWith(MONTGOLFIERE_TERRACOTTA.lien, '_blank', 'noopener');
+    expect(LIBELLE_VOIR_FICHE).toBe('Voir la fiche (nouvel onglet)');
   });
 });
 

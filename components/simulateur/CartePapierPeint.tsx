@@ -1,13 +1,17 @@
 'use client';
 
-import { libellePapierPeint, type PapierPeint } from '@/lib/papierPeint';
-import { redirectTop } from '@/lib/navigation';
+import {
+  LIBELLE_VOIR_FICHE,
+  libellePapierPeint,
+  ouvrirFichePapierPeint,
+  type PapierPeint,
+} from '@/lib/papierPeint';
 
 /**
  * Carte d'un papier peint essayé dans le simulateur : image de la variante,
  * « {Motif}, {Coloris} », « Voir la fiche ». Un papier peint ne se calcule
- * pas : la fiche s'ouvre dans la fenêtre principale (l'app tourne dans une
- * iframe), où le client le commande.
+ * pas : la fiche, où le client le commande, s'ouvre dans un nouvel onglet
+ * (le projet en cours reste ouvert).
  */
 export function CartePapierPeint({ papierPeint }: { papierPeint: PapierPeint }) {
   const libelle = libellePapierPeint(papierPeint.motif, papierPeint.coloris);
@@ -21,7 +25,8 @@ export function CartePapierPeint({ papierPeint }: { papierPeint: PapierPeint }) 
       <p className="text-xs font-medium text-gray-900 line-clamp-2">{libelle}</p>
       <button
         type="button"
-        onClick={() => redirectTop(papierPeint.lien)}
+        onClick={() => ouvrirFichePapierPeint(papierPeint.lien)}
+        aria-label={LIBELLE_VOIR_FICHE}
         className="mt-2 text-left text-xs font-medium text-primary-500 underline underline-offset-2 hover:text-primary-600"
       >
         Voir la fiche

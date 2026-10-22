@@ -7,8 +7,13 @@ import { getTeintesEssayees, ajouterSelectionSimulateur } from '@/lib/store/tein
 import { ajouterPapiersPeintsSimulateur } from '@/lib/store/papiersPeintsEssayes';
 import { ecouterSimulateur, useSimulateurDisponible } from '@/lib/embed-parent';
 import { messageOuvrirSimulateur } from '@/lib/embed-messages';
-import { postToParent, redirectTop } from '@/lib/navigation';
-import { libellePapierPeint, type PapierPeint } from '@/lib/papierPeint';
+import { postToParent } from '@/lib/navigation';
+import {
+  LIBELLE_VOIR_FICHE,
+  libellePapierPeint,
+  ouvrirFichePapierPeint,
+  type PapierPeint,
+} from '@/lib/papierPeint';
 import { trierReferences } from '@/lib/referencesSimulateur';
 
 interface Collection {
@@ -388,7 +393,8 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition,
                         Papier peint essayé&nbsp;: <span className="font-semibold">{libellePapierPeint(papier.motif, papier.coloris)}</span>{' '}
                         (<button
                           type="button"
-                          onClick={() => redirectTop(papier.lien)}
+                          onClick={() => ouvrirFichePapierPeint(papier.lien)}
+                          aria-label={LIBELLE_VOIR_FICHE}
                           className="underline underline-offset-2 hover:text-primary-500"
                         >
                           voir la fiche
