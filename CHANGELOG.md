@@ -7,6 +7,28 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Simulateur : export WALLPAPER complet, libellés de la barre
+
+#### Modifié
+- **Export WALLPAPER aux 35 colonnes** du mapping « default » du PIM (type
+  Wallpaper) : l'import refuse un CSV auquel il manque une colonne, même vide.
+  `wallpaper_roll_length` lue dans l'option « Taille » (2.8), `reverse` et
+  `mural` à `no`, `product_layout` `vertical`, `application_surface` `wall`,
+  les autres vides. Importé avec succès le 22/10 (12 lignes sur 12).
+- Largeur des lés confirmée par Colibri le 22/10 : 53 cm pour les trois
+  papiers peints (option « Taille » corrigée en boutique).
+- Barre du simulateur : « Vos essais » au lieu de « Teintes essayées »,
+  « Utiliser mon choix → » / « Utiliser mes choix (n) → », barre vide
+  « Appliquez une teinte ou un papier peint sur un mur pour le retenir »,
+  annonces « Aucun essai retenu », « 1 essai retenu », « n essais retenus ».
+
+#### Supprimé
+- `toWallpaperRow`, `parseLengthToMeters` et leurs tests (plus utilisés).
+
+#### Tests
+- En-tête exact des 35 colonnes, valeurs par défaut, largeur et longueur lues
+  dans l'option « Taille », nouveaux libellés de la barre.
+
 ### Simulateur : papiers peints
 
 #### Ajouté

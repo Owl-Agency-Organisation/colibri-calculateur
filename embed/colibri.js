@@ -344,18 +344,18 @@
     return suivante.length > MAX_TEINTES ? suivante.slice(suivante.length - MAX_TEINTES) : suivante;
   }
 
-  /** Libellé du bouton principal de la barre (désactivé à 0 teinte). */
+  /**
+   * Libellé du bouton principal de la barre (désactivé à 0). La barre retient
+   * teintes et papiers peints : les libellés parlent de choix, pas de teintes.
+   */
   function libelleUtiliser(nombre) {
-    if (nombre === 0) return 'Utiliser mes teintes →';
-    return nombre > 1
-      ? 'Utiliser ces teintes (' + nombre + ') →'
-      : 'Utiliser cette teinte →';
+    return nombre > 1 ? 'Utiliser mes choix (' + nombre + ') →' : 'Utiliser mon choix →';
   }
 
-  /** Annonce du nombre de teintes (lecteurs d'écran). */
+  /** Annonce du nombre d'essais retenus (lecteurs d'écran). */
   function annonceTeintes(nombre) {
-    if (nombre === 0) return 'Aucune teinte retenue';
-    return nombre === 1 ? '1 teinte retenue' : nombre + ' teintes retenues';
+    if (nombre === 0) return 'Aucun essai retenu';
+    return nombre === 1 ? '1 essai retenu' : nombre + ' essais retenus';
   }
 
   /** Couleur d'une pastille : code hexadécimal valide, sinon null (nom seul). */
@@ -597,11 +597,12 @@
   });
 
   /**
-   * Barre Colibri : teintes essayées, « Fermer » et « Utiliser… ».
+   * Barre Colibri : « Vos essais » (teintes et papiers peints), « Fermer » et
+   * « Utiliser… ».
    * options : { origineApp, surFermer(), surUtiliser() }.
    */
   function creerBarre(options) {
-    var barre = creer('div', { class: 'barre', role: 'region', 'aria-label': 'Teintes essayées' });
+    var barre = creer('div', { class: 'barre', role: 'region', 'aria-label': 'Vos essais' });
     var logo = creer('span', { class: 'logo' }, [
       creer('img', { src: options.origineApp + CHEMIN_LOGO, alt: 'Colibri', height: '22' }),
     ]);
@@ -612,7 +613,7 @@
 
     barre.appendChild(creer('div', { class: 'haut' }, [
       logo,
-      creer('span', { class: 'libelle', texte: 'Teintes essayées' }),
+      creer('span', { class: 'libelle', texte: 'Vos essais' }),
       liste,
       annonce,
     ]));
@@ -626,7 +627,7 @@
     function rendre() {
       liste.textContent = '';
       if (teintes.length === 0) {
-        liste.appendChild(creer('li', { class: 'vide', texte: 'Appliquez une teinte sur un mur pour la retenir' }));
+        liste.appendChild(creer('li', { class: 'vide', texte: 'Appliquez une teinte ou un papier peint sur un mur pour le retenir' }));
       }
       teintes.forEach(function (teinte) {
         var connue = couleursTeintes.reference(teinte.handle);
