@@ -398,18 +398,25 @@ Contenus :
       `--textures` ; `repeat_width` = largeur du motif importé (doc Wizart)
 - [x] `/api/embed/teintes` : `{ handle, nom, hex, type, image, lien }` ; barre :
       vignette ronde de l'image pour un papier peint
-- [x] App : résolution par SKU (`lib/papierPeint.ts`, `/api/shopify/papier-peint/{sku}`),
+- [x] App : résolution par SKU (`lib/papierPeint.ts`, `/api/shopify/papier-peint/{sku}`)
+      dans le catalogue des papiers peints en cache serveur (une requête Admin,
+      10 minutes ; aucun appel par référence reçue),
       tri des références, stockage `colibri-projet-papiers-peints-essayes` (12 au
       plus, purgé avec le projet)
 - [x] Écran d'arrivée (bloc « Papier peint essayé »), mur avec la dernière
       **peinture** (sans couleur si papiers peints seuls, bandeau Surfaces),
       popup couleur (ligne « Papier peint essayé »), récapitulatif (« Papiers
-      peints essayés dans le simulateur »)
+      peints essayés dans le simulateur ») ; « Voir la fiche » en nouvel onglet
 - [x] Bouton des fiches papier peint : `data-variantes` (SKU de la variante de
       `?variant=`), bloc Liquid documenté
 - [x] Labo `/labo/pont` : deux papiers peints réels résolus par la vraie route
-- [ ] Remplir `scripts/wizart/papiers-peints.json` depuis les fichiers de
-      Colibri, préparer les 12 textures, exporter et importer dans le PIM
+- [x] `scripts/wizart/papiers-peints.json` renseigné (fichiers Colibri du
+      22/10 : motif utile 53 × 64 cm, raccord droit) ; textures préparées hors
+      repo (3180 × 3840 px, `{sku}.png`)
+- [ ] Largeur réelle des lés Montgolfières et Rayures (60 cm en boutique,
+      54 cm dans les fichiers) : vérification Colibri ; `product_width` reste
+      lu dans l'option « Taille »
+- [ ] Exporter et importer les 12 références dans le PIM
 - [ ] Shopify : bloc Liquid des fiches papier peint
       (`docs/EMBED_SHOPIFY.md`, section 3)
 - [ ] Test avec le vrai simulateur une fois les 12 références importées

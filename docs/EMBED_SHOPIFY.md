@@ -50,7 +50,8 @@ Couleur des pastilles : `GET /api/embed/teintes?handles=r1,r2` →
 `[{ handle, nom, hex, type, image, lien }]` (CORS limité à
 `https://www.colibripeinture.com` et à l'origine de l'app ; cache 5 min ;
 jamais de prix). Chaque référence est d'abord cherchée comme handle de teinte,
-puis comme SKU de variante papier peint (côté serveur) :
+puis comme SKU de variante papier peint, dans le catalogue des papiers peints
+gardé en cache côté serveur (voir ci-dessous) :
 
 | Référence | `type` | `nom` | `hex` | `image` | `lien` |
 |---|---|---|---|---|---|
@@ -59,7 +60,9 @@ puis comme SKU de variante papier peint (côté serveur) :
 | Inconnue | — absente de la réponse | | | | |
 
 La pastille d'une teinte montre un rond de couleur, celle d'un papier peint
-une vignette ronde de l'image (https seulement), puis le nom. Si rien
+une vignette ronde de l'image (https seulement), cadrée sur le haut de
+l'image (`object-position: 50% 20%`) car les images de variante sont des mises
+en situation (fauteuil et sol en bas), puis le nom. Si rien
 n'arrive, la pastille affiche le nom seul : la barre ne bloque jamais la
 sortie. Un échec (réseau, erreur serveur) n'est pas mémorisé : la couleur est
 redemandée au prochain rendu de la barre. Admin API indisponible : les teintes
@@ -77,9 +80,18 @@ peint : l'app le fait côté serveur (Admin API, la Storefront API ne cherchant
 pas par SKU). Le contrat de messages `colibri:simulateur:*` est inchangé : les
 SKU passent dans `teintes` tels quels.
 
+Les routes concernées (`/api/embed/teintes`, `/api/shopify/papier-peint/{sku}`)
+sont publiques, et les identifiants Admin servent aussi à l'estimation : aucune
+requête Admin n'est faite par référence reçue. Le serveur lit le catalogue des
+papiers peints en une requête (`products(query: "product_type:'Papier peint'")`
+avec leurs variantes) et garde la table SKU → papier peint 10 minutes en
+mémoire ; une référence inconnue ne coûte aucun appel. Un échec n'est jamais
+mis en cache (relu à la demande suivante).
+
 Un papier peint **ne se calcule pas** : l'app l'affiche avec « Voir la fiche »
 (écran d'arrivée, popup couleur, récapitulatif) et le client le commande
-depuis sa fiche. À l'arrivée, le mur créé reçoit la dernière **peinture**
+depuis sa fiche, ouverte dans un **nouvel onglet** : quitter la page ferait
+perdre la saisie en cours (page Surfaces). À l'arrivée, le mur créé reçoit la dernière **peinture**
 appliquée ; avec des papiers peints seuls, le mur reste sans couleur.
 
 ### Intérieur d'exemple selon le type de pièce

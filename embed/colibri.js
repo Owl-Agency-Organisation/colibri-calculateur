@@ -514,7 +514,8 @@
     '.pastille{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.12);border-radius:999px;padding:4px 14px 4px 4px;font-size:14px;white-space:nowrap;}',
     '.pastille.sans-couleur{padding:4px 14px;min-height:36px;}',
     '.rond{flex:0 0 auto;width:24px;height:24px;box-sizing:content-box;border:2px solid #fff;border-radius:50%;}',
-    '.vignette{display:block;object-fit:cover;background:#fff;}',
+    // Images de variante = mises en situation (fauteuil, sol en bas) : cadrage sur le mur
+    '.vignette{display:block;object-fit:cover;object-position:50% 20%;background:#fff;}',
     '.vide{font-size:13px;color:#cfe3dc;}',
     '.fermer{margin-left:auto;flex:0 0 auto;background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.6);border-radius:6px;padding:11px 16px;font-size:14px;line-height:1.2;cursor:pointer;}',
     '.fermer:hover{background:rgba(255,255,255,0.08);}',
