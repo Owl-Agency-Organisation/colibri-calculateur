@@ -1,12 +1,15 @@
 import { nomCourtTeinte } from '@/lib/couleur';
 import { normaliserTeintes } from '@/lib/embed-messages';
 import { PARENT_ORIGIN } from '@/lib/navigation';
+import { libellePapierPeint, type PapierPeint } from '@/lib/papierPeint';
 
 /**
- * Couleurs des teintes pour la barre du simulateur (`embed/colibri.js`) :
- * `GET /api/embed/teintes?handles=h1,h2` → `[{ handle, nom, hex }]`, lu dans
- * le catalogue Shopify (metafield `custom.code_hexadecimal`). Rien d'autre
- * n'est renvoyé (pas de prix). Logique pure, testée ; la route l'assemble.
+ * Références de la barre du simulateur (`embed/colibri.js`) :
+ * `GET /api/embed/teintes?handles=r1,r2` → `[{ handle, nom, hex, type, image, lien }]`.
+ * Une référence est un handle de teinte (couleur lue dans le metafield
+ * `custom.code_hexadecimal`) ou un SKU de variante papier peint (image et
+ * fiche de la variante). Rien d'autre n'est renvoyé (pas de prix). Logique
+ * pure, testée ; la route l'assemble.
  */
 
 export interface TeinteEmbed {
@@ -14,6 +17,17 @@ export interface TeinteEmbed {
   nom: string;
   /** `#rrggbb` (ou `#rgb`), null si le metafield est absent ou invalide */
   hex: string | null;
+}
+
+export type TypeReference = 'peinture' | 'papier-peint';
+
+/** Référence renvoyée à la barre : teinte (hex) ou papier peint (image, fiche) */
+export interface ReferenceEmbed extends TeinteEmbed {
+  type: TypeReference;
+  /** Image de la variante papier peint, null pour une teinte */
+  image: string | null;
+  /** Fiche boutique de la variante papier peint, null pour une teinte */
+  lien: string | null;
 }
 
 /** Produit tel que lu dans la Storefront API (champs utilisés) */
@@ -51,6 +65,22 @@ export function versTeinteEmbed(produit: ProduitTeinte): TeinteEmbed {
     handle: produit.handle,
     nom: nomCourtTeinte(produit.title),
     hex: normaliserHex(produit.hex?.value),
+  };
+}
+
+export function versReferencePeinture(produit: ProduitTeinte): ReferenceEmbed {
+  return { ...versTeinteEmbed(produit), type: 'peinture', image: null, lien: null };
+}
+
+/** Papier peint : `handle` = SKU reçu, nom « {Motif} {Coloris} », sans couleur. */
+export function versReferencePapierPeint(papier: PapierPeint): ReferenceEmbed {
+  return {
+    handle: papier.sku,
+    nom: libellePapierPeint(papier.motif, papier.coloris, ' '),
+    hex: null,
+    type: 'papier-peint',
+    image: papier.imageUrl,
+    lien: papier.lien,
   };
 }
 

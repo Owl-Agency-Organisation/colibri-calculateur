@@ -514,3 +514,270 @@ export function toWallpaperRow(product: WallpaperProduct): Record<WallpaperColum
 export function isWallpaperLabel(value: string | null | undefined): boolean {
   return typeof value === 'string' && /papiers?[\s-]+peints?/i.test(value);
 }
+
+// ─── Gabarit WALLPAPER : une ligne par coloris (variante « Lé ») ────────────
+
+/**
+ * Colonnes exportées : les colonnes requises, puis les colonnes facultatives
+ * renseignées (documentation « WALLPAPER (upload requirements) », relue le
+ * 21/10/2026) :
+ * - `repeat_width` (requis) : « width of the imported pattern », largeur du
+ *   motif de la texture importée, en mètres (souvent la largeur du lé) ;
+ * - `pattern_repeat` : hauteur du raccord (répétition verticale du motif) ;
+ * - `pattern_offset` : décalage entre deux lés pour que le motif raccorde
+ *   (0 pour un raccord droit ou libre, la moitié du raccord pour un raccord
+ *   sauté) ;
+ * - `product_link` : fiche boutique sur la variante ;
+ * - prix : colonnes présentes, toujours vides (la boutique est la seule
+ *   source de prix).
+ */
+export const WALLPAPER_EXPORT_COLUMNS = [
+  ...WALLPAPER_COLUMNS,
+  'pattern_repeat',
+  'pattern_offset',
+  'product_link',
+  'product_regular_price',
+  'product_promotional_price',
+] as const;
+
+export type WallpaperExportColumn = (typeof WALLPAPER_EXPORT_COLUMNS)[number];
+
+export const WALLPAPER_COLLECTION_NAME = 'Papiers peints';
+
+/** Raccord d'un papier peint : droit, sauté (décalé) ou libre (sans raccord). */
+export type WallpaperMatch = 'droit' | 'saute' | 'libre';
+
+/**
+ * Entrée du fichier manuel `papiers-peints.json` (une par SKU), remplie à la
+ * main depuis les fichiers de Colibri : ce que Shopify n'a pas. Mesures en
+ * mètres ; `null` = pas encore renseigné.
+ */
+export interface WallpaperManualEntry {
+  /** Largeur du motif de la texture fournie → `repeat_width` */
+  largeurMotif: number | null;
+  /** Hauteur du raccord → `pattern_repeat` */
+  hauteurRaccord: number | null;
+  /** Type de raccord → `pattern_offset` (0, ou moitié du raccord si sauté) */
+  raccord: WallpaperMatch | null;
+  /** Décalage explicite (mètres), prioritaire sur le calcul depuis `raccord` */
+  decalage: number | null;
+}
+
+export type WallpaperManualData = Record<string, WallpaperManualEntry>;
+
+function positiveNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+/**
+ * Lit le fichier manuel. Clés commençant par `_` ignorées (commentaires) ;
+ * valeurs invalides traitées comme non renseignées et signalées.
+ */
+export function parseWallpaperManualData(raw: string): { data: WallpaperManualData; notes: string[] } {
+  const parsed: unknown = JSON.parse(raw);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('papiers-peints.json : objet { "{sku}": { … } } attendu');
+  }
+  const data: WallpaperManualData = {};
+  const notes: string[] = [];
+  for (const [sku, value] of Object.entries(parsed as Record<string, unknown>)) {
+    if (sku.startsWith('_')) continue;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      notes.push(`${sku} : entrée illisible, ignorée`);
+      continue;
+    }
+    const entry = value as Record<string, unknown>;
+    const read = (key: string): number | null => {
+      const number = positiveNumber(entry[key]);
+      if (number === null && entry[key] !== null && entry[key] !== undefined) {
+        notes.push(`${sku} : ${key} invalide (nombre en mètres attendu)`);
+      }
+      return number;
+    };
+    const match = entry.raccord;
+    const raccord = match === 'droit' || match === 'saute' || match === 'libre' ? match : null;
+    if (raccord === null && match !== null && match !== undefined) {
+      notes.push(`${sku} : raccord invalide (« droit », « saute » ou « libre » attendu)`);
+    }
+    data[sku.trim().toLowerCase()] = {
+      largeurMotif: read('largeurMotif'),
+      hauteurRaccord: read('hauteurRaccord'),
+      raccord,
+      decalage: read('decalage'),
+    };
+  }
+  return { data, notes };
+}
+
+export interface VariantOption {
+  name: string;
+  value: string;
+}
+
+function optionValue(options: readonly VariantOption[], name: string): string | null {
+  return options.find((option) => option.name.trim().toLowerCase() === name)?.value.trim() || null;
+}
+
+/** Variante « Lé » : option « Taille » commençant par « Lé : » (pas l'échantillon A4). */
+export function isLeVariant(options: readonly VariantOption[]): boolean {
+  return /^l[ée]\s*:/i.test(optionValue(options, 'taille') ?? '');
+}
+
+/**
+ * Largeur du lé en mètres, lue dans l'option « Taille » (`Lé : 60x280cm` →
+ * 0.6). Premier nombre = largeur ; unité après le second (cm par défaut).
+ */
+export function parseLeWidth(value: string | null | undefined): number | null {
+  if (typeof value !== 'string') return null;
+  const match = value.match(/(\d+(?:[.,]\d+)?)\s*[x×]\s*\d+(?:[.,]\d+)?\s*(mm|cm|m)?\b/i);
+  if (!match) return null;
+  const factor = UNIT_TO_METERS[(match[2] ?? 'cm').toLowerCase()];
+  return roundMeters(Number(match[1].replace(',', '.')) * factor);
+}
+
+/** Nom du motif : partie du titre avant « - » (même règle que `nomCourtTeinte` de l'app). */
+export function motifName(title: string): string {
+  return title.split(/\s+[-–—]\s+/)[0].trim() || title.trim();
+}
+
+/**
+ * `product_name` : « {Motif} - {Coloris} », sans répéter le motif quand le
+ * coloris le contient déjà (« Rayures bleues », « Ombrelle bleu nuit »).
+ */
+export function wallpaperProductName(motif: string, coloris: string | null): string {
+  if (!coloris) return motif;
+  return coloris.toLowerCase().startsWith(motif.toLowerCase()) ? coloris : `${motif} - ${coloris}`;
+}
+
+/** Id numérique d'un GID Shopify (`gid://shopify/ProductVariant/123` → `123`). */
+export function numericId(gid: string): string {
+  return gid.split('/').pop() ?? gid;
+}
+
+export function wallpaperVariantLink(handle: string, variantGid: string): string {
+  return `${productLink(handle)}?variant=${numericId(variantGid)}`;
+}
+
+/** Décalage entre deux lés (`pattern_offset`), ou null s'il ne peut pas être déduit. */
+export function patternOffset(entry: WallpaperManualEntry): number | null {
+  if (entry.decalage !== null) return entry.decalage;
+  if (entry.raccord === 'droit' || entry.raccord === 'libre') return 0;
+  if (entry.raccord === 'saute' && entry.hauteurRaccord !== null) return roundMeters(entry.hauteurRaccord / 2);
+  return null;
+}
+
+export interface WallpaperVariantSource {
+  handle: string;
+  title: string;
+  variants: { id: string; sku: string | null; selectedOptions: VariantOption[] }[];
+}
+
+export interface WallpaperVariantRow {
+  sku: string;
+  productHandle: string;
+  row: Record<WallpaperExportColumn, string>;
+  notes: string[];
+}
+
+export interface WallpaperVariantRows {
+  rows: WallpaperVariantRow[];
+  /** Variantes « Lé » écartées (sans SKU, SKU en double) */
+  skipped: string[];
+  /** Entrées du fichier manuel sans variante « Lé » correspondante */
+  unusedManual: string[];
+}
+
+/**
+ * Une ligne par variante « Lé » (une par coloris) : `unique_sku_id` et
+ * `product_image` = SKU, largeur depuis l'option « Taille », raccord depuis
+ * le fichier manuel, prix vides. Les variantes « Echantillon » sont ignorées.
+ */
+export function buildWallpaperVariantRows(
+  products: readonly WallpaperVariantSource[],
+  manual: WallpaperManualData,
+): WallpaperVariantRows {
+  const rows: WallpaperVariantRow[] = [];
+  const skipped: string[] = [];
+  const seen = new Set<string>();
+
+  for (const product of products) {
+    const motif = motifName(product.title);
+    for (const variant of product.variants) {
+      if (!isLeVariant(variant.selectedOptions)) continue;
+      const sku = variant.sku?.trim().toLowerCase() ?? '';
+      if (!sku) {
+        skipped.push(`${product.handle} (variante ${numericId(variant.id)}) : SKU absent`);
+        continue;
+      }
+      if (seen.has(sku)) {
+        skipped.push(`${sku} : SKU en double (${product.handle})`);
+        continue;
+      }
+      seen.add(sku);
+
+      const notes: string[] = [];
+      const size = optionValue(variant.selectedOptions, 'taille');
+      const width = parseLeWidth(size);
+      if (width === null) notes.push(`product_width : largeur illisible dans « ${size ?? ''} »`);
+      const coloris = optionValue(variant.selectedOptions, 'couleur');
+      if (!coloris) notes.push('option « Couleur » absente');
+
+      const entry = manual[sku];
+      let repeatWidth: number | null = null;
+      let patternRepeat: number | null = null;
+      let offset: number | null = null;
+      if (!entry) {
+        notes.push('papiers-peints.json : entrée absente (repeat_width, pattern_repeat, pattern_offset vides)');
+      } else {
+        repeatWidth = entry.largeurMotif;
+        patternRepeat = entry.hauteurRaccord;
+        offset = patternOffset(entry);
+        if (repeatWidth === null) notes.push('repeat_width (requis par Wizart) : largeurMotif non renseignée');
+        if (patternRepeat === null) notes.push('pattern_repeat : hauteurRaccord non renseignée');
+        if (offset === null) notes.push('pattern_offset : raccord non renseigné');
+      }
+
+      rows.push({
+        sku,
+        productHandle: product.handle,
+        notes,
+        row: {
+          brand_name: BRAND_NAME,
+          collection_name: WALLPAPER_COLLECTION_NAME,
+          product_name: wallpaperProductName(motif, coloris),
+          unique_sku_id: sku,
+          // Nom du fichier texture attendu dans le ZIP, sans extension (= SKU)
+          product_image: sku,
+          product_width: formatMeters(width),
+          repeat_width: formatMeters(repeatWidth),
+          pattern_repeat: formatMeters(patternRepeat),
+          pattern_offset: formatMeters(offset),
+          product_link: wallpaperVariantLink(product.handle, variant.id),
+          product_regular_price: '',
+          product_promotional_price: '',
+        },
+      });
+    }
+  }
+
+  const unusedManual = Object.keys(manual).filter((sku) => !seen.has(sku));
+  return { rows, skipped, unusedManual };
+}
+
+/** Extensions de texture acceptées (`{sku}.png` ou `{sku}.jpg`). */
+export const TEXTURE_EXTENSIONS = ['.png', '.jpg'] as const;
+
+/**
+ * Compare le contenu d'un dossier de textures aux SKU exportés : SKU sans
+ * fichier `{sku}.png` / `{sku}.jpg`, et fichiers qui ne correspondent à aucun
+ * SKU (fichiers cachés ignorés). Aucun traitement d'image.
+ */
+export function compareTextures(fileNames: readonly string[], skus: readonly string[]): { missing: string[]; extra: string[] } {
+  const expected = new Set(skus.flatMap((sku) => TEXTURE_EXTENSIONS.map((ext) => `${sku}${ext}`)));
+  const visible = fileNames.filter((name) => !name.startsWith('.'));
+  const present = new Set(visible);
+  return {
+    missing: skus.filter((sku) => !TEXTURE_EXTENSIONS.some((ext) => present.has(`${sku}${ext}`))),
+    extra: visible.filter((name) => !expected.has(name)).sort(),
+  };
+}

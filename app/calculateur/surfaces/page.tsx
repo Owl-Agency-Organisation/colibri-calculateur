@@ -44,6 +44,8 @@ export default function SaisieSurfacesPage() {
   const [derniereSimulateur, setDerniereSimulateur] = useState<string | null>(null);
   // Dernière teinte du simulateur posée sur un mur depuis la popup couleur
   const [posee, setPosee] = useState<{ nom: string; mur: number } | null>(null);
+  // Arrivée du simulateur avec des papiers peints mais sans peinture : mur sans couleur
+  const [papierPeintSeul, setPapierPeintSeul] = useState(false);
 
   // Charger le type de pièce depuis sessionStorage ou éditer une pièce existante
   useEffect(() => {
@@ -100,8 +102,9 @@ export default function SaisieSurfacesPage() {
       };
       setNomPiece(`${labels[type]} ${count}`);
 
-      // Arrivée depuis le simulateur : un seul mur, avec la dernière teinte
-      // appliquée, surface vide (la finition vient de la règle de la pièce)
+      // Arrivée depuis le simulateur : un seul mur, avec la dernière peinture
+      // appliquée, surface vide (la finition vient de la règle de la pièce).
+      // Papiers peints seuls : un mur sans couleur, ils sont au récapitulatif
       const arrivee = getArriveeSimulateur();
       const couleursSimulateur = arrivee.couleurs.slice(0, MAX_MURS);
       if (couleursSimulateur.length > 0) {
@@ -114,6 +117,8 @@ export default function SaisieSurfacesPage() {
         setDerniereSimulateur(arrivee.teintesRecues > 1
           ? nomCourtTeinte(couleursSimulateur[couleursSimulateur.length - 1].titre)
           : null);
+      } else if ((arrivee.papiersPeintsRecus ?? 0) > 0) {
+        setPapierPeintSeul(true);
       }
     }
   }, [router]);
@@ -321,6 +326,16 @@ export default function SaisieSurfacesPage() {
                   Il ne reste qu&apos;à renseigner la surface de chaque mur.
                 </p>
               )}
+            </div>
+          )}
+          {papierPeintSeul && (
+            <div className="mt-3 flex items-start gap-2 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-600">
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <p>
+                Votre papier peint essayé est dans le récapitulatif. Choisissez ici la teinte des murs à peindre.
+              </p>
             </div>
           )}
           {posee && (

@@ -375,3 +375,48 @@ Contenus :
       au bloc de `/pages/test-simulateur`, puis test de bout en bout
 - [ ] Réponse de Wizart sur l'état de la scène (si exposé : revoir la création
       des murs)
+
+## Simulateur : papiers peints (branche : `claude/papiers-peints-simulateur-jxsk35`)
+
+> Décision (Philippe, 21/10) : les **papiers peints Colibri** entrent dans le
+> simulateur avant l'ouverture publique. Peinture et papier peint comptent pour
+> une seule surface Wizart (les murs) : rien à changer côté abonnement. Colibri
+> fabrique ses papiers peints et fournit les fichiers (motif raccordable,
+> largeur du lé, raccord) ; Owl prépare les textures.
+> **Identifiant** : référence Wizart d'un papier peint = **SKU de sa variante
+> « Lé »** (`unique_sku_id` → `article_sku`), par ex. `pp-montg-terracotta-le`
+> (12 références : 3 motifs × 4 coloris). Une référence reçue du simulateur est
+> soit un handle de teinte, soit un SKU de papier peint ; la distinction se fait
+> côté serveur de l'app (Admin API : la Storefront API ne cherche pas par SKU),
+> jamais dans le script. Contrat `colibri:simulateur:*` inchangé.
+> **Règle produit** : un papier peint **ne se calcule pas** (ni calcul, ni prix,
+> ni remise, ni checkout, ni kit) ; il s'affiche avec un lien vers sa fiche
+> boutique, où le client le commande.
+
+- [x] Export WALLPAPER : une ligne par variante « Lé » (12), largeur du lé
+      depuis l'option « Taille », raccord depuis `scripts/wizart/papiers-peints.json`,
+      `--textures` ; `repeat_width` = largeur du motif importé (doc Wizart)
+- [x] `/api/embed/teintes` : `{ handle, nom, hex, type, image, lien }` ; barre :
+      vignette ronde de l'image pour un papier peint
+- [x] App : résolution par SKU (`lib/papierPeint.ts`, `/api/shopify/papier-peint/{sku}`)
+      dans le catalogue des papiers peints en cache serveur (une requête Admin,
+      10 minutes ; aucun appel par référence reçue),
+      tri des références, stockage `colibri-projet-papiers-peints-essayes` (12 au
+      plus, purgé avec le projet)
+- [x] Écran d'arrivée (bloc « Papier peint essayé »), mur avec la dernière
+      **peinture** (sans couleur si papiers peints seuls, bandeau Surfaces),
+      popup couleur (ligne « Papier peint essayé »), récapitulatif (« Papiers
+      peints essayés dans le simulateur ») ; « Voir la fiche » en nouvel onglet
+- [x] Bouton des fiches papier peint : `data-variantes` (SKU de la variante de
+      `?variant=`), bloc Liquid documenté
+- [x] Labo `/labo/pont` : deux papiers peints réels résolus par la vraie route
+- [x] `scripts/wizart/papiers-peints.json` renseigné (fichiers Colibri du
+      22/10 : motif utile 53 × 64 cm, raccord droit) ; textures préparées hors
+      repo (3180 × 3840 px, `{sku}.png`)
+- [ ] Largeur réelle des lés Montgolfières et Rayures (60 cm en boutique,
+      54 cm dans les fichiers) : vérification Colibri ; `product_width` reste
+      lu dans l'option « Taille »
+- [ ] Exporter et importer les 12 références dans le PIM
+- [ ] Shopify : bloc Liquid des fiches papier peint
+      (`docs/EMBED_SHOPIFY.md`, section 3)
+- [ ] Test avec le vrai simulateur une fois les 12 références importées

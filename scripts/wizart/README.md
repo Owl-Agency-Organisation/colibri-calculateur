@@ -38,13 +38,14 @@ Sorties (générées dans `out/`, à ne pas commiter) :
 | `out/colibri-peintures-echantillon.csv` | Gabarit PAINT, mapping par défaut (31 colonnes), UTF-8 sans BOM, virgule, fins de ligne CRLF |
 | `out/colibri-peintures-aplats.zip` | Un aplat PNG 1000×1000 RGB uni par teinte, nommé `{handle}.png`, archive plate |
 | `out/colibri-peintures-echantillon.md` | Échantillon lisible (collection, teinte, rôle, hex, handle), mention du ZIP + rapport des exclusions |
-| `out/colibri-papiers-peints-squelette.csv` | Gabarit WALLPAPER (colonnes requises) |
-| `out/colibri-papiers-peints-squelette.md` | Mode de repérage, signalements (largeurs), URLs des images Shopify |
+| `out/colibri-papiers-peints.csv` | Gabarit WALLPAPER, une ligne par coloris (variante « Lé ») |
+| `out/colibri-papiers-peints.md` | Repérage, lignes et signalements, fichier manuel, vérification des textures |
 
 Tests : `pnpm test` — `scripts/wizart/common.test.ts` (hex, luminance,
-sélection, mapping PAINT, CSV, conversion des largeurs) et
+sélection, mapping PAINT, CSV, conversion des largeurs),
 `scripts/wizart/aplats.test.ts` (PNG et ZIP relus octet par octet : ouverture,
-nombre d'entrées, noms, CRC, pixels).
+nombre d'entrées, noms, CRC, pixels) et `scripts/wizart/papiers-peints.test.ts`
+(12 lignes, largeurs, liens, fichier manuel, textures).
 
 ## Peinture — gabarit PAINT
 
@@ -112,56 +113,96 @@ Génération sans dépendance (`aplats.ts`) : encodeur PNG minimal (chunks
 compression, les PNG étant déjà compressés) avec CRC32. Un aplat pèse environ
 4 Ko ; l'archive est déterministe (date fixe 01/01/1980).
 
-## Papiers peints — gabarit WALLPAPER (squelette)
+## Papiers peints — gabarit WALLPAPER (une ligne par coloris)
 
-**Repérage confirmé sur la boutique le 08/10/2026** : `productType` =
-« Papier peint », 3 produits (`papier-peint-montgolfiere`,
-`ombrelle-papier-peint-ecologique`, `rayures-papier-peint-ecologique`).
-Le repérage par défaut remonte en plus la collection « Matériel Papier peint »
-(outillage : brosses, cutter, règle…) : lancer le script avec
-`--product-type "Papier peint"`.
+Décision du 21/10/2026 : les papiers peints Colibri entrent dans le
+simulateur. **Référence Wizart = SKU de la variante « Lé »**
+(`unique_sku_id`, que Wizart renvoie en `article_sku`), par exemple
+`pp-montg-terracotta-le` : le handle produit ne dit pas le coloris. Côté app,
+une référence reçue est soit un handle de teinte, soit un SKU de papier peint
+(voir `docs/EMBED_SHOPIFY.md`).
+
+**Repérage confirmé sur la boutique** (08/10, puis 21/10 sur l'Admin API) :
+`productType` = « Papier peint », 3 produits, chacun en 4 coloris (option
+« Couleur ») et 2 tailles (option « Taille » : « Lé : 60x280cm » ou
+« Lé : 53x280cm », et « Echantillon : A4 »). Soit **12 lignes** : les
+variantes « Echantillon » ne vont pas dans Wizart. Le repérage par défaut
+remonte en plus la collection « Matériel Papier peint » (outillage) : lancer
+le script avec `--product-type "Papier peint"`.
+
+```bash
+pnpm wizart:export-papiers-peints --product-type "Papier peint"
+pnpm wizart:export-papiers-peints --product-type "Papier peint" --textures ~/textures-colibri
+```
 
 Repérage par défaut, cumulatif (le rapport indique pour chaque produit le ou
-les critères qui l'ont retenu) :
-
-1. collections dont le titre ou le handle contient « papier(s) peint(s) » ;
-2. produits dont le `productType` contient « papier(s) peint(s) » ;
-3. produits portant un tag contenant « papier(s) peint(s) ».
-
-Les options `--collection`, `--product-type`, `--tag` remplacent ce repérage
-par des critères exacts.
+les critères qui l'ont retenu) : collections dont le titre ou le handle
+contient « papier(s) peint(s) », produits dont le `productType` ou un tag le
+contient. Les options `--collection`, `--product-type`, `--tag` remplacent ce
+repérage par des critères exacts.
 
 | Colonne Wizart | Valeur |
 | --- | --- |
 | `brand_name` | `Colibri Peinture` |
-| `collection_name` | Première collection du produit qui n'est pas une collection générique « papiers peints » (à défaut, la première) |
-| `product_name` | Titre du produit |
-| `unique_sku_id` | Handle Shopify du produit |
-| `product_image` | Handle, sans extension (nom du fichier texture attendu dans le ZIP) |
-| `product_width` | Mètres, depuis `custom.largeur` / `largeur_rouleau` / `largeur_lai` / `laize` / `product_width` |
-| `repeat_width` | Mètres, depuis `custom.raccord` / `largeur_raccord` / `raccord_motif` / `repeat` / `repeat_width` |
+| `collection_name` | `Papiers peints` |
+| `product_name` | « {Motif} - {Coloris} » (motif = titre avant le tiret, comme `nomCourtTeinte`) ; coloris seul s'il contient déjà le motif (« Rayures bleues », « Ombrelle bleu nuit ») |
+| `unique_sku_id` | SKU de la variante « Lé » |
+| `product_image` | SKU, sans extension (nom du fichier texture dans le ZIP) |
+| `product_width` | Largeur du lé en mètres, lue dans l'option « Taille » (`Lé : 60x280cm` → `0.6`) |
+| `repeat_width` | `largeurMotif` du fichier manuel |
+| `pattern_repeat` | `hauteurRaccord` du fichier manuel |
+| `pattern_offset` | `decalage` du fichier manuel, sinon `0` (raccord droit ou libre) ou moitié de `hauteurRaccord` (raccord sauté) |
+| `product_link` | `https://www.colibripeinture.com/products/{handle}?variant={id numérique}` |
+| `product_regular_price`, `product_promotional_price` | Vides |
 
-Largeurs : premier metafield non vide parmi les candidats, converti en mètres
-(metafield `dimension`, `53 cm`, `0,53 m`…). Sans unité : centimètres supposés
-au-delà de 3, mètres en dessous, et la supposition est signalée. Metafield
-absent → cellule vide, signalée dans le rapport. **Au 08/10/2026, aucun des
-metafields candidats n'est renseigné ou exposé** : les largeurs sont à saisir
-à la main (ou à créer dans Shopify puis exposer au Storefront API : Admin →
-Paramètres → Données personnalisées → accès Storefront).
+**Sens de `repeat_width`** (tranché le 21/10/2026 sur la page « WALLPAPER
+(upload requirements) », mise à jour Wizart du 14/04/2026) : « Width of the
+imported pattern », c'est-à-dire la **largeur du motif de la texture
+importée**, en mètres (requis, 0,01 à 10). Ce n'est **pas** le raccord
+français : la hauteur de raccord (répétition verticale) va dans
+`pattern_repeat`, et le type de raccord se traduit en `pattern_offset`
+(« how much the next tile must be shifted so that the pattern matches », 0
+pour un raccord droit ou libre). Dans l'exemple Wizart, `repeat_width` vaut la
+largeur du lé : c'est le cas quand la texture fournie couvre un lé entier.
 
-**Textures** : les images Shopify (photos produit, mises en situation) ne sont
-pas des textures raccordables. Elles ne sont jamais utilisées comme textures,
-seulement listées dans le rapport pour information. Les textures viendront du
-fournisseur, un fichier par produit nommé `{handle}.{extension}`. Les trois
-papiers peints existent en plusieurs coloris (images `…-terracotta`, `…-bleu`…)
-: une ligne par coloris sera nécessaire dans Wizart, à cadrer avant l'import.
+**Fichier manuel `papiers-peints.json`** (versionné, une entrée par SKU,
+rempli à la main depuis les fichiers de Colibri) : `largeurMotif`,
+`hauteurRaccord`, `raccord` (`droit`, `saute` ou `libre`), `decalage`
+(facultatif, prioritaire), en mètres ; `null` = pas encore renseigné. Entrée
+absente ou valeur `null` : cellule vide, signalée dans le rapport (avec la
+mention « requis par Wizart » pour `repeat_width`). Les clés `_lisezmoi` et
+`_source` sont des commentaires.
+
+**Valeurs saisies le 22/10/2026** (les 12 entrées) : `largeurMotif` 0.53,
+`hauteurRaccord` 0.64, `raccord` `droit`, `decalage` null, d'où
+`repeat_width` = 0.53, `pattern_repeat` = 0.64, `pattern_offset` = 0. Source :
+fichiers de production Colibri reçus le 22/10/2026 : lé de 54 × 64 cm dont
+0,5 cm de marge de chaque côté, recouverte au raccord, soit un motif utile de
+53 × 64 cm ; raccord droit vérifié sur les 12 coloris.
+
+**Largeur du lé (`product_width`) à confirmer** : elle reste lue dans
+l'option « Taille » de la boutique (60 cm pour Montgolfières et Rayures,
+53 cm pour Ombrelle), alors que les fichiers de production indiquent un lé de
+54 cm. Colibri vérifie la largeur réelle des lés Montgolfières et Rayures ;
+la source (option « Taille ») ne change pas d'ici là.
+
+**Textures** : préparées par Owl à partir des motifs raccordables fournis par
+Colibri, hors du repo : 3180 × 3840 px (motif utile 53 × 64 cm), un fichier
+par ligne, `{sku}.png` (`{sku}.jpg` aussi accepté).
+`--textures <dossier>` vérifie le dossier : SKU sans fichier et fichiers en
+trop (fichiers cachés ignorés), listés dans le rapport et la console. Aucun
+traitement d'image. Les images Shopify (mises en situation) ne sont jamais
+des textures.
 
 ## Décisions
 
-- **Handle comme identifiant** (`unique_sku_id`) : stable,
+- **Handle comme identifiant des teintes** (`unique_sku_id`) : stable,
   unique, lisible, et il reconstruit l'URL produit. Une teinte = un produit :
   ses variantes (contenance, finition) partagent la même couleur, une ligne
   par produit suffit.
+- **SKU de la variante « Lé » comme identifiant des papiers peints**
+  (21/10/2026) : un produit = un motif en plusieurs coloris, une ligne par
+  coloris.
 - **Méthode image pour la peinture** : un aplat PNG par teinte, `product_image`
   = handle. `render_color` abandonné (voir « Méthode image et mapping par
   défaut »).
@@ -189,17 +230,15 @@ papiers peints existent en plusieurs coloris (images `…-terracotta`, `…-bleu
 
 - Séparateur CSV (virgule ici, non documenté) : constante `CSV_SEPARATOR`.
   Le PIM accepte aussi le XLSX, solution de repli si le CSV est refusé.
-- Sens de `repeat_width` (largeur du motif) face au « raccord » français
-  (souvent la hauteur de raccord vertical).
 
 ## Reste manuel
 
 1. Importer `colibri-peintures-echantillon.csv` avec
    `colibri-peintures-aplats.zip` dans le PIM Wizart (mapping par défaut) et
    vérifier le rendu de quelques teintes claires et foncées sur photo réelle.
-2. Papiers peints : saisir les largeurs, récupérer les textures auprès du
-   fournisseur, les nommer d'après `product_image`, cadrer les coloris, puis
-   importer le ZIP des textures et le CSV.
+2. Papiers peints : remplir `papiers-peints.json` depuis les fichiers de
+   Colibri, préparer les 12 textures (`{sku}.png`), vérifier avec
+   `--textures`, puis importer le ZIP des textures et le CSV.
 
 ## Références Wizart
 

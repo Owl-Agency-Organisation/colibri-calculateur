@@ -1,0 +1,76 @@
+{
+  "_lisezmoi": "Valeurs que Shopify n'a pas, à saisir depuis les fichiers de Colibri (une entrée par SKU de variante « Lé »). Mesures en mètres. largeurMotif → repeat_width (largeur du motif de la texture fournie, requis par Wizart) ; hauteurRaccord → pattern_repeat ; raccord : « droit », « saute » ou « libre » → pattern_offset (0, ou moitié du raccord si sauté) ; decalage : décalage explicite, prioritaire. null = pas encore renseigné (cellule vide, signalée dans le rapport).",
+  "_source": "Fichiers de production Colibri reçus le 22/10/2026 : lé de 54 × 64 cm dont 0,5 cm de marge de chaque côté recouverte au raccord, motif utile 53 × 64 cm, raccord droit vérifié sur les 12 coloris.",
+  "pp-montg-terracotta-le": {
+    "largeurMotif": 0.53,
+    "hauteurRaccord": 0.64,
+    "raccord": "droit",
+    "decalage": null
+  },
+  "pp-montg-blanc-le": {
+    "largeurMotif": 0.53,
+    "hauteurRaccord": 0.64,
+    "raccord": "droit",
+    "decalage": null
+  },
+  "pp-montg-rose-le": {
+    "largeurMotif": 0.53,
+    "hauteurRaccord": 0.64,
+    "raccord": "droit",
+    "decalage": null
+  },
+  "pp-montg-bleu-le": {
+    "largeurMotif": 0.53,
+    "hauteurRaccord": 0.64,
+    "raccord": "droit",
+    "decalage": null
+  },
+  "pp-rayur-bleu-le": {
+    "largeurMotif": 0.53,
+    "hauteurRaccord": 0.64,
+    "raccord": "droit",
+    "decalage": null
+  },
+  "pp-rayur-jaune-le": {
+    "largeurMotif": 0.53,
+    "hauteurRaccord": 0.64,
+    "raccord": "droit",
+    "decalage": null
+  },
+  "pp-rayur-terracotta-le": {
+    "largeurMotif": 0.53,
+    "hauteurRaccord": 0.64,
+    "raccord": "droit",
+    "decalage": null
+  },
+  "pp-rayur-vert-le": {
+    "largeurMotif": 0.53,
+    "hauteurRaccord": 0.64,
+    "raccord": "droit",
+    "decalage": null
+  },
+  "pp-ombre-bleunuit-le": {
+    "largeurMotif": 0.53,
+    "hauteurRaccord": 0.64,
+    "raccord": "droit",
+    "decalage": null
+  },
+  "pp-ombre-vertforet-le": {
+    "largeurMotif": 0.53,
+    "hauteurRaccord": 0.64,
+    "raccord": "droit",
+    "decalage": null
+  },
+  "pp-ombre-bleu-le": {
+    "largeurMotif": 0.53,
+    "hauteurRaccord": 0.64,
+    "raccord": "droit",
+    "decalage": null
+  },
+  "pp-ombre-jaune-le": {
+    "largeurMotif": 0.53,
+    "hauteurRaccord": 0.64,
+    "raccord": "droit",
+    "decalage": null
+  }
+}
