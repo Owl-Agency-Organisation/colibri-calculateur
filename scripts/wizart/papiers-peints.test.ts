@@ -85,9 +85,9 @@ describe('export WALLPAPER — une ligne par coloris', () => {
       unique_sku_id: 'pp-montg-terracotta-le',
       product_image: 'pp-montg-terracotta-le',
       product_width: '0.6',
-      repeat_width: '',
-      pattern_repeat: '',
-      pattern_offset: '',
+      repeat_width: '0.53',
+      pattern_repeat: '0.64',
+      pattern_offset: '0',
       product_link: 'https://www.colibripeinture.com/products/papier-peint-montgolfiere?variant=57106064965977',
       product_regular_price: '',
       product_promotional_price: '',
@@ -106,8 +106,17 @@ describe('export WALLPAPER — une ligne par coloris', () => {
   });
 
   it('valeurs non renseignées (null) : signalées, repeat_width marqué requis', () => {
-    const { rows } = buildWallpaperVariantRows(PRODUITS, MANUEL);
+    const vide = { largeurMotif: null, hauteurRaccord: null, raccord: null, decalage: null };
+    const { rows } = buildWallpaperVariantRows(PRODUITS, { ...MANUEL, 'pp-montg-terracotta-le': vide });
+    expect(rows[0].row.repeat_width).toBe('');
     expect(rows[0].notes).toContain('repeat_width (requis par Wizart) : largeurMotif non renseignée');
+  });
+
+  it('fichier manuel du 22/10/2026 : motif utile 53 × 64 cm, raccord droit, aucun signalement', () => {
+    const { rows } = buildWallpaperVariantRows(PRODUITS, MANUEL);
+    expect(rows.every((r) => r.row.repeat_width === '0.53' && r.row.pattern_repeat === '0.64' && r.row.pattern_offset === '0'))
+      .toBe(true);
+    expect(rows.flatMap((r) => r.notes)).toEqual([]);
   });
 
   it('raccord renseigné : repeat_width, pattern_repeat et pattern_offset', () => {

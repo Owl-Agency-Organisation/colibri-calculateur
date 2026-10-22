@@ -170,11 +170,25 @@ rempli à la main depuis les fichiers de Colibri) : `largeurMotif`,
 `hauteurRaccord`, `raccord` (`droit`, `saute` ou `libre`), `decalage`
 (facultatif, prioritaire), en mètres ; `null` = pas encore renseigné. Entrée
 absente ou valeur `null` : cellule vide, signalée dans le rapport (avec la
-mention « requis par Wizart » pour `repeat_width`). La clé `_lisezmoi` est un
-commentaire.
+mention « requis par Wizart » pour `repeat_width`). Les clés `_lisezmoi` et
+`_source` sont des commentaires.
+
+**Valeurs saisies le 22/10/2026** (les 12 entrées) : `largeurMotif` 0.53,
+`hauteurRaccord` 0.64, `raccord` `droit`, `decalage` null, d'où
+`repeat_width` = 0.53, `pattern_repeat` = 0.64, `pattern_offset` = 0. Source :
+fichiers de production Colibri reçus le 22/10/2026 : lé de 54 × 64 cm dont
+0,5 cm de marge de chaque côté, recouverte au raccord, soit un motif utile de
+53 × 64 cm ; raccord droit vérifié sur les 12 coloris.
+
+**Largeur du lé (`product_width`) à confirmer** : elle reste lue dans
+l'option « Taille » de la boutique (60 cm pour Montgolfières et Rayures,
+53 cm pour Ombrelle), alors que les fichiers de production indiquent un lé de
+54 cm. Colibri vérifie la largeur réelle des lés Montgolfières et Rayures ;
+la source (option « Taille ») ne change pas d'ici là.
 
 **Textures** : préparées par Owl à partir des motifs raccordables fournis par
-Colibri, hors du repo. Un fichier par ligne, `{sku}.png` ou `{sku}.jpg`.
+Colibri, hors du repo : 3180 × 3840 px (motif utile 53 × 64 cm), un fichier
+par ligne, `{sku}.png` (`{sku}.jpg` aussi accepté).
 `--textures <dossier>` vérifie le dossier : SKU sans fichier et fichiers en
 trop (fichiers cachés ignorés), listés dans le rapport et la console. Aucun
 traitement d'image. Les images Shopify (mises en situation) ne sont jamais
