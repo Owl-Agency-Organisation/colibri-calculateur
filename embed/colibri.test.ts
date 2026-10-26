@@ -579,12 +579,12 @@ describe('script hébergé — bouton des fiches papier peint (data-variantes)',
   });
 });
 
-describe('script hébergé — « Sur ma photo » ou « Dans une pièce d’exemple » (retours du 23/10/2026)', () => {
+describe('script hébergé — retours du 23/10/2026 : galerie depuis la page Simulateur, pièce d’exemple depuis la popup', () => {
   const cible = {};
   const kit = { LAYOUTS: { FILL_PARENT: 'fill_parent' } };
   const CHAMBRE = '1103ea18-8a07-4f59-a1d3-86d08b406755';
 
-  it('bouton retour de Wizart affiché quel que soit l’essai, uploadPhoto jamais passé', () => {
+  it('bouton retour de Wizart affiché quelle que soit l’ouverture, uploadPhoto jamais passé', () => {
     for (const essai of [colibri.ESSAI_PHOTO, colibri.ESSAI_EXEMPLE, undefined]) {
       const reglages = colibri.reglagesVisualiseur(kit, 'jeton', cible, 'bleu-ciel', 'chambre', essai);
       expect(reglages.integrationSettings).toEqual({ locale: 'fr', showBackToWebsiteButton: true });
@@ -593,13 +593,33 @@ describe('script hébergé — « Sur ma photo » ou « Dans une pièce d’exem
     }
   });
 
-  it('« Sur ma photo » : pas d’openInRoom (galerie Wizart, où se trouve le téléversement), teinte transmise', () => {
-    expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, null, 'chambre', colibri.ESSAI_PHOTO).sceneData).toBeUndefined();
-    expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, 'bleu-ciel', 'chambre', colibri.ESSAI_PHOTO).sceneData)
-      .toEqual({ openWithProduct: 'bleu-ciel' });
+  it('page Simulateur (ESSAI_PHOTO) : jamais d’openInRoom, pour toutes les pièces (galerie Wizart), teinte transmise', () => {
+    for (const [piece] of colibri.PIECES) {
+      expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, null, piece, colibri.ESSAI_PHOTO).sceneData).toBeUndefined();
+      expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, 'bleu-ciel', piece, colibri.ESSAI_PHOTO).sceneData)
+        .toEqual({ openWithProduct: 'bleu-ciel' });
+    }
   });
 
-  it('« Dans une pièce d’exemple » : openInRoom de la pièce (comportement actuel, par défaut)', () => {
+  it('popup couleur (ESSAI_EXEMPLE, par défaut) : openInRoom de chaque pièce qui a un intérieur d’exemple', () => {
+    for (const [piece] of colibri.PIECES) {
+      const interieur = colibri.INTERIEURS_WIZART[piece];
+      if (!interieur) continue;
+      expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, null, piece, colibri.ESSAI_EXEMPLE).sceneData)
+        .toEqual({ openInRoom: interieur });
+    }
+  });
+
+  it('chaque mode passe son ouverture : la page Simulateur la galerie, la popup couleur la pièce d’exemple', () => {
+    const source = readFileSync(new URL('./colibri.js', import.meta.url), 'utf8');
+    const bloc = (debut: string, fin: string) => source.slice(source.indexOf(debut), source.indexOf(fin, source.indexOf(debut)));
+    const simulateur = bloc('function demarrerSimulateur(', '// ===================== Mode bouton');
+    const configurateur = bloc('function demarrerConfigurateur(', '// ===================== Mode simulateur');
+    expect(simulateur.match(/essai: ESSAI_[A-Z]+/g)).toEqual(['essai: ESSAI_PHOTO']);
+    expect(configurateur.match(/essai: ESSAI_[A-Z]+/g)).toEqual(['essai: ESSAI_EXEMPLE']);
+  });
+
+  it('pièce d’exemple : openInRoom de la pièce et teinte (popup couleur)', () => {
     expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, null, 'chambre', colibri.ESSAI_EXEMPLE).sceneData)
       .toEqual({ openInRoom: CHAMBRE });
     expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, 'bleu-ciel', 'chambre', colibri.ESSAI_EXEMPLE).sceneData)
@@ -607,7 +627,7 @@ describe('script hébergé — « Sur ma photo » ou « Dans une pièce d’exem
     expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, null, 'chambre').sceneData).toEqual({ openInRoom: CHAMBRE });
   });
 
-  it('entrée et couloir : « Dans une pièce d’exemple » ouvre la galerie, comme aujourd’hui', () => {
+  it('entrée et couloir : la pièce d’exemple retombe sur la galerie, comme aujourd’hui', () => {
     for (const piece of ['entree', 'couloir']) {
       expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, null, piece, colibri.ESSAI_EXEMPLE).sceneData).toBeUndefined();
     }
@@ -661,7 +681,10 @@ describe('script hébergé — « Sur ma photo » ou « Dans une pièce d’exem
     expect(source).toContain('essayez nos teintes et nos papiers peints mur par mur');
     expect(source).toContain("['Essayez teintes et papiers peints', 'Un essai par mur, et la comparaison avant/après.']");
     expect(source).not.toContain('réglage de la lumière');
-    expect(source).toContain('Comment voulez-vous essayer ?');
-    expect(source).toContain('Changer de pièce');
+    expect(source).toContain("['Choisissez votre pièce', 'Votre photo, ou l’une de nos pièces d’exemple.']");
+    // Étape « Comment voulez-vous essayer ? » supprimée (décision du 26/10)
+    expect(source).not.toContain('Comment voulez-vous essayer');
+    expect(source).not.toContain('Changer de pièce');
+    expect(source).not.toMatch(/'\.(essai|changer|choix-titre)[{:-]/);
   });
 });

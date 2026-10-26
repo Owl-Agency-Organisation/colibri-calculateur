@@ -101,8 +101,10 @@
   var LOGO_COLIBRI = 'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/'
     + 'logo-colibri-lettre-ligne-gris_c069846e-2280-4484-94fa-c0a82abf361a.png?v=1773400972&width=244';
 
-  // Deux façons d'essayer depuis la page Simulateur : sur sa photo (galerie
-  // Wizart, où se trouve le téléversement) ou dans une pièce d'exemple
+  // Ouverture de Wizart. Page Simulateur : sur sa galerie (ESSAI_PHOTO), où
+  // « Télécharger votre photo » vient en premier, les pièces d'exemple à côté.
+  // Popup couleur du calculateur : dans la pièce d'exemple du type de pièce
+  // (ESSAI_EXEMPLE), galerie s'il n'y en a pas.
   var ESSAI_PHOTO = 'photo';
   var ESSAI_EXEMPLE = 'exemple';
 
@@ -441,11 +443,12 @@
    * (`FILL_PARENT` — `FULL_SCREEN` la recouvrirait), en français, avec son
    * bouton retour (visible à toutes les étapes : galerie, téléversement,
    * scène ; il émet `BACK_BUTTON_CLICK`, qui ferme la surimpression), et sur
-   * la teinte demandée le cas échéant. Essai « dans une pièce d'exemple »
-   * (par défaut) : ouvert dans l'intérieur du type de pièce s'il en a un.
-   * Essai « sur ma photo » : sans intérieur, Wizart s'ouvre sur sa galerie,
-   * où se trouve le téléversement. `uploadPhoto` n'est jamais passé : la
-   * valeur par défaut du DepKit (téléversement autorisé) s'applique.
+   * la teinte demandée le cas échéant. ESSAI_EXEMPLE (par défaut, popup
+   * couleur) : ouvert dans l'intérieur du type de pièce s'il en a un.
+   * ESSAI_PHOTO (page Simulateur) : jamais d'intérieur, Wizart s'ouvre sur sa
+   * galerie (téléversement de photo et pièces d'exemple). `uploadPhoto` n'est
+   * jamais passé : la valeur par défaut du DepKit (téléversement autorisé)
+   * s'applique.
    */
   function reglagesVisualiseur(kit, token, cible, teinte, piece, essai) {
     var reglages = {
@@ -746,7 +749,7 @@
    * Ouvre le simulateur en surimpression plein écran : zone Wizart en haut,
    * barre Colibri en bas, toujours visible.
    * options : { origineApp, token, piece, teinte, essai, retour, surSelection(handles), surFermeture() }
-   * (`essai` : ESSAI_PHOTO ou ESSAI_EXEMPLE, par défaut une pièce d'exemple ;
+   * (`essai` : ESSAI_PHOTO, galerie, ou ESSAI_EXEMPLE, pièce d'exemple, par défaut ;
    * `retour` : RETOUR_BOUTIQUE ou RETOUR_CALCULATEUR, libellé du retour).
    * Un seul simulateur à la fois ; toute issue appelle exactement un rappel.
    * Les teintes retenues repartent de zéro à chaque ouverture.
@@ -974,7 +977,7 @@
           token: config.tokenWizart,
           piece: data.piece,
           teinte: data.teinte,
-          // Parcours inchangé : pièce d'exemple du type de la pièce
+          // Pièce d'exemple du type de la pièce (galerie s'il n'y en a pas)
           essai: ESSAI_EXEMPLE,
           retour: RETOUR_CALCULATEUR,
           surSelection: function (handles) {
@@ -1021,32 +1024,17 @@
     '.conseil svg{flex:0 0 auto;display:block;}',
     '.conseil strong{color:#17644f;font-weight:600;}',
     '.message{padding:12px 16px;border-radius:10px;background:#fef3c7;color:#92400e;margin-bottom:16px;}',
-    '[hidden]{display:none !important;}',
-    // Étape « Comment voulez-vous essayer ? » (après le choix de la pièce)
-    '.choix-titre:focus{outline:none;}',
-    '.essais{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;max-width:760px;}',
-    '.essai{display:flex;flex-direction:column;padding:0;margin:0;background:#fff;border:1px solid #e3e2dc;border-radius:10px;overflow:hidden;cursor:pointer;color:inherit;text-align:left;font-size:inherit;}',
-    '.essai:hover{border-color:#2fae94;box-shadow:0 0 0 1px #2fae94;}',
-    '.essai:focus-visible{border-color:#17644f;box-shadow:0 0 0 1px #17644f;outline:none;}',
-    '.essai-visuel{display:flex;align-items:center;justify-content:center;height:150px;background:#f3f2ee;}',
-    '.essai-visuel img{display:block;width:100%;height:100%;object-fit:cover;}',
-    '.essai-texte{display:flex;flex-direction:column;gap:4px;padding:14px 16px;}',
-    '.essai-titre{font-size:16px;font-weight:600;line-height:1.3;}',
-    '.essai-sous-titre{font-size:14px;line-height:1.5;color:#55554f;}',
-    '.changer{margin-top:16px;background:none;border:0;padding:8px 0;color:#13302a;text-decoration:underline;cursor:pointer;font-size:15px;}',
-    '.changer:focus-visible{outline:2px solid #13302a;outline-offset:2px;}',
     '.bouton{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:6px;background:#13302a;color:#fff;font-size:15px;font-weight:600;text-decoration:none;}',
     '@media (max-width:639px){',
     '.entete.avec-visuel{grid-template-columns:1fr;}',
     '.titre{font-size:32px;}',
     '.pieces{grid-template-columns:repeat(2,minmax(0,1fr));}',
     '.etapes{grid-template-columns:1fr;}',
-    '.essais{grid-template-columns:1fr;}',
     '}',
   ].join('');
 
   var ETAPES = [
-    ['Choisissez votre pièce', 'Votre photo, ou une pièce d’exemple du même type.'],
+    ['Choisissez votre pièce', 'Votre photo, ou l’une de nos pièces d’exemple.'],
     ['Essayez teintes et papiers peints', 'Un essai par mur, et la comparaison avant/après.'],
     ['Calculez vos quantités', 'Le calculateur reprend vos teintes et compose la commande, −15 % inclus.'],
   ];
@@ -1089,66 +1077,24 @@
       return;
     }
 
-    // 2. Choix de la pièce, puis de la façon d'essayer
-    var pieceChoisie = null;
-    var boutonChoisi = null;
+    // 2. Choix de la pièce : le clic ouvre directement le simulateur
     var grille = creer('div', { class: 'pieces' });
     PIECES.forEach(function (piece) {
       var bouton = creer('button', { type: 'button', class: 'piece' }, [
         creer('img', { src: piece[2], alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }),
         creer('span', { texte: piece[1] }),
       ]);
-      bouton.addEventListener('click', function () { choisirPiece(piece, bouton); });
+      bouton.addEventListener('click', function () { essayer(piece[0], bouton); });
       grille.appendChild(bouton);
     });
-    var sectionPieces = creer('section', { 'aria-labelledby': 'colibri-question' }, [
+    page.appendChild(creer('section', { 'aria-labelledby': 'colibri-question' }, [
       creer('h2', { class: 'question', id: 'colibri-question', texte: 'Quelle pièce voulez-vous transformer ?' }),
       creer('p', {
         class: 'sous-titre',
         texte: 'Ce sont les pièces du calculateur : vos quantités seront calculées pour la même pièce.',
       }),
       grille,
-    ]);
-    page.appendChild(sectionPieces);
-
-    // « Sur ma photo » : galerie Wizart (téléversement) ; « Dans une pièce
-    // d'exemple » : intérieur du type de pièce (galerie s'il n'y en a pas)
-    var titreChoix = creer('h2', {
-      class: 'question choix-titre', id: 'colibri-choix', tabindex: '-1', texte: 'Comment voulez-vous essayer ?',
-    });
-    var rappelPiece = creer('p', { class: 'sous-titre' });
-    var iconePhoto = creer('span', { 'aria-hidden': 'true' });
-    iconePhoto.innerHTML = SVG_APPAREIL.replace('width="28" height="28"', 'width="56" height="56"');
-    var imageExemple = creer('img', { alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' });
-    function carteEssai(visuel, titre, sousTitre, essai) {
-      var carte = creer('button', { type: 'button', class: 'essai' }, [
-        creer('span', { class: 'essai-visuel' }, [visuel]),
-        creer('span', { class: 'essai-texte' }, [
-          creer('span', { class: 'essai-titre', texte: titre }),
-          creer('span', { class: 'essai-sous-titre', texte: sousTitre }),
-        ]),
-      ]);
-      carte.addEventListener('click', function () { essayer(essai); });
-      return carte;
-    }
-    var changer = creer('button', { type: 'button', class: 'changer', texte: 'Changer de pièce' });
-    var sectionChoix = creer('section', { 'aria-labelledby': 'colibri-choix', hidden: '' }, [
-      titreChoix,
-      rappelPiece,
-      creer('div', { class: 'essais' }, [
-        carteEssai(iconePhoto, 'Sur ma photo', 'Prenez votre pièce en photo ou choisissez-en une', ESSAI_PHOTO),
-        carteEssai(imageExemple, 'Dans une pièce d’exemple', 'Une pièce du même type, prête à l’emploi', ESSAI_EXEMPLE),
-      ]),
-      changer,
-    ]);
-    page.appendChild(sectionChoix);
-
-    changer.addEventListener('click', function () {
-      sectionChoix.hidden = true;
-      sectionPieces.hidden = false;
-      // Focus rendu à la grille, sur la pièce choisie
-      (boutonChoisi || grille.querySelector('button')).focus();
-    });
+    ]));
 
     // 3. Étapes
     page.appendChild(creer('ol', { class: 'etapes' }, ETAPES.map(function (etape, index) {
@@ -1172,19 +1118,10 @@
 
     ombre.appendChild(page);
 
-    function choisirPiece(piece, bouton) {
-      pieceChoisie = piece[0];
-      boutonChoisi = bouton;
-      rappelPiece.textContent = 'Pièce : ' + piece[1];
-      imageExemple.setAttribute('src', piece[2]);
-      sectionPieces.hidden = true;
-      sectionChoix.hidden = false;
-      titreChoix.focus();
-    }
-
-    function essayer(essai) {
-      var piece = pieceChoisie;
-      if (!piece) return;
+    // Galerie Wizart, pour toutes les pièces : « Télécharger votre photo » en
+    // premier, les pièces d'exemple à côté (décision du 26/10). La pièce reste
+    // transmise au calculateur.
+    function essayer(piece, bouton) {
       // Relue en cas de redirection du PIM Wizart (vendorCode[]) vers le configurateur
       ecrireSession(CLE_SESSION_PIECE, piece);
       ouvrirSimulateur({
@@ -1192,16 +1129,15 @@
         token: config.tokenWizart,
         piece: piece,
         teinte: teinte,
-        essai: essai,
+        essai: ESSAI_PHOTO,
         retour: RETOUR_BOUTIQUE,
         surSelection: function (handles) {
           ecrireSession(CLE_SESSION_PIECE, null);
-          // La pièce choisie est transmise quel que soit l'essai
           window.location.href = urlConfigurateur(window.location.origin, piece, handles, configurateur);
         },
         surFermeture: function () {
-          // Retour à l'étape « Comment voulez-vous essayer ? »
-          titreChoix.focus();
+          // Focus rendu à la pièce cliquée
+          bouton.focus();
         },
       });
     }
