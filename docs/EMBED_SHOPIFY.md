@@ -33,10 +33,12 @@ La surimpression (plein écran, au-dessus du site) contient deux parties :
 - en haut, la zone Wizart (DepKit v1.1.3 en `FILL_PARENT`, `locale: 'fr'`,
   `showBackToWebsiteButton: false`, ouverture dans un intérieur du type de
   pièce avec `openInRoom`, sur une teinte avec `openWithProduct`) ;
-- en bas, la **barre Colibri**, toujours visible : « Teintes essayées »
-  (pastilles), « Fermer » et « Utiliser cette teinte → » /
-  « Utiliser ces teintes (n) → » (« Utiliser mes teintes → », désactivé, tant
-  qu'aucune teinte n'est appliquée).
+- en bas, la **barre Colibri**, toujours visible : « Vos essais » (pastilles
+  des teintes et papiers peints appliqués), « Fermer » et
+  « Utiliser mon choix → » / « Utiliser mes choix (n) → » (désactivé tant que
+  rien n'est appliqué ; barre vide : « Appliquez une teinte ou un papier peint
+  sur un mur pour le retenir »). Lecteurs d'écran : « Aucun essai retenu »,
+  « 1 essai retenu », « n essais retenus ».
 
 Chaque teinte appliquée sur un mur (`PRODUCT_APPLY`, handle = `article_sku`, à
 défaut `article_custom_sku`) est retenue dans l'ordre d'application ; une

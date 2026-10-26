@@ -122,10 +122,10 @@ simulateur. **Référence Wizart = SKU de la variante « Lé »**
 une référence reçue est soit un handle de teinte, soit un SKU de papier peint
 (voir `docs/EMBED_SHOPIFY.md`).
 
-**Repérage confirmé sur la boutique** (08/10, puis 21/10 sur l'Admin API) :
-`productType` = « Papier peint », 3 produits, chacun en 4 coloris (option
-« Couleur ») et 2 tailles (option « Taille » : « Lé : 60x280cm » ou
-« Lé : 53x280cm », et « Echantillon : A4 »). Soit **12 lignes** : les
+**Repérage confirmé sur la boutique** (08/10, puis 21/10 et 22/10 sur l'Admin
+API) : `productType` = « Papier peint », 3 produits, chacun en 4 coloris
+(option « Couleur ») et 2 tailles (option « Taille » : « Lé : 53x280cm » et
+« Echantillon : A4 »). Soit **12 lignes** : les
 variantes « Echantillon » ne vont pas dans Wizart. Le repérage par défaut
 remonte en plus la collection « Matériel Papier peint » (outillage) : lancer
 le script avec `--product-type "Papier peint"`.
@@ -148,12 +148,25 @@ repérage par des critères exacts.
 | `product_name` | « {Motif} - {Coloris} » (motif = titre avant le tiret, comme `nomCourtTeinte`) ; coloris seul s'il contient déjà le motif (« Rayures bleues », « Ombrelle bleu nuit ») |
 | `unique_sku_id` | SKU de la variante « Lé » |
 | `product_image` | SKU, sans extension (nom du fichier texture dans le ZIP) |
-| `product_width` | Largeur du lé en mètres, lue dans l'option « Taille » (`Lé : 60x280cm` → `0.6`) |
+| `product_width` | Largeur du lé en mètres, lue dans l'option « Taille » (`Lé : 53x280cm` → `0.53`) |
 | `repeat_width` | `largeurMotif` du fichier manuel |
 | `pattern_repeat` | `hauteurRaccord` du fichier manuel |
 | `pattern_offset` | `decalage` du fichier manuel, sinon `0` (raccord droit ou libre) ou moitié de `hauteurRaccord` (raccord sauté) |
 | `product_link` | `https://www.colibripeinture.com/products/{handle}?variant={id numérique}` |
 | `product_regular_price`, `product_promotional_price` | Vides |
+| `wallpaper_roll_length` | Longueur du lé en mètres, lue dans l'option « Taille » (`Lé : 53x280cm` → `2.8`) |
+| `reverse`, `mural` | `no` |
+| `product_layout` | `vertical` |
+| `application_surface` | `wall` |
+| `color`, `base`, `coating`, `interior_type`, `style`, `pattern`, `product_description`, `texture`, `country_of_origin`, `removal_type`, `product_transparency`, `product_availability`, `product_context`, `context_currency`, `features`, `pattern_scale`, `installation_method`, `additional_data` | Vides |
+
+**35 colonnes, toutes présentes même vides** : l'import du PIM (type
+Wallpaper, mapping « default ») refuse un CSV auquel il manque une colonne du
+mapping, même vide. Les colonnes suivent l'ordre ci-dessus : d'abord les
+colonnes requises et renseignées, puis les autres colonnes du mapping
+(`WALLPAPER_EXPORT_COLUMNS`). **Ce CSV de 35 colonnes a été importé avec succès
+le 22/10/2026 (12 lignes sur 12)**, puis validé de bout en bout avec le vrai
+simulateur sur les pages de test Shopify.
 
 **Sens de `repeat_width`** (tranché le 21/10/2026 sur la page « WALLPAPER
 (upload requirements) », mise à jour Wizart du 14/04/2026) : « Width of the
@@ -180,11 +193,11 @@ fichiers de production Colibri reçus le 22/10/2026 : lé de 54 × 64 cm dont
 0,5 cm de marge de chaque côté, recouverte au raccord, soit un motif utile de
 53 × 64 cm ; raccord droit vérifié sur les 12 coloris.
 
-**Largeur du lé (`product_width`) à confirmer** : elle reste lue dans
-l'option « Taille » de la boutique (60 cm pour Montgolfières et Rayures,
-53 cm pour Ombrelle), alors que les fichiers de production indiquent un lé de
-54 cm. Colibri vérifie la largeur réelle des lés Montgolfières et Rayures ;
-la source (option « Taille ») ne change pas d'ici là.
+**Largeur du lé (`product_width`) confirmée** : Colibri a confirmé le
+22/10/2026 que les trois papiers peints font **53 cm** de large ; l'option
+« Taille » est corrigée en boutique (« Lé : 53x280cm » pour les trois, au lieu
+de « Lé : 60x280cm » pour Montgolfières et Rayures). `product_width` reste lu
+dans cette option : 0.53 pour les 12 lignes, comme le motif utile.
 
 **Textures** : préparées par Owl à partir des motifs raccordables fournis par
 Colibri, hors du repo : 3180 × 3840 px (motif utile 53 × 64 cm), un fichier
@@ -236,9 +249,10 @@ des textures.
 1. Importer `colibri-peintures-echantillon.csv` avec
    `colibri-peintures-aplats.zip` dans le PIM Wizart (mapping par défaut) et
    vérifier le rendu de quelques teintes claires et foncées sur photo réelle.
-2. Papiers peints : remplir `papiers-peints.json` depuis les fichiers de
-   Colibri, préparer les 12 textures (`{sku}.png`), vérifier avec
-   `--textures`, puis importer le ZIP des textures et le CSV.
+2. Papiers peints : à chaque nouveau coloris, compléter `papiers-peints.json`
+   depuis les fichiers de Colibri, préparer la texture (`{sku}.png`), vérifier
+   avec `--textures`, puis importer le ZIP des textures et le CSV (fait pour
+   les 12 coloris le 22/10/2026).
 
 ## Références Wizart
 

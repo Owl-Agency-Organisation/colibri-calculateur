@@ -413,10 +413,18 @@ Contenus :
 - [x] `scripts/wizart/papiers-peints.json` renseigné (fichiers Colibri du
       22/10 : motif utile 53 × 64 cm, raccord droit) ; textures préparées hors
       repo (3180 × 3840 px, `{sku}.png`)
-- [ ] Largeur réelle des lés Montgolfières et Rayures (60 cm en boutique,
-      54 cm dans les fichiers) : vérification Colibri ; `product_width` reste
-      lu dans l'option « Taille »
-- [ ] Exporter et importer les 12 références dans le PIM
+- [x] Largeur des lés confirmée par Colibri le 22/10 : 53 cm pour les trois
+      papiers peints, option « Taille » corrigée en boutique (« Lé : 53x280cm ») ;
+      `product_width` reste lu dans cette option
+- [x] Export aux 35 colonnes du mapping « default » Wallpaper (toutes
+      présentes, même vides : `wallpaper_roll_length` depuis l'option
+      « Taille », `reverse`/`mural` `no`, `product_layout` `vertical`,
+      `application_surface` `wall`) ; 12 références importées dans le PIM le
+      22/10 (12/12)
+- [x] Test avec le vrai simulateur sur les pages de test Shopify (22/10) :
+      rendu sur les murs, vignette, arrivée, « Voir la fiche », récapitulatif,
+      popup avec un papier peint seul
+- [x] Barre du simulateur : libellés pour teintes et papiers peints (« Vos
+      essais », « Utiliser mon choix → » / « Utiliser mes choix (n) → »)
 - [ ] Shopify : bloc Liquid des fiches papier peint
       (`docs/EMBED_SHOPIFY.md`, section 3)
-- [ ] Test avec le vrai simulateur une fois les 12 références importées

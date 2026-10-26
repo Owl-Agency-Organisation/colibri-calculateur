@@ -269,17 +269,25 @@ describe('script hébergé — teintes retenues', () => {
 });
 
 describe('script hébergé — barre Colibri', () => {
-  it('libellé du bouton principal selon le nombre de teintes', () => {
-    expect(colibri.libelleUtiliser(0)).toBe('Utiliser mes teintes →');
-    expect(colibri.libelleUtiliser(1)).toBe('Utiliser cette teinte →');
-    expect(colibri.libelleUtiliser(2)).toBe('Utiliser ces teintes (2) →');
-    expect(colibri.libelleUtiliser(7)).toBe('Utiliser ces teintes (7) →');
+  it('libellé du bouton principal selon le nombre de choix (teintes et papiers peints)', () => {
+    expect(colibri.libelleUtiliser(0)).toBe('Utiliser mon choix →');
+    expect(colibri.libelleUtiliser(1)).toBe('Utiliser mon choix →');
+    expect(colibri.libelleUtiliser(2)).toBe('Utiliser mes choix (2) →');
+    expect(colibri.libelleUtiliser(7)).toBe('Utiliser mes choix (7) →');
   });
 
-  it('annonce le nombre de teintes', () => {
-    expect(colibri.annonceTeintes(0)).toBe('Aucune teinte retenue');
-    expect(colibri.annonceTeintes(1)).toBe('1 teinte retenue');
-    expect(colibri.annonceTeintes(3)).toBe('3 teintes retenues');
+  it('libellés de la barre : « Vos essais », barre vide, plus de « Teintes essayées »', () => {
+    const source = readFileSync(new URL('./colibri.js', import.meta.url), 'utf8');
+    expect(source).toContain("'aria-label': 'Vos essais'");
+    expect(source).toContain("class: 'libelle', texte: 'Vos essais'");
+    expect(source).toContain('Appliquez une teinte ou un papier peint sur un mur pour le retenir');
+    expect(source).not.toContain('Teintes essayées');
+  });
+
+  it('annonce le nombre d’essais retenus', () => {
+    expect(colibri.annonceTeintes(0)).toBe('Aucun essai retenu');
+    expect(colibri.annonceTeintes(1)).toBe('1 essai retenu');
+    expect(colibri.annonceTeintes(3)).toBe('3 essais retenus');
   });
 
   it('n’accepte qu’un code hexadécimal comme couleur de pastille', () => {

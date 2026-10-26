@@ -7,12 +7,10 @@ import {
   buildPaintSample,
   csvCell,
   normalizeHex,
-  parseLengthToMeters,
   pickExtremesAndMedian,
   relativeLuminance,
   toCsv,
   toPaintRow,
-  toWallpaperRow,
   type CollectionShades,
   type ShadeCandidate,
 } from './common';
@@ -208,52 +206,5 @@ describe('CSV', () => {
     expect(header).toBe(PAINT_COLUMNS.join(','));
     expect(line.split(',')).toHaveLength(31);
     expect(csv.endsWith('\r\n')).toBe(true);
-  });
-});
-
-describe('parseLengthToMeters', () => {
-  it('convertit un metafield dimension', () => {
-    expect(parseLengthToMeters('{"value":53,"unit":"cm"}')).toEqual({ meters: 0.53, note: null });
-    expect(parseLengthToMeters('{"value":0.7,"unit":"m"}')).toEqual({ meters: 0.7, note: null });
-  });
-
-  it('convertit un texte avec unité', () => {
-    expect(parseLengthToMeters('53 cm').meters).toBe(0.53);
-    expect(parseLengthToMeters('0,53 m').meters).toBe(0.53);
-    expect(parseLengthToMeters('640mm').meters).toBe(0.64);
-  });
-
-  it("signale l'unité supposée quand elle est absente", () => {
-    expect(parseLengthToMeters('53')).toMatchObject({ meters: 0.53 });
-    expect(parseLengthToMeters('53').note).toMatch(/centimètres supposés/);
-    expect(parseLengthToMeters('0.53').note).toMatch(/mètres supposés/);
-  });
-
-  it('laisse vide et signale une valeur absente ou illisible', () => {
-    expect(parseLengthToMeters(null)).toEqual({ meters: null, note: 'metafield absent' });
-    expect(parseLengthToMeters('10,05 x 0,53 m').meters).toBeNull();
-    expect(parseLengthToMeters('{"value":53,"unit":"pouces-romains"}').meters).toBeNull();
-  });
-});
-
-describe('toWallpaperRow', () => {
-  it('utilise le handle comme identifiant et nom de texture sans extension', () => {
-    expect(
-      toWallpaperRow({
-        handle: 'papier-peint-jungle',
-        title: 'Papier peint Jungle',
-        collectionTitle: 'Tropical',
-        productWidth: 0.53,
-        repeatWidth: null,
-      }),
-    ).toEqual({
-      brand_name: 'Colibri Peinture',
-      collection_name: 'Tropical',
-      product_name: 'Papier peint Jungle',
-      unique_sku_id: 'papier-peint-jungle',
-      product_image: 'papier-peint-jungle',
-      product_width: '0.53',
-      repeat_width: '',
-    });
   });
 });

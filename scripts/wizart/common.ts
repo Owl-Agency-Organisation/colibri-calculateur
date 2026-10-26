@@ -398,116 +398,20 @@ export const WALLPAPER_COLUMNS = [
   'repeat_width',
 ] as const;
 
-export type WallpaperColumn = (typeof WALLPAPER_COLUMNS)[number];
-
-export interface LengthParse {
-  /** Longueur en mètres, `null` si la valeur n'est pas exploitable. */
-  meters: number | null;
-  /** Remarque à reporter (unité supposée, valeur illisible…). */
-  note: string | null;
-}
-
+// Unités acceptées dans l'option « Taille » des papiers peints
 const UNIT_TO_METERS: Record<string, number> = {
   mm: 0.001,
   cm: 0.01,
   m: 1,
-  in: 0.0254,
-  ft: 0.3048,
-  yd: 0.9144,
-};
-
-const UNIT_ALIASES: Record<string, string> = {
-  mm: 'mm',
-  millimetres: 'mm',
-  millimètres: 'mm',
-  cm: 'cm',
-  centimetres: 'cm',
-  centimètres: 'cm',
-  m: 'm',
-  metre: 'm',
-  mètre: 'm',
-  metres: 'm',
-  mètres: 'm',
-  in: 'in',
-  inches: 'in',
-  ft: 'ft',
-  feet: 'ft',
-  yd: 'yd',
-  yards: 'yd',
 };
 
 function roundMeters(value: number): number {
   return Math.round(value * 10000) / 10000;
 }
 
-/**
- * Convertit la valeur d'un metafield de longueur en mètres. Formats acceptés :
- * metafield `dimension` (`{"value":53,"unit":"cm"}`), décimal (`0.53`, `0,53`)
- * ou texte avec unité (`53 cm`, `0,53 m`). Sans unité : centimètres supposés
- * au-delà de 3, mètres en dessous — et la supposition est signalée.
- */
-export function parseLengthToMeters(raw: string | null | undefined): LengthParse {
-  if (typeof raw !== 'string' || raw.trim() === '') {
-    return { meters: null, note: 'metafield absent' };
-  }
-  const text = raw.trim();
-
-  if (text.startsWith('{')) {
-    try {
-      const parsed: unknown = JSON.parse(text);
-      if (parsed && typeof parsed === 'object' && 'value' in parsed && 'unit' in parsed) {
-        const { value, unit } = parsed as { value: unknown; unit: unknown };
-        const factor = typeof unit === 'string' ? UNIT_TO_METERS[unit.toLowerCase()] : undefined;
-        const amount = typeof value === 'number' ? value : Number(value);
-        if (factor !== undefined && Number.isFinite(amount)) {
-          return { meters: roundMeters(amount * factor), note: null };
-        }
-      }
-    } catch {
-      // Valeur non JSON : traitée comme du texte ci-dessous
-    }
-    return { meters: null, note: `valeur illisible « ${text} »` };
-  }
-
-  const match = text.match(/^(\d+(?:[.,]\d+)?)\s*([a-zàâéèêîôûç]*)\.?$/i);
-  if (!match) return { meters: null, note: `valeur illisible « ${text} »` };
-  const amount = Number(match[1].replace(',', '.'));
-  const unitLabel = match[2].toLowerCase();
-  if (unitLabel) {
-    const unit = UNIT_ALIASES[unitLabel];
-    if (!unit) return { meters: null, note: `unité inconnue « ${match[2]} »` };
-    return { meters: roundMeters(amount * UNIT_TO_METERS[unit]), note: null };
-  }
-  if (amount > 3) {
-    return { meters: roundMeters(amount / 100), note: `unité absente, centimètres supposés (« ${text} »)` };
-  }
-  return { meters: roundMeters(amount), note: `unité absente, mètres supposés (« ${text} »)` };
-}
-
 /** Formate une longueur en mètres pour le CSV (point décimal, sans zéros superflus). */
 export function formatMeters(meters: number | null): string {
   return meters === null ? '' : String(meters);
-}
-
-export interface WallpaperProduct {
-  handle: string;
-  title: string;
-  collectionTitle: string;
-  productWidth: number | null;
-  repeatWidth: number | null;
-}
-
-export function toWallpaperRow(product: WallpaperProduct): Record<WallpaperColumn, string> {
-  return {
-    brand_name: BRAND_NAME,
-    collection_name: product.collectionTitle,
-    product_name: product.title,
-    unique_sku_id: product.handle,
-    // Nom du fichier texture attendu dans le ZIP, sans extension (= handle)
-    product_image: product.handle,
-    product_width: formatMeters(product.productWidth),
-    repeat_width: formatMeters(product.repeatWidth),
-  };
 }
 
 /** Repère un intitulé « papier(s) peint(s) » (titre de collection, type produit, tag). */
@@ -529,7 +433,13 @@ export function isWallpaperLabel(value: string | null | undefined): boolean {
  *   sauté) ;
  * - `product_link` : fiche boutique sur la variante ;
  * - prix : colonnes présentes, toujours vides (la boutique est la seule
- *   source de prix).
+ *   source de prix) ;
+ * - puis toutes les autres colonnes du mapping « default » du type Wallpaper :
+ *   l'import du PIM refuse un CSV auquel il en manque une, même vide (constaté
+ *   le 22/10/2026). Renseignées : `wallpaper_roll_length` (longueur du lé, lue
+ *   dans l'option « Taille »), `reverse` et `mural` (`no`), `product_layout`
+ *   (`vertical`), `application_surface` (`wall`) ; les autres restent vides.
+ * Le CSV de 35 colonnes a été importé avec succès le 22/10/2026 (12 lignes).
  */
 export const WALLPAPER_EXPORT_COLUMNS = [
   ...WALLPAPER_COLUMNS,
@@ -538,7 +448,38 @@ export const WALLPAPER_EXPORT_COLUMNS = [
   'product_link',
   'product_regular_price',
   'product_promotional_price',
+  'wallpaper_roll_length',
+  'color',
+  'base',
+  'coating',
+  'interior_type',
+  'style',
+  'pattern',
+  'product_description',
+  'texture',
+  'country_of_origin',
+  'removal_type',
+  'product_transparency',
+  'reverse',
+  'mural',
+  'product_availability',
+  'product_layout',
+  'application_surface',
+  'product_context',
+  'context_currency',
+  'features',
+  'pattern_scale',
+  'installation_method',
+  'additional_data',
 ] as const;
+
+/** Valeurs fixes des colonnes facultatives renseignées ; les autres restent vides. */
+export const WALLPAPER_DEFAULTS: Partial<Record<WallpaperExportColumn, string>> = {
+  reverse: 'no',
+  mural: 'no',
+  product_layout: 'vertical',
+  application_surface: 'wall',
+};
 
 export type WallpaperExportColumn = (typeof WALLPAPER_EXPORT_COLUMNS)[number];
 
@@ -624,15 +565,17 @@ export function isLeVariant(options: readonly VariantOption[]): boolean {
 }
 
 /**
- * Largeur du lé en mètres, lue dans l'option « Taille » (`Lé : 60x280cm` →
- * 0.6). Premier nombre = largeur ; unité après le second (cm par défaut).
+ * Dimensions du lé en mètres, lues dans l'option « Taille »
+ * (`Lé : 53x280cm` → largeur 0.53, longueur 2.8). Premier nombre = largeur,
+ * second = longueur ; unité après le second (cm par défaut).
  */
-export function parseLeWidth(value: string | null | undefined): number | null {
+export function parseLeSize(value: string | null | undefined): { width: number; length: number } | null {
   if (typeof value !== 'string') return null;
-  const match = value.match(/(\d+(?:[.,]\d+)?)\s*[x×]\s*\d+(?:[.,]\d+)?\s*(mm|cm|m)?\b/i);
+  const match = value.match(/(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*(mm|cm|m)?\b/i);
   if (!match) return null;
-  const factor = UNIT_TO_METERS[(match[2] ?? 'cm').toLowerCase()];
-  return roundMeters(Number(match[1].replace(',', '.')) * factor);
+  const factor = UNIT_TO_METERS[(match[3] ?? 'cm').toLowerCase()];
+  const toMeters = (amount: string) => roundMeters(Number(amount.replace(',', '.')) * factor);
+  return { width: toMeters(match[1]), length: toMeters(match[2]) };
 }
 
 /** Nom du motif : partie du titre avant « - » (même règle que `nomCourtTeinte` de l'app). */
@@ -717,8 +660,10 @@ export function buildWallpaperVariantRows(
 
       const notes: string[] = [];
       const size = optionValue(variant.selectedOptions, 'taille');
-      const width = parseLeWidth(size);
-      if (width === null) notes.push(`product_width : largeur illisible dans « ${size ?? ''} »`);
+      const dimensions = parseLeSize(size);
+      if (dimensions === null) {
+        notes.push(`product_width, wallpaper_roll_length : dimensions illisibles dans « ${size ?? ''} »`);
+      }
       const coloris = optionValue(variant.selectedOptions, 'couleur');
       if (!coloris) notes.push('option « Couleur » absente');
 
@@ -737,24 +682,31 @@ export function buildWallpaperVariantRows(
         if (offset === null) notes.push('pattern_offset : raccord non renseigné');
       }
 
+      const empty = Object.fromEntries(WALLPAPER_EXPORT_COLUMNS.map((column) => [column, ''])) as Record<
+        WallpaperExportColumn,
+        string
+      >;
       rows.push({
         sku,
         productHandle: product.handle,
         notes,
         row: {
+          ...empty,
+          ...WALLPAPER_DEFAULTS,
           brand_name: BRAND_NAME,
           collection_name: WALLPAPER_COLLECTION_NAME,
           product_name: wallpaperProductName(motif, coloris),
           unique_sku_id: sku,
           // Nom du fichier texture attendu dans le ZIP, sans extension (= SKU)
           product_image: sku,
-          product_width: formatMeters(width),
+          product_width: formatMeters(dimensions?.width ?? null),
           repeat_width: formatMeters(repeatWidth),
           pattern_repeat: formatMeters(patternRepeat),
           pattern_offset: formatMeters(offset),
           product_link: wallpaperVariantLink(product.handle, variant.id),
           product_regular_price: '',
           product_promotional_price: '',
+          wallpaper_roll_length: formatMeters(dimensions?.length ?? null),
         },
       });
     }
