@@ -7,6 +7,45 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Simulateur : retours de Colibri du 23/10 (lot v1)
+
+#### Modifié
+- **Barre du simulateur aux couleurs du site** : fond `#F5F5F5`, texte
+  `#13302a`, séparation `#e3e2dc`, logo du site sans fond (plus de cartouche
+  blanche), pastilles blanches cerclées, « Utiliser… » sur fond `#13302a`,
+  contour de focus foncé (contrastes AA). Logo toujours masqué sous 640 px.
+- **Retour à la boutique** : « Fermer » devient « ← Retour à la boutique » sur
+  la page Simulateur et « ← Retour au calculateur » depuis la popup couleur
+  (barre et écran de chargement), même comportement. Le bouton retour de
+  Wizart est affiché (`showBackToWebsiteButton: true`) à toutes les étapes ;
+  il ferme la surimpression comme avant. La surimpression s'annonce
+  « Simulateur Colibri ».
+- Barre sur mobile (< 640 px) : « ← Retour… » et « Utiliser… » se partagent
+  la largeur et passent sur deux lignes si besoin ; « Utiliser… » ne sort plus
+  de l'écran (test mobile du 26/10).
+- **Page Simulateur : accès direct au téléversement de photo** : le clic sur
+  une pièce ouvre Wizart sur sa galerie (« Télécharger votre photo » en
+  premier, pièces d'exemple à côté), sans `openInRoom`, pour toutes les
+  pièces. La pièce reste transmise au calculateur, `?teinte=` inchangé ; au
+  retour, le focus revient sur la pièce cliquée. La popup couleur du
+  calculateur ouvre toujours la pièce d'exemple du type de pièce.
+- Page Simulateur : surtitre « Simulateur Colibri », titre « Essayez nos
+  teintes et nos papiers peints chez vous, avant d'acheter », intro et étape 2
+  sans le réglage de la lumière ; étape 1 « Votre photo, ou l'une de nos
+  pièces d'exemple. »
+
+#### Ajouté
+- Labo `/labo/pont` : réglages reçus par le faux DepKit
+  (`showBackToWebsiteButton`, intérieur ou galerie, `uploadPhoto` absent) et
+  bouton retour Wizart simulé.
+
+#### Tests
+- `reglagesVisualiseur` : bouton retour de Wizart, jamais d'`openInRoom`
+  depuis la page Simulateur (toutes les pièces), toujours depuis la popup
+  couleur (pièces qui ont un intérieur), `uploadPhoto` absent ; libellés de
+  retour selon le mode ; couleurs de la barre, règle mobile et textes de la
+  page Simulateur.
+
 ### Simulateur : export WALLPAPER complet, libellés de la barre
 
 #### Modifié

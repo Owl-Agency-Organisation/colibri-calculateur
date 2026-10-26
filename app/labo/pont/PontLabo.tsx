@@ -13,9 +13,11 @@ import type { TypePiece } from '@/lib/types';
  * `WizartDeploymentKit` qui remplace uniquement Wizart. Le faux simulateur
  * s'affiche dans la vraie surimpression, au-dessus de la vraie barre Colibri :
  * « Appliquer sur le mur » émet `PRODUCT_APPLY` (forme réelle du DepKit
- * v1.1.3), sans panier ; la sortie passe par la barre (« Fermer » /
- * « Utiliser… »). Il propose aussi deux papiers peints réels (SKU de variante
- * « Lé »), résolus par la vraie route du preview.
+ * v1.1.3), sans panier ; la sortie passe par la barre (« ← Retour au
+ * calculateur » / « Utiliser… ») ou par le bouton retour de Wizart
+ * (`BACK_BUTTON_CLICK`). Il affiche les réglages reçus (bouton retour,
+ * intérieur ou galerie) et propose aussi deux papiers peints réels (SKU de
+ * variante « Lé »), résolus par la vraie route du preview.
  */
 
 const HANDLE_INCONNU = 'teinte-inconnue-test';
@@ -189,6 +191,11 @@ const INTERIEURS_CONNUS: Record<string, string> = {
   'fe9bfc03-6fe5-403d-a6a1-5feb5c71c10c': 'cuisine (Wizart_018)',
   '00bb8d0e-5dcc-4893-93bc-d4b1b79ae60f': 'salle de bain / toilettes (GO-6041 2)',
 };
+
+/** `integrationSettings.showBackToWebsiteButton` reçu par le faux DepKit */
+function boutonRetourDemande(visualiseur: FauxVisualiseur): boolean {
+  return visualiseur.options.integrationSettings?.showBackToWebsiteButton === true;
+}
 
 function libelleInterieur(uuid: string | null): string {
   if (!uuid) return 'Galerie (aucun intérieur demandé)';
@@ -506,9 +513,26 @@ export function PontLabo() {
           <div className="border-b border-gray-200 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Faux simulateur (labo)</p>
             <h2 className="text-lg font-bold text-gray-900">Appliquez des teintes sur les murs de la photo</h2>
+            {boutonRetourDemande(fauxOuvert) && (
+              // Comme Wizart avec showBackToWebsiteButton : retour visible en haut, à toutes les étapes
+              <button
+                type="button"
+                onClick={retourWizart}
+                className="mt-2 mr-2 rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700"
+                data-labo="retour-wizart"
+              >
+                ← Retour (bouton Wizart)
+              </button>
+            )}
             <p className="mt-2 inline-block rounded bg-amber-50 px-2 py-1 text-sm font-medium text-amber-800" data-labo="interieur">
               {libelleInterieur(fauxOuvert.interieur)}
               {pieceDemandee && <span className="font-normal"> — pièce demandée&nbsp;: {pieceDemandee}</span>}
+            </p>
+            <p className="mt-1 text-xs text-amber-800" data-labo="reglages">
+              Réglages reçus&nbsp;: <code>showBackToWebsiteButton</code> = {String(boutonRetourDemande(fauxOuvert))}
+              {' · '}{fauxOuvert.interieur ? <>intérieur (<code>openInRoom</code>)</> : 'galerie (pas d’openInRoom)'}
+              {fauxOuvert.teinteInitiale && <>{' · '}<code>openWithProduct</code> = {fauxOuvert.teinteInitiale}</>}
+              {' · '}<code>uploadPhoto</code> {fauxOuvert.options.integrationSettings && 'uploadPhoto' in fauxOuvert.options.integrationSettings ? 'transmis' : 'absent (téléversement autorisé par défaut)'}
             </p>
             <p className="mt-1 text-xs text-gray-600">
               Chaque application émet <code>PRODUCT_APPLY</code>. Aucun panier : la sortie se fait par la barre Colibri, en bas.
