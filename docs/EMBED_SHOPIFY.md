@@ -31,9 +31,9 @@ https://calculateur.colibripeinture.com/embed/colibri.js
 La surimpression (plein écran, au-dessus du site) contient deux parties :
 
 - en haut, la zone Wizart (DepKit v1.1.3 en `FILL_PARENT`, `locale: 'fr'`,
-  `showBackToWebsiteButton: true`, ouverture dans un intérieur du type de
-  pièce avec `openInRoom` pour une pièce d'exemple, sur sa galerie pour « Sur
-  ma photo », sur une teinte avec `openWithProduct`) ;
+  `showBackToWebsiteButton: true`, ouverture sur sa galerie depuis la page
+  Simulateur, dans l'intérieur du type de pièce (`openInRoom`) depuis la
+  popup couleur, sur une teinte avec `openWithProduct`) ;
 - en bas, la **barre Colibri**, toujours visible, aux couleurs du site (fond
   `#F5F5F5`, séparation `#e3e2dc`, texte `#13302a`, logo du site sans fond,
   masqué sous 640 px) : « Vos essais » (pastilles blanches des teintes et
@@ -108,14 +108,17 @@ appliquée ; avec des papiers peints seuls, le mur reste sans couleur.
 
 ### Intérieur d'exemple selon le type de pièce
 
-Le type de pièce est toujours connu (carte de la page Simulateur, ou `piece`
-du message `colibri:simulateur:ouvrir` envoyé par l'app). Wizart s'ouvre
-directement dans un intérieur d'exemple de ce type (`sceneData.openInRoom`,
-transmis à Wizart en `room_uuid`), combiné avec `openWithProduct` quand une
-teinte est demandée. Le client garde « Changer l'intérieur » (en haut à gauche
-dans Wizart) pour revenir à la galerie et à « Télécharger votre photo ». La
-galerie Wizart ne se filtre pas par type de pièce : aucun réglage du DepKit ne
-le permet.
+Depuis la **popup couleur** du calculateur, le type de pièce est connu
+(`piece` du message `colibri:simulateur:ouvrir` envoyé par l'app) : Wizart
+s'ouvre directement dans un intérieur d'exemple de ce type
+(`sceneData.openInRoom`, transmis à Wizart en `room_uuid`), combiné avec
+`openWithProduct` quand une teinte est demandée. Le client garde « Changer
+l'intérieur » (en haut à gauche dans Wizart) pour revenir à la galerie et à
+« Télécharger votre photo ». La galerie Wizart ne se filtre pas par type de
+pièce : aucun réglage du DepKit ne le permet.
+
+Depuis la **page Simulateur**, Wizart s'ouvre toujours sur sa galerie, sans
+`openInRoom` (décision du 26/10, voir la section 2).
 
 Correspondance (table `INTERIEURS_WIZART` de `embed/colibri.js`, relevée le
 16/10/2026 sur le compte Colibri) :
@@ -177,8 +180,7 @@ Ce que fait le script :
   posée sur le mur de la popup, toutes rejoignent « Vos teintes essayées ».
   « ← Retour au calculateur » (ou le bouton retour de Wizart) envoie
   `colibri:simulateur:ferme`. La saisie en cours dans l'app n'est jamais
-  perdue. Ce parcours ne passe pas par l'étape « Comment voulez-vous
-  essayer ? » : Wizart s'ouvre directement dans la pièce d'exemple du type de
+  perdue. Wizart s'ouvre directement dans la pièce d'exemple du type de
   pièce (ou sa galerie pour l'entrée et le couloir).
 
 ## 2. Bloc simulateur — page `/pages/simulateur`
@@ -200,27 +202,19 @@ pièce voulez-vous transformer ? » (7 cartes, mêmes images et libellés que
 l'étape « Pièce » du configurateur), trois étapes, conseil photo ;
 `?teinte={handle}` ouvre le simulateur sur ce produit.
 
-Le clic sur une pièce affiche l'étape **« Comment voulez-vous essayer ? »**
-(demande de Colibri du 23/10 : accès direct au téléversement de photo, sans
-passer par « Changer l'intérieur » de Wizart), à la place de la grille :
-
-- **« Sur ma photo »** (« Prenez votre pièce en photo ou choisissez-en une ») :
-  Wizart s'ouvre sans `openInRoom`, sur sa galerie, où se trouve le bouton de
-  téléversement ;
-- **« Dans une pièce d'exemple »** (« Une pièce du même type, prête à
-  l'emploi ») : comportement d'avant, `openInRoom` si la pièce a un intérieur
-  d'exemple, galerie sinon (entrée, couloir) ;
-- **« Changer de pièce »** : retour à la grille.
-
-Dans les deux cas, la pièce choisie est transmise au calculateur et
-`?teinte=` reste appliqué. Accessibilité : le focus va sur le titre de
-l'étape ; « Changer de pièce » le rend à la pièce choisie dans la grille.
+Le clic sur une pièce ouvre directement le simulateur **sur la galerie de
+Wizart**, sans `openInRoom`, pour toutes les pièces : « Télécharger votre
+photo » y vient en premier, les pièces d'exemple à côté. C'est l'accès direct
+au téléversement demandé par Colibri le 23/10 ; une étape intermédiaire
+« Sur ma photo » / « Dans une pièce d'exemple », un temps prévue, a été
+abandonnée le 26/10 : elle ajoutait un clic sans rien apporter. La pièce
+cliquée reste transmise au calculateur et `?teinte=` reste appliqué.
 « Utiliser… » : navigation vers
 `/pages/configurateur?piece={type}&teintes={h1},{h2}` (ordre d'application ;
 la dernière est posée sur le Mur 1, toutes rejoignent « Vos teintes
 essayées »). « ← Retour à la boutique » (ou le bouton retour de Wizart) :
-fermeture de la surimpression, retour à l'étape « Comment voulez-vous
-essayer ? ».
+fermeture de la surimpression, retour à la grille, focus sur la pièce
+cliquée.
 
 - `data-configurateur` (facultatif, **pages de test uniquement**, sur la
   balise `<script>`) : chemin du configurateur vers lequel sortir, à la place

@@ -23,25 +23,28 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 - Barre sur mobile (< 640 px) : « ← Retour… » et « Utiliser… » se partagent
   la largeur et passent sur deux lignes si besoin ; « Utiliser… » ne sort plus
   de l'écran (test mobile du 26/10).
+- **Page Simulateur : accès direct au téléversement de photo** : le clic sur
+  une pièce ouvre Wizart sur sa galerie (« Télécharger votre photo » en
+  premier, pièces d'exemple à côté), sans `openInRoom`, pour toutes les
+  pièces. La pièce reste transmise au calculateur, `?teinte=` inchangé ; au
+  retour, le focus revient sur la pièce cliquée. La popup couleur du
+  calculateur ouvre toujours la pièce d'exemple du type de pièce.
 - Page Simulateur : surtitre « Simulateur Colibri », titre « Essayez nos
   teintes et nos papiers peints chez vous, avant d'acheter », intro et étape 2
-  sans le réglage de la lumière.
+  sans le réglage de la lumière ; étape 1 « Votre photo, ou l'une de nos
+  pièces d'exemple. »
 
 #### Ajouté
-- Page Simulateur : après le choix de la pièce, étape « Comment voulez-vous
-  essayer ? » avec « Sur ma photo » (galerie Wizart, accès direct au
-  téléversement) et « Dans une pièce d'exemple » (intérieur du type de pièce,
-  galerie pour l'entrée et le couloir), et « Changer de pièce ». Focus sur le
-  titre de l'étape, rendu à la pièce choisie au retour.
 - Labo `/labo/pont` : réglages reçus par le faux DepKit
   (`showBackToWebsiteButton`, intérieur ou galerie, `uploadPhoto` absent) et
   bouton retour Wizart simulé.
 
 #### Tests
-- `reglagesVisualiseur` : bouton retour de Wizart, pas d'`openInRoom` pour
-  « Sur ma photo », `openInRoom` pour une pièce d'exemple, `uploadPhoto`
-  absent ; libellés de retour selon le mode ; couleurs de la barre et textes
-  de la page Simulateur.
+- `reglagesVisualiseur` : bouton retour de Wizart, jamais d'`openInRoom`
+  depuis la page Simulateur (toutes les pièces), toujours depuis la popup
+  couleur (pièces qui ont un intérieur), `uploadPhoto` absent ; libellés de
+  retour selon le mode ; couleurs de la barre, règle mobile et textes de la
+  page Simulateur.
 
 ### Simulateur : export WALLPAPER complet, libellés de la barre
 

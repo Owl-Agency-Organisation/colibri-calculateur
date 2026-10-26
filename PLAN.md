@@ -444,10 +444,16 @@ Contenus :
       « ← Retour au calculateur » (popup couleur), écran d'attente compris ;
       bouton retour de Wizart affiché (`showBackToWebsiteButton: true`) ;
       surimpression « Simulateur Colibri »
-- [x] Page Simulateur : étape « Comment voulez-vous essayer ? » (« Sur ma
-      photo » : galerie Wizart ; « Dans une pièce d'exemple » : `openInRoom`) ;
-      textes teintes et papiers peints, sans le réglage de la lumière (arrêté
-      par Wizart le 1er novembre)
+- [x] Page Simulateur : le clic sur une pièce ouvre Wizart sur sa galerie
+      (« Télécharger votre photo » en premier, pièces d'exemple à côté), sans
+      `openInRoom`, pour toutes les pièces ; la popup couleur garde
+      `openInRoom`. Décision du 26/10 : l'étape intermédiaire « Sur ma photo » /
+      « Dans une pièce d'exemple », un temps prévue, est supprimée (un clic de
+      plus sans rien apporter)
+- [x] Textes de la page Simulateur : teintes et papiers peints, sans le réglage
+      de la lumière (arrêté par Wizart le 1er novembre)
+- [x] Barre sur mobile : les deux boutons se partagent la largeur (test du
+      26/10, « Utiliser… » sortait de l'écran)
 - [x] Labo `/labo/pont` : réglages reçus par le faux DepKit affichés
 - [ ] Parcours avec le vrai simulateur sur les pages de test Shopify
       (ordinateur et mobile)
