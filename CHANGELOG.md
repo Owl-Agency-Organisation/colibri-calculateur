@@ -20,6 +20,9 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
   Wizart est affiché (`showBackToWebsiteButton: true`) à toutes les étapes ;
   il ferme la surimpression comme avant. La surimpression s'annonce
   « Simulateur Colibri ».
+- Barre sur mobile (< 640 px) : « ← Retour… » et « Utiliser… » se partagent
+  la largeur et passent sur deux lignes si besoin ; « Utiliser… » ne sort plus
+  de l'écran (test mobile du 26/10).
 - Page Simulateur : surtitre « Simulateur Colibri », titre « Essayez nos
   teintes et nos papiers peints chez vous, avant d'acheter », intro et étape 2
   sans le réglage de la lumière.

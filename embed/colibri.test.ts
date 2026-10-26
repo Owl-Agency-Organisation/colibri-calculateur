@@ -643,6 +643,17 @@ describe('script hébergé — « Sur ma photo » ou « Dans une pièce d’exem
     expect(source).toMatch(/'\.pastille\{[^']*background:#fff;border:1px solid #e3e2dc;/);
   });
 
+  it('mobile (< 640 px) : les deux boutons se partagent la largeur, libellé sur deux lignes si besoin', () => {
+    const source = readFileSync(new URL('./colibri.js', import.meta.url), 'utf8');
+    const mobile = source.slice(source.indexOf("'@media (max-width:639px){'"), source.indexOf('].join', source.indexOf("'@media (max-width:639px){'")));
+    expect(mobile).toContain("'.retour,.utiliser{flex:1 1 0;min-width:0;white-space:normal;text-align:center;min-height:44px;}'");
+    expect(mobile).toContain("'.retour{margin-left:0;}'");
+    expect(mobile).not.toContain('flex:1 1 auto');
+    // Au-dessus de 640 px : inchangé, une seule ligne
+    expect(source).toMatch(/'\.retour\{margin-left:auto;flex:0 0 auto;[^']*white-space:nowrap;\}'/);
+    expect(source).toMatch(/'\.utiliser\{flex:0 0 auto;[^']*white-space:nowrap;\}'/);
+  });
+
   it('textes de la page Simulateur : teintes et papiers peints, sans le réglage de la lumière', () => {
     const source = readFileSync(new URL('./colibri.js', import.meta.url), 'utf8');
     expect(source).toContain("texte: 'Simulateur Colibri'");

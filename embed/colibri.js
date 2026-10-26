@@ -559,8 +559,10 @@
     // Ligne du haut réservée au libellé et aux pastilles (maquette mobile)
     '.logo{display:none;}',
     '.actions{display:flex;gap:12px;}',
-    '.retour{margin-left:0;min-height:44px;}',
-    '.utiliser{flex:1 1 auto;min-height:44px;}',
+    // Les deux boutons se partagent la largeur ; le libellé passe sur deux
+    // lignes si besoin (en nowrap, ils sortaient de l'écran : test du 26/10)
+    '.retour,.utiliser{flex:1 1 0;min-width:0;white-space:normal;text-align:center;min-height:44px;}',
+    '.retour{margin-left:0;}',
     '}',
   ].join('');
 
