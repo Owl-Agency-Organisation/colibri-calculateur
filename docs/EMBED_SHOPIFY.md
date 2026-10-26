@@ -31,22 +31,32 @@ https://calculateur.colibripeinture.com/embed/colibri.js
 La surimpression (plein écran, au-dessus du site) contient deux parties :
 
 - en haut, la zone Wizart (DepKit v1.1.3 en `FILL_PARENT`, `locale: 'fr'`,
-  `showBackToWebsiteButton: false`, ouverture dans un intérieur du type de
-  pièce avec `openInRoom`, sur une teinte avec `openWithProduct`) ;
-- en bas, la **barre Colibri**, toujours visible : « Vos essais » (pastilles
-  des teintes et papiers peints appliqués), « Fermer » et
-  « Utiliser mon choix → » / « Utiliser mes choix (n) → » (désactivé tant que
-  rien n'est appliqué ; barre vide : « Appliquez une teinte ou un papier peint
-  sur un mur pour le retenir »). Lecteurs d'écran : « Aucun essai retenu »,
-  « 1 essai retenu », « n essais retenus ».
+  `showBackToWebsiteButton: true`, ouverture dans un intérieur du type de
+  pièce avec `openInRoom` pour une pièce d'exemple, sur sa galerie pour « Sur
+  ma photo », sur une teinte avec `openWithProduct`) ;
+- en bas, la **barre Colibri**, toujours visible, aux couleurs du site (fond
+  `#F5F5F5`, séparation `#e3e2dc`, texte `#13302a`, logo du site sans fond,
+  masqué sous 640 px) : « Vos essais » (pastilles blanches des teintes et
+  papiers peints appliqués), le bouton de retour (« ← Retour à la boutique »
+  sur la page Simulateur, « ← Retour au calculateur » depuis la popup
+  couleur) et « Utiliser mon choix → » / « Utiliser mes choix (n) → »
+  (désactivé tant que rien n'est appliqué ; barre vide : « Appliquez une
+  teinte ou un papier peint sur un mur pour le retenir »). Lecteurs d'écran :
+  « Aucun essai retenu », « 1 essai retenu », « n essais retenus » ; la
+  surimpression s'annonce « Simulateur Colibri ». L'écran d'attente
+  (chargement du DepKit) porte le même bouton de retour.
 
 Chaque teinte appliquée sur un mur (`PRODUCT_APPLY`, handle = `article_sku`, à
 défaut `article_custom_sku`) est retenue dans l'ordre d'application ; une
 teinte réappliquée passe en dernier, la dernière est donc toujours la plus
 récente. Nettoyer une surface ne retire rien ; la liste repart de zéro à chaque
-ouverture. La sortie ne passe que par la barre : le panier Wizart
-(`OPEN_IN_STORE`) n'est plus écouté ; `BACK_BUTTON_CLICK` ferme comme
-« Fermer » (sécurité, le bouton est masqué).
+ouverture. La sortie passe par la barre ou par le **bouton retour de
+Wizart** : `showBackToWebsiteButton: true` l'affiche en haut de Wizart à toutes
+les étapes (galerie, téléversement, scène), demande de Colibri du 23/10 ; il
+émet `BACK_BUTTON_CLICK`, qui ferme la surimpression comme le bouton de retour
+de la barre. Le panier Wizart (`OPEN_IN_STORE`) n'est plus écouté.
+`integrationSettings.uploadPhoto` n'est jamais passé : le téléversement de
+photo reste ouvert à tous (valeur par défaut du DepKit).
 
 Couleur des pastilles : `GET /api/embed/teintes?handles=r1,r2` →
 `[{ handle, nom, hex, type, image, lien }]` (CORS limité à
@@ -165,8 +175,11 @@ Ce que fait le script :
   échéant. « Utiliser… » renvoie à l'app les teintes appliquées
   (`colibri:simulateur:selection`, ordre d'application) : la dernière est
   posée sur le mur de la popup, toutes rejoignent « Vos teintes essayées ».
-  « Fermer » envoie `colibri:simulateur:ferme`. La saisie en cours dans l'app
-  n'est jamais perdue.
+  « ← Retour au calculateur » (ou le bouton retour de Wizart) envoie
+  `colibri:simulateur:ferme`. La saisie en cours dans l'app n'est jamais
+  perdue. Ce parcours ne passe pas par l'étape « Comment voulez-vous
+  essayer ? » : Wizart s'ouvre directement dans la pièce d'exemple du type de
+  pièce (ou sa galerie pour l'entrée et le couloir).
 
 ## 2. Bloc simulateur — page `/pages/simulateur`
 
@@ -181,15 +194,33 @@ Créer une page Shopify `simulateur` (gabarit page standard) avec un bloc
 - `data-visuel` (facultatif) : URL de l'image de l'en-tête (à déposer dans
   Shopify, Contenu → Fichiers). Sans attribut, l'en-tête tient sur une colonne.
 
-Ce que fait le script : en-tête (« Essayez nos teintes chez vous, avant
-d'acheter »), « Quelle pièce voulez-vous transformer ? » (7 cartes, mêmes
-images et libellés que l'étape « Pièce » du configurateur), trois étapes,
-conseil photo ; `?teinte={handle}` ouvre le simulateur sur ce produit. Le clic
-sur une pièce ouvre le simulateur (surimpression et barre Colibri).
+Ce que fait le script : en-tête (surtitre « Simulateur Colibri », « Essayez
+nos teintes et nos papiers peints chez vous, avant d'acheter »), « Quelle
+pièce voulez-vous transformer ? » (7 cartes, mêmes images et libellés que
+l'étape « Pièce » du configurateur), trois étapes, conseil photo ;
+`?teinte={handle}` ouvre le simulateur sur ce produit.
+
+Le clic sur une pièce affiche l'étape **« Comment voulez-vous essayer ? »**
+(demande de Colibri du 23/10 : accès direct au téléversement de photo, sans
+passer par « Changer l'intérieur » de Wizart), à la place de la grille :
+
+- **« Sur ma photo »** (« Prenez votre pièce en photo ou choisissez-en une ») :
+  Wizart s'ouvre sans `openInRoom`, sur sa galerie, où se trouve le bouton de
+  téléversement ;
+- **« Dans une pièce d'exemple »** (« Une pièce du même type, prête à
+  l'emploi ») : comportement d'avant, `openInRoom` si la pièce a un intérieur
+  d'exemple, galerie sinon (entrée, couloir) ;
+- **« Changer de pièce »** : retour à la grille.
+
+Dans les deux cas, la pièce choisie est transmise au calculateur et
+`?teinte=` reste appliqué. Accessibilité : le focus va sur le titre de
+l'étape ; « Changer de pièce » le rend à la pièce choisie dans la grille.
 « Utiliser… » : navigation vers
 `/pages/configurateur?piece={type}&teintes={h1},{h2}` (ordre d'application ;
 la dernière est posée sur le Mur 1, toutes rejoignent « Vos teintes
-essayées »). « Fermer » : retour à la question.
+essayées »). « ← Retour à la boutique » (ou le bouton retour de Wizart) :
+fermeture de la surimpression, retour à l'étape « Comment voulez-vous
+essayer ? ».
 
 - `data-configurateur` (facultatif, **pages de test uniquement**, sur la
   balise `<script>`) : chemin du configurateur vers lequel sortir, à la place

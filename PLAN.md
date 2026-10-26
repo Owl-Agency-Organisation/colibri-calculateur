@@ -428,3 +428,33 @@ Contenus :
       essais », « Utiliser mon choix → » / « Utiliser mes choix (n) → »)
 - [ ] Shopify : bloc Liquid des fiches papier peint
       (`docs/EMBED_SHOPIFY.md`, section 3)
+
+## Simulateur : retours de Colibri du 23/10, lot v1 (branche : `feat/simulateur-retours-v1`)
+
+> Test du simulateur par Colibri le 23/10/2026. Ce lot traite trois demandes :
+> une barre aux couleurs du site, un retour à la boutique accessible à toutes
+> les étapes (« Fermer » n'était pas compris) et l'accès direct au
+> téléversement de photo dès le choix de la pièce. Le téléversement reste
+> ouvert à tous (`uploadPhoto` jamais passé, valeur par défaut du DepKit).
+
+- [x] Barre aux couleurs du site : fond `#F5F5F5`, texte `#13302a`, séparation
+      `#e3e2dc`, logo du site sans fond (CDN Shopify), pastilles blanches,
+      « Utiliser… » foncé, contrastes AA ; logo masqué sous 640 px
+- [x] « Fermer » devient « ← Retour à la boutique » (page Simulateur) ou
+      « ← Retour au calculateur » (popup couleur), écran d'attente compris ;
+      bouton retour de Wizart affiché (`showBackToWebsiteButton: true`) ;
+      surimpression « Simulateur Colibri »
+- [x] Page Simulateur : étape « Comment voulez-vous essayer ? » (« Sur ma
+      photo » : galerie Wizart ; « Dans une pièce d'exemple » : `openInRoom`) ;
+      textes teintes et papiers peints, sans le réglage de la lumière (arrêté
+      par Wizart le 1er novembre)
+- [x] Labo `/labo/pont` : réglages reçus par le faux DepKit affichés
+- [ ] Parcours avec le vrai simulateur sur les pages de test Shopify
+      (ordinateur et mobile)
+
+Retours du 23/10 hors de ce lot :
+
+- [ ] **Chez Wizart** : catalogue séparé Peinture / Papier peint, navigation
+      des couleurs, libellé de l'icône Historique
+- [ ] **Version suivante** : connexion obligatoire pour utiliser sa photo,
+      points de fidélité

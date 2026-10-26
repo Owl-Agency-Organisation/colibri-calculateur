@@ -7,6 +7,39 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Simulateur : retours de Colibri du 23/10 (lot v1)
+
+#### Modifié
+- **Barre du simulateur aux couleurs du site** : fond `#F5F5F5`, texte
+  `#13302a`, séparation `#e3e2dc`, logo du site sans fond (plus de cartouche
+  blanche), pastilles blanches cerclées, « Utiliser… » sur fond `#13302a`,
+  contour de focus foncé (contrastes AA). Logo toujours masqué sous 640 px.
+- **Retour à la boutique** : « Fermer » devient « ← Retour à la boutique » sur
+  la page Simulateur et « ← Retour au calculateur » depuis la popup couleur
+  (barre et écran de chargement), même comportement. Le bouton retour de
+  Wizart est affiché (`showBackToWebsiteButton: true`) à toutes les étapes ;
+  il ferme la surimpression comme avant. La surimpression s'annonce
+  « Simulateur Colibri ».
+- Page Simulateur : surtitre « Simulateur Colibri », titre « Essayez nos
+  teintes et nos papiers peints chez vous, avant d'acheter », intro et étape 2
+  sans le réglage de la lumière.
+
+#### Ajouté
+- Page Simulateur : après le choix de la pièce, étape « Comment voulez-vous
+  essayer ? » avec « Sur ma photo » (galerie Wizart, accès direct au
+  téléversement) et « Dans une pièce d'exemple » (intérieur du type de pièce,
+  galerie pour l'entrée et le couloir), et « Changer de pièce ». Focus sur le
+  titre de l'étape, rendu à la pièce choisie au retour.
+- Labo `/labo/pont` : réglages reçus par le faux DepKit
+  (`showBackToWebsiteButton`, intérieur ou galerie, `uploadPhoto` absent) et
+  bouton retour Wizart simulé.
+
+#### Tests
+- `reglagesVisualiseur` : bouton retour de Wizart, pas d'`openInRoom` pour
+  « Sur ma photo », `openInRoom` pour une pièce d'exemple, `uploadPhoto`
+  absent ; libellés de retour selon le mode ; couleurs de la barre et textes
+  de la page Simulateur.
+
 ### Simulateur : export WALLPAPER complet, libellés de la barre
 
 #### Modifié
