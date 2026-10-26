@@ -85,7 +85,14 @@ interface LogiqueColibri {
     cible: unknown,
     teinte?: string | null,
     piece?: unknown,
+    essai?: string,
   ): Reglages;
+  ESSAI_PHOTO: string;
+  ESSAI_EXEMPLE: string;
+  RETOUR_BOUTIQUE: string;
+  RETOUR_CALCULATEUR: string;
+  LOGO_COLIBRI: string;
+  libelleRetour(destination: unknown): string;
 }
 
 const colibri = createRequire(import.meta.url)('./colibri.js') as LogiqueColibri;
@@ -386,13 +393,13 @@ describe('script hébergé — DepKit', () => {
     expect(colibri.evenementsEcoutes(undefined)).toEqual({ application: [], retour: [] });
   });
 
-  it('réglages : FILL_PARENT, français, sans bouton « Retour au site », teinte d’ouverture', () => {
+  it('réglages : FILL_PARENT, français, bouton retour de Wizart affiché, teinte d’ouverture', () => {
     const cible = {};
     const kit = { LAYOUTS: { FULL_SCREEN: 'full_screen', FILL_PARENT: 'fill_parent', CUSTOM_SIZE: 'custom_size' } };
     expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, 'bleu-ciel')).toEqual({
       token: 'jeton',
       layoutSettings: { targetElement: cible, layout: 'fill_parent' },
-      integrationSettings: { locale: 'fr', showBackToWebsiteButton: false },
+      integrationSettings: { locale: 'fr', showBackToWebsiteButton: true },
       sceneData: { openWithProduct: 'bleu-ciel' },
     });
     expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, null).sceneData).toBeUndefined();
@@ -569,5 +576,81 @@ describe('script hébergé — bouton des fiches papier peint (data-variantes)',
     expect(avertir.mock.calls[0][0]).toContain('data-variantes');
     expect(colibri.lireVariantes('{"12":"Pas Un SKU!","abc":"pp-montg-blanc-le","34":"PP-MONTG-ROSE-LE"}'))
       .toEqual({ '34': 'pp-montg-rose-le' });
+  });
+});
+
+describe('script hébergé — « Sur ma photo » ou « Dans une pièce d’exemple » (retours du 23/10/2026)', () => {
+  const cible = {};
+  const kit = { LAYOUTS: { FILL_PARENT: 'fill_parent' } };
+  const CHAMBRE = '1103ea18-8a07-4f59-a1d3-86d08b406755';
+
+  it('bouton retour de Wizart affiché quel que soit l’essai, uploadPhoto jamais passé', () => {
+    for (const essai of [colibri.ESSAI_PHOTO, colibri.ESSAI_EXEMPLE, undefined]) {
+      const reglages = colibri.reglagesVisualiseur(kit, 'jeton', cible, 'bleu-ciel', 'chambre', essai);
+      expect(reglages.integrationSettings).toEqual({ locale: 'fr', showBackToWebsiteButton: true });
+      expect(reglages.integrationSettings).not.toHaveProperty('uploadPhoto');
+      expect(JSON.stringify(reglages)).not.toContain('uploadPhoto');
+    }
+  });
+
+  it('« Sur ma photo » : pas d’openInRoom (galerie Wizart, où se trouve le téléversement), teinte transmise', () => {
+    expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, null, 'chambre', colibri.ESSAI_PHOTO).sceneData).toBeUndefined();
+    expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, 'bleu-ciel', 'chambre', colibri.ESSAI_PHOTO).sceneData)
+      .toEqual({ openWithProduct: 'bleu-ciel' });
+  });
+
+  it('« Dans une pièce d’exemple » : openInRoom de la pièce (comportement actuel, par défaut)', () => {
+    expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, null, 'chambre', colibri.ESSAI_EXEMPLE).sceneData)
+      .toEqual({ openInRoom: CHAMBRE });
+    expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, 'bleu-ciel', 'chambre', colibri.ESSAI_EXEMPLE).sceneData)
+      .toEqual({ openInRoom: CHAMBRE, openWithProduct: 'bleu-ciel' });
+    expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, null, 'chambre').sceneData).toEqual({ openInRoom: CHAMBRE });
+  });
+
+  it('entrée et couloir : « Dans une pièce d’exemple » ouvre la galerie, comme aujourd’hui', () => {
+    for (const piece of ['entree', 'couloir']) {
+      expect(colibri.reglagesVisualiseur(kit, 'jeton', cible, null, piece, colibri.ESSAI_EXEMPLE).sceneData).toBeUndefined();
+    }
+  });
+
+  it('libellés de retour selon le mode : boutique (page Simulateur), calculateur (popup couleur)', () => {
+    expect(colibri.libelleRetour(colibri.RETOUR_BOUTIQUE)).toBe('Retour à la boutique');
+    expect(colibri.libelleRetour(colibri.RETOUR_CALCULATEUR)).toBe('Retour au calculateur');
+    expect(colibri.libelleRetour(undefined)).toBe('Retour à la boutique');
+  });
+
+  it('barre et surimpression : flèche décorative, plus de « Fermer », surimpression « Simulateur Colibri »', () => {
+    const source = readFileSync(new URL('./colibri.js', import.meta.url), 'utf8');
+    expect(source).toContain("creer('span', { 'aria-hidden': 'true', texte: '← ' })");
+    expect(source).not.toMatch(/texte: 'Fermer'/);
+    expect(source).toContain("'aria-label': 'Simulateur Colibri'");
+    expect(source).not.toContain('Simulateur de teintes');
+    // Page Simulateur : retour boutique ; popup couleur : retour calculateur
+    expect(source.match(/retour: RETOUR_BOUTIQUE/g)).toHaveLength(1);
+    expect(source.match(/retour: RETOUR_CALCULATEUR/g)).toHaveLength(1);
+  });
+
+  it('barre aux couleurs du site : fond #F5F5F5, logo sans fond, bouton principal foncé', () => {
+    const source = readFileSync(new URL('./colibri.js', import.meta.url), 'utf8');
+    expect(colibri.LOGO_COLIBRI).toBe(
+      'https://cdn.shopify.com/s/files/1/0971/0436/3865/files/'
+        + 'logo-colibri-lettre-ligne-gris_c069846e-2280-4484-94fa-c0a82abf361a.png?v=1773400972&width=244',
+    );
+    expect(source).toMatch(/'\.barre\{[^']*background:#F5F5F5;color:#13302a;border-top:1px solid #e3e2dc;/);
+    expect(source).toContain("'.logo{flex:0 0 auto;display:inline-flex;align-items:center;}'");
+    expect(source).toMatch(/'\.utiliser\{[^']*background:#13302a;color:#fff;/);
+    expect(source).toMatch(/'\.retour\{[^']*background:transparent;color:#13302a;border:1px solid #13302a;/);
+    expect(source).toMatch(/'\.pastille\{[^']*background:#fff;border:1px solid #e3e2dc;/);
+  });
+
+  it('textes de la page Simulateur : teintes et papiers peints, sans le réglage de la lumière', () => {
+    const source = readFileSync(new URL('./colibri.js', import.meta.url), 'utf8');
+    expect(source).toContain("texte: 'Simulateur Colibri'");
+    expect(source).toContain('Essayez nos teintes et nos papiers peints chez vous, avant d’acheter');
+    expect(source).toContain('essayez nos teintes et nos papiers peints mur par mur');
+    expect(source).toContain("['Essayez teintes et papiers peints', 'Un essai par mur, et la comparaison avant/après.']");
+    expect(source).not.toContain('réglage de la lumière');
+    expect(source).toContain('Comment voulez-vous essayer ?');
+    expect(source).toContain('Changer de pièce');
   });
 });

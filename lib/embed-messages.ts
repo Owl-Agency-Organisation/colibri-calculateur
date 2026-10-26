@@ -20,7 +20,8 @@ import { estTypePiece } from '@/lib/pieces';
  *   barre Colibri (handles Shopify, ordre d'application, sans doublon : une
  *   teinte réappliquée passe en dernier, la dernière est la plus récente)
  * - `colibri:simulateur:ferme` (page → app) : simulateur fermé sans sélection
- *   (« Fermer » de la barre, ou impossible à charger)
+ *   (« ← Retour au calculateur » de la barre, bouton retour de Wizart, ou
+ *   impossible à charger)
  * - `colibri:parent:pret` (page → app) : la page est équipée du script hébergé ;
  *   `capacites` contient `simulateur` seulement si le simulateur est utilisable.
  *   L'ancienne page n'envoie rien : sans ce message, l'app n'affiche aucune
