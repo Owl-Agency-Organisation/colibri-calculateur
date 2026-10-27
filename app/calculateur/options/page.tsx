@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
+import { mesurer, ouiNon } from '@/lib/mesure';
 import toast, { Toaster } from 'react-hot-toast';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -199,6 +200,7 @@ export default function OptionsPage() {
   const handleContinue = () => {
     // Événement anonyme : options retenues (booléens uniquement)
     track('options_validees', { kit: optionKit, renovation: optionRenovation });
+    mesurer('configurateur_options_validees', { kit: ouiNon(optionKit), renovation: ouiNon(optionRenovation) });
     router.push('/calculateur/panier');
   };
 

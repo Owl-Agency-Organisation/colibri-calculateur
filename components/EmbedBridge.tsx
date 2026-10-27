@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { postToParent } from '@/lib/navigation';
+import { estEmbarque, postToParent } from '@/lib/navigation';
 import { traiterMessageParent } from '@/lib/embed-parent';
 
 // Le parent (page Shopify /pages/configurateur) passe son min-height de secours
@@ -11,15 +11,6 @@ const HAUTEUR_MIN_PX = 300;
 // Le parent applique la hauteur reçue à l'iframe, ce qui redéclenche le
 // ResizeObserver : sans seuil de variation, boucle infinie de postMessage.
 const SEUIL_VARIATION_PX = 2;
-
-function estEmbarque(): boolean {
-  try {
-    return window.self !== window.top;
-  } catch {
-    // window.top inaccessible : forcément dans une iframe cross-origin
-    return true;
-  }
-}
 
 /**
  * Pont postMessage avec la page Shopify qui embarque l'app en iframe.

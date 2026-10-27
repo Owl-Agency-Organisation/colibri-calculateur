@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
+import { mesurer } from '@/lib/mesure';
 import { Card, CardContent } from '@/components/ui/Card';
 import { clearAllData } from '@/lib/store/projetStore';
 
@@ -13,6 +14,7 @@ export default function AccueilPage() {
   const handleNewProject = (e: React.MouseEvent) => {
     e.preventDefault();
     track('calcul_demarre');
+    mesurer('configurateur_demarre', { arrivee: 'directe' });
     // Réinitialisation complète des données stockées
     clearAllData();
     // Le tunnel démarre directement au choix des pièces
