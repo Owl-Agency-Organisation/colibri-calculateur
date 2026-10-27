@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
+import { mesurer } from '@/lib/mesure';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -264,6 +265,7 @@ export default function SaisieSurfacesPage() {
 
     // Événement anonyme : volumétrie de la pièce saisie, aucune donnée personnelle
     track('surfaces_saisies', { nombre_murs: mursData.length });
+    mesurer('configurateur_surfaces_saisies', { nombre_murs: mursData.length });
 
     // Naviguer vers le récapitulatif
     router.push('/calculateur/recapitulatif');

@@ -32,6 +32,16 @@ export function getParentOrigin(): string {
   return origineParente === window.location.origin ? origineParente : PARENT_ORIGIN;
 }
 
+/** Vrai quand l'app tourne dans une iframe (page Shopify, labo du preview). */
+export function estEmbarque(): boolean {
+  try {
+    return window.self !== window.top;
+  } catch {
+    // window.top inaccessible : forcément dans une iframe cross-origin
+    return true;
+  }
+}
+
 /** Message reçu de la page parente : origine attendue ET émis par le parent direct */
 export function estMessageDuParent(event: MessageEvent): boolean {
   return event.source === window.parent

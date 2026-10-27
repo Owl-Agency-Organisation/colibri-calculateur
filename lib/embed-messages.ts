@@ -26,6 +26,17 @@ import { estTypePiece } from '@/lib/pieces';
  *   `capacites` contient `simulateur` seulement si le simulateur est utilisable.
  *   L'ancienne page n'envoie rien : sans ce message, l'app n'affiche aucune
  *   entrée vers le simulateur.
+ *
+ * Mesure GA4 :
+ * - `colibri:mesure` (app → page) : `{ type, evenement, parametres }`, un
+ *   événement du parcours du calculateur, envoyé seulement quand l'app est
+ *   embarquée (`mesurer()`, lib/mesure). Le script le relaie à GA4 avec le
+ *   `gtag` de la page Shopify, qui porte le consentement Axeptio et
+ *   l'identifiant GA4 du visiteur : l'app ne charge jamais GA4. Le script
+ *   n'accepte que les noms et les clés de `SCHEMA_MESURES` (même table dans
+ *   embed/colibri.js, vérifiée par test), une chaîne de 100 caractères au plus
+ *   ou un nombre fini par clé ; tout le reste est ignoré sans erreur. Jamais de
+ *   donnée personnelle : des valeurs d'une liste fermée et des nombres.
  */
 
 export const CAPACITE_SIMULATEUR = 'simulateur';
@@ -62,11 +73,55 @@ export interface MessageSimulateurOuvrir {
   teinte?: string;
 }
 
+type OuiNon = 'oui' | 'non';
+
+/** Paramètres de chaque événement GA4 du calculateur (valeurs d'une liste fermée et nombres). */
+export interface ParametresMesure {
+  /** « Démarrer un nouveau projet » (accueil) ou suite de l'écran « Votre sélection du simulateur » */
+  configurateur_demarre: { arrivee: 'directe' | 'simulateur' };
+  /** Affichage de l'écran « Votre sélection du simulateur » : références reconnues (teintes et papiers peints) */
+  configurateur_selection_simulateur: { nb_teintes: number };
+  configurateur_piece_validee: { type_piece: TypePiece };
+  configurateur_surfaces_saisies: { nombre_murs: number };
+  configurateur_options_validees: { kit: OuiNon; renovation: OuiNon };
+  configurateur_panier_atteint: Record<string, never>;
+  configurateur_sortie: { sortie: 'checkout' | 'permalink' | 'estimation' };
+}
+
+export type EvenementMesure = keyof ParametresMesure;
+
+type TypeParametre<V> = V extends number ? 'nombre' : 'chaine';
+type SchemaMesures = {
+  [E in EvenementMesure]: { [K in keyof ParametresMesure[E]]-?: TypeParametre<ParametresMesure[E][K]> };
+};
+
+/**
+ * Liste blanche appliquée par le script hébergé : noms d'événements, clés et
+ * type de chaque paramètre. Le typage garantit qu'elle suit `ParametresMesure` ;
+ * un test vérifie que embed/colibri.js porte exactement la même.
+ */
+export const SCHEMA_MESURES = {
+  configurateur_demarre: { arrivee: 'chaine' },
+  configurateur_selection_simulateur: { nb_teintes: 'nombre' },
+  configurateur_piece_validee: { type_piece: 'chaine' },
+  configurateur_surfaces_saisies: { nombre_murs: 'nombre' },
+  configurateur_options_validees: { kit: 'chaine', renovation: 'chaine' },
+  configurateur_panier_atteint: {},
+  configurateur_sortie: { sortie: 'chaine' },
+} as const satisfies SchemaMesures;
+
+export interface MessageMesure {
+  type: 'colibri:mesure';
+  evenement: EvenementMesure;
+  parametres: ParametresMesure[EvenementMesure];
+}
+
 export type MessageAppVersPage =
   | MessageResize
   | MessageScrollTop
   | MessageRedirect
-  | MessageSimulateurOuvrir;
+  | MessageSimulateurOuvrir
+  | MessageMesure;
 
 // ---------- Page → app ----------
 

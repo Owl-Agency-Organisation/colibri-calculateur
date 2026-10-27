@@ -8,6 +8,7 @@ import { CartePapierPeint } from '@/components/simulateur/CartePapierPeint';
 import { REGLES_FINITION } from '@/lib/calcul';
 import { lireEntreeSimulateur, type EntreeSimulateur } from '@/lib/embed-messages';
 import type { PapierPeint } from '@/lib/papierPeint';
+import { mesurer } from '@/lib/mesure';
 import { LIBELLES_PIECES } from '@/lib/pieces';
 import { trierReferences } from '@/lib/referencesSimulateur';
 import { clearProjetData, getStoredPieces } from '@/lib/store/projetStore';
@@ -24,6 +25,8 @@ import type { Couleur } from '@/lib/types';
  * teintes essayées » ; les papiers peints, qui ne se calculent pas, rejoignent
  * le récapitulatif avec un lien vers leur fiche. Paramètres invalides ou
  * absents (ou rien de connu de la boutique) : renvoi silencieux vers l'accueil.
+ * Mesure GA4 : affichage de l'écran (références reconnues), puis démarrage du
+ * calcul (`arrivee: 'simulateur'`) à la suite choisie.
  */
 
 const nomAffiche = (titre: string) => titre.replace(' - Peinture biosourcée murs et plafonds', '');
@@ -74,6 +77,9 @@ export default function ArriveeSimulateurPage() {
         setCouleurs(triees.couleurs);
         setPapiersPeints(triees.papiersPeints);
         setPret(true);
+        mesurer('configurateur_selection_simulateur', {
+          nb_teintes: triees.couleurs.length + triees.papiersPeints.length,
+        });
       });
 
     return () => { annule = true; };
@@ -81,6 +87,7 @@ export default function ArriveeSimulateurPage() {
 
   const continuer = (nouveauProjet: boolean) => {
     if (!entree) return;
+    mesurer('configurateur_demarre', { arrivee: 'simulateur' });
     if (nouveauProjet) clearProjetData();
 
     // Même suite que le choix d'une pièce : type posé pour la page Surfaces

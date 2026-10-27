@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
+import { mesurer } from '@/lib/mesure';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StepIndicator, CALCULATEUR_STEPS } from '@/components/ui/StepIndicator';
@@ -79,6 +80,7 @@ export default function PanierPage() {
 
     // Événement anonyme : l'utilisateur a atteint le panier
     track('panier_atteint');
+    mesurer('configurateur_panier_atteint', {});
     
     if (storedOptions) {
       setOptions(JSON.parse(storedOptions));
@@ -262,6 +264,7 @@ export default function PanierPage() {
       return;
     }
     track('sortie_choisie', { sortie: 'checkout' });
+    mesurer('configurateur_sortie', { sortie: 'checkout' });
     setIsProcessing(true);
     redirectTop(cart.checkoutUrl);
   }
@@ -276,6 +279,7 @@ export default function PanierPage() {
     }
 
     track('sortie_choisie', { sortie: 'permalink' });
+    mesurer('configurateur_sortie', { sortie: 'permalink' });
     setIsProcessing(true);
     setError(null);
 
@@ -304,6 +308,7 @@ export default function PanierPage() {
   // coordonnées et appelle la route serveur (client + draft order remisé + invoice).
   function handleEstimationSuccess() {
     track('sortie_choisie', { sortie: 'estimation' });
+    mesurer('configurateur_sortie', { sortie: 'estimation' });
     setShowEstimationModal(false);
     router.push('/calculateur/confirmation');
   }

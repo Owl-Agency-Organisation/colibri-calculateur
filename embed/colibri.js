@@ -3,7 +3,7 @@
  *
  * Servi par l'app sous `/embed/colibri.js` (app/embed/colibri.js/route.ts) avec
  * sa configuration injectée (origine de l'app = origine du script, token
- * Wizart). Aucune logique dans le thème Shopify : chaque page appelle ce script
+ * Wizart, ID GA4). Aucune logique dans le thème Shopify : chaque page appelle ce script
  * en deux lignes (docs/EMBED_SHOPIFY.md). Mode lu sur `data-colibri` :
  *
  * - `configurateur` : iframe de l'app (hauteur, retour en haut, redirections —
@@ -24,6 +24,12 @@
  *
  * Tout le rendu est isolé dans un Shadow DOM : les styles du thème ne
  * l'atteignent pas (la police reste héritée du site).
+ *
+ * Mesure GA4 : le script envoie les événements du simulateur et relaie ceux
+ * du calculateur (`colibri:mesure`) avec le `gtag` déjà chargé par la page,
+ * vers l'ID GA4 de la configuration (`creerMesure`). Il ne charge rien et ne
+ * touche jamais au consentement (Consent Mode de la boutique). Aucune donnée
+ * personnelle : valeurs d'une liste fermée, références produit et nombres.
  *
  * Contrat de messages : lib/embed-messages.ts. Sans dépendance ; la logique
  * pure est exportée pour les tests (embed/colibri.test.ts) quand le fichier est
@@ -119,6 +125,49 @@
   // Événements Wizart écoutés : application d'une teinte, retour (sécurité)
   var EVENEMENT_APPLICATION = 'PRODUCT_APPLY';
   var EVENEMENT_RETOUR = 'BACK_BUTTON_CLICK';
+  // … et pour la mesure GA4 seulement : photo importée, pièce d'exemple choisie
+  // (clés de `VISUALIZER_EVENTS` du DepKit v1.1.3, relevées dans son code)
+  var EVENEMENT_PHOTO = 'CUSTOM_INTERIOR_UPLOAD';
+  var EVENEMENT_EXEMPLE = 'PREDEFINED_INTERIOR_SELECT';
+
+  // ----- Mesure GA4 (événements envoyés avec le `gtag` de la page) -----
+
+  var MOTIF_ID_GA4 = /^G-[A-Z0-9]{4,20}$/;
+  // Simulateur ouvert pendant la session de navigation, mode debug mémorisé
+  var CLE_SESSION_SIMULATEUR_OUVERT = 'colibri-mesure-simulateur';
+  var CLE_SESSION_DEBUG = 'colibri-mesure-debug';
+  // Pages Shopify de test : trafic interne (filtre de trafic interne de GA4)
+  var PREFIXE_PAGES_TEST = '/pages/test-';
+  // Limite GA4 de la valeur d'un paramètre
+  var MAX_LONGUEUR_PARAMETRE = 100;
+  // Une référence dont le type n'arrive pas à temps part sans `type_produit`
+  var DELAI_TYPE_PRODUIT_MS = 4000;
+
+  // Origine de l'ouverture du simulateur
+  var ORIGINE_PAGE_SIMULATEUR = 'page_simulateur';
+  var ORIGINE_CALCULATEUR = 'calculateur';
+  var ORIGINE_FICHE_PRODUIT = 'fiche_produit';
+
+  // Fermeture sans choix : bouton de la barre, bouton retour de Wizart, écran
+  // de chargement (ou simulateur impossible à charger)
+  var SORTIE_BARRE = 'barre';
+  var SORTIE_WIZART = 'wizart';
+  var SORTIE_CHARGEMENT = 'chargement';
+
+  /**
+   * Événements du calculateur relayés depuis l'app (`colibri:mesure`) : liste
+   * blanche des noms, des clés et du type de chaque paramètre. Même table que
+   * `SCHEMA_MESURES` de lib/embed-messages.ts (vérifié par test).
+   */
+  var MESURES_CALCULATEUR = {
+    configurateur_demarre: { arrivee: 'chaine' },
+    configurateur_selection_simulateur: { nb_teintes: 'nombre' },
+    configurateur_piece_validee: { type_piece: 'chaine' },
+    configurateur_surfaces_saisies: { nombre_murs: 'nombre' },
+    configurateur_options_validees: { kit: 'chaine', renovation: 'chaine' },
+    configurateur_panier_atteint: {},
+    configurateur_sortie: { sortie: 'chaine' },
+  };
 
   // ===================== Logique pure (testée) =====================
 
@@ -297,9 +346,87 @@
         return estHandle(donnees.teinte)
           ? { type: donnees.type, piece: donnees.piece, teinte: donnees.teinte }
           : { type: donnees.type, piece: donnees.piece };
+      case 'colibri:mesure':
+        return lireMesure(donnees);
       default:
         return null;
     }
+  }
+
+  function aPropre(objet, cle) {
+    return Object.prototype.hasOwnProperty.call(objet, cle);
+  }
+
+  /** Valeur d'un paramètre de la liste blanche, ou undefined si son type ne convient pas. */
+  function lireValeurMesure(valeur, type) {
+    if (type === 'chaine') {
+      return typeof valeur === 'string' && valeur.length <= MAX_LONGUEUR_PARAMETRE ? valeur : undefined;
+    }
+    if (type === 'nombre') return typeof valeur === 'number' && isFinite(valeur) ? valeur : undefined;
+    return undefined;
+  }
+
+  /**
+   * `colibri:mesure` de l'app : nom hors de MESURES_CALCULATEUR → null ; seules
+   * les clés de la liste blanche, avec le bon type, sont gardées (toute autre
+   * clé ou valeur est ignorée, sans erreur).
+   */
+  function lireMesure(donnees) {
+    var nom = donnees.evenement;
+    if (typeof nom !== 'string' || !aPropre(MESURES_CALCULATEUR, nom)) return null;
+    var schema = MESURES_CALCULATEUR[nom];
+    var recus = estObjet(donnees.parametres) ? donnees.parametres : {};
+    var parametres = {};
+    Object.keys(schema).forEach(function (cle) {
+      if (!aPropre(recus, cle)) return;
+      var valeur = lireValeurMesure(recus[cle], schema[cle]);
+      if (valeur !== undefined) parametres[cle] = valeur;
+    });
+    return { type: 'colibri:mesure', evenement: nom, parametres: parametres };
+  }
+
+  /** ID GA4 de la configuration (`G-…`), ou '' : aucun événement. */
+  function lireIdGa4(valeur) {
+    var id = typeof valeur === 'string' ? valeur.trim() : '';
+    return MOTIF_ID_GA4.test(id) ? id : '';
+  }
+
+  /**
+   * Mode debug : `colibri_debug=1` dans l'URL l'active pour la session,
+   * `colibri_debug=0` l'arrête ; sinon, l'état mémorisé.
+   */
+  function lireDebug(recherche, memorise) {
+    var valeur = new URLSearchParams(recherche || '').get('colibri_debug');
+    if (valeur === '1') return true;
+    if (valeur === '0') return false;
+    return memorise === true;
+  }
+
+  /**
+   * Paramètres ajoutés à chaque événement : `parcours_simulateur`, et
+   * seulement s'ils s'appliquent `traffic_type: 'internal'` (pages
+   * `/pages/test-…`) et `debug_mode: true` (GA4 passe en debug dès que le
+   * paramètre est présent, quelle que soit sa valeur).
+   */
+  function parametresCommuns(contexte) {
+    var communs = { parcours_simulateur: contexte.simulateurOuvert ? 'oui' : 'non' };
+    if (typeof contexte.chemin === 'string' && contexte.chemin.indexOf(PREFIXE_PAGES_TEST) === 0) {
+      communs.traffic_type = 'internal';
+    }
+    if (contexte.debug) communs.debug_mode = true;
+    return communs;
+  }
+
+  /** `type_produit` GA4 d'une référence renvoyée par l'app, ou null (inconnue). */
+  function typeProduit(reference) {
+    if (!estObjet(reference)) return null;
+    if (reference.type === TYPE_PAPIER_PEINT) return 'papier_peint';
+    return reference.type === 'peinture' ? 'peinture' : null;
+  }
+
+  /** Origine d'une ouverture depuis la page Simulateur : `?teinte=` vient du bouton d'une fiche produit. */
+  function origineSimulateur(teinteDemandee) {
+    return teinteDemandee ? ORIGINE_FICHE_PRODUIT : ORIGINE_PAGE_SIMULATEUR;
   }
 
   /**
@@ -433,6 +560,20 @@
     return resultat;
   }
 
+  /**
+   * Valeurs Wizart écoutées pour la mesure seulement : photo importée
+   * (`CUSTOM_INTERIOR_UPLOAD`) et pièce d'exemple choisie
+   * (`PREDEFINED_INTERIOR_SELECT`). Aucun effet sur le simulateur.
+   */
+  function evenementsMesures(evenementsKit) {
+    var resultat = { photo: [], exemple: [] };
+    Object.keys(evenementsKit || {}).forEach(function (cle) {
+      if (cle === EVENEMENT_PHOTO) resultat.photo.push(evenementsKit[cle]);
+      else if (cle === EVENEMENT_EXEMPLE) resultat.exemple.push(evenementsKit[cle]);
+    });
+    return resultat;
+  }
+
   /** UUID de l'intérieur Wizart d'un type de pièce, ou null (galerie). */
   function interieurWizart(piece) {
     return estTypePiece(piece) ? INTERIEURS_WIZART[piece] || null : null;
@@ -522,6 +663,95 @@
     '.colibri-masque{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}',
   ].join('');
 
+  // ===================== Mesure GA4 =====================
+
+  function estPromesse(valeur) {
+    return estObjet(valeur) && typeof valeur.then === 'function';
+  }
+
+  /** Valeur de la Promise, ou `parDefaut` si elle n'arrive pas à temps ou rejette. */
+  function avantDelai(promesse, delaiMs, parDefaut) {
+    return new Promise(function (resolve) {
+      var minuteur = setTimeout(function () { resolve(parDefaut); }, delaiMs);
+      Promise.resolve(promesse).then(function (valeur) {
+        clearTimeout(minuteur);
+        resolve(valeur);
+      }, function () {
+        clearTimeout(minuteur);
+        resolve(parDefaut);
+      });
+    });
+  }
+
+  /**
+   * Fonction unique d'envoi des événements GA4, avec le `gtag` déjà chargé par
+   * la page Shopify : `gtag('event', nom, { …parametres, …communs, send_to })`.
+   * Rien n'est chargé ici (ni gtag.js, ni `dataLayer`) et le consentement
+   * n'est jamais touché : le Consent Mode de la boutique met les événements en
+   * attente et l'applique lui-même. Sans ID GA4 valide ou sans `gtag` : aucun
+   * envoi. Paramètres communs : parametresCommuns. En mode debug, chaque
+   * événement est aussi écrit dans la console.
+   * Les paramètres peuvent être une Promise (type d'une référence demandé à
+   * l'app) : les événements partent toujours dans l'ordre des actions.
+   * environnement : { idGa4, fenetre (window), session: { lire(cle), ecrire(cle, valeur) } }.
+   */
+  function creerMesure(environnement) {
+    var idGa4 = lireIdGa4(environnement.idGa4);
+    var fenetre = environnement.fenetre;
+    var session = environnement.session;
+    var debug = lireDebug(fenetre.location && fenetre.location.search, session.lire(CLE_SESSION_DEBUG) === '1');
+    session.ecrire(CLE_SESSION_DEBUG, debug ? '1' : null);
+    if (debug && !idGa4 && fenetre.console) {
+      fenetre.console.info('[Colibri] GA4 : aucun ID configuré (NEXT_PUBLIC_GA4_ID), aucun événement envoyé');
+    }
+    // Dernier envoi en attente (paramètres en Promise), null si aucun
+    var file = null;
+
+    function emettre(nom, parametres) {
+      var evenement = {};
+      Object.keys(parametres || {}).forEach(function (cle) {
+        if (parametres[cle] !== null && parametres[cle] !== undefined) evenement[cle] = parametres[cle];
+      });
+      var communs = parametresCommuns({
+        simulateurOuvert: session.lire(CLE_SESSION_SIMULATEUR_OUVERT) === '1',
+        chemin: fenetre.location && fenetre.location.pathname,
+        debug: debug,
+      });
+      Object.keys(communs).forEach(function (cle) { evenement[cle] = communs[cle]; });
+      evenement.send_to = idGa4;
+      var gtag = fenetre.gtag;
+      var disponible = typeof gtag === 'function';
+      if (disponible) gtag('event', nom, evenement);
+      if (debug && fenetre.console) {
+        fenetre.console.info('[Colibri] GA4' + (disponible ? '' : ' (non envoyé : gtag absent)'), nom, evenement);
+      }
+    }
+
+    function envoyer(nom, parametres) {
+      if (!idGa4) return;
+      if (!file && !estPromesse(parametres)) {
+        try { emettre(nom, parametres); } catch (e) { /* gtag de la page en erreur : sans incidence */ }
+        return;
+      }
+      var suivante = (file || Promise.resolve())
+        .then(function () { return parametres; })
+        .then(function (valeurs) { emettre(nom, valeurs); })
+        .catch(function () { /* paramètres indisponibles ou gtag en erreur : événement abandonné, la file continue */ });
+      file = suivante;
+      suivante.then(function () { if (file === suivante) file = null; });
+    }
+
+    /** Le simulateur s'ouvre : `parcours_simulateur: 'oui'` pour le reste de la session. */
+    function marquerSimulateur() {
+      session.ecrire(CLE_SESSION_SIMULATEUR_OUVERT, '1');
+    }
+
+    return { envoyer: envoyer, marquerSimulateur: marquerSimulateur };
+  }
+
+  // Mesure de la page, créée au démarrage (inactive avant : tests)
+  var mesure = { envoyer: function () {}, marquerSimulateur: function () {} };
+
   // ===================== Surimpression + barre Colibri =====================
 
   var STYLES_SURIMPRESSION = STYLES_BASE + [
@@ -598,10 +828,9 @@
         return !Object.prototype.hasOwnProperty.call(connues, h) && !enCours[h];
       });
       if (aDemander.length === 0) return null;
-      aDemander.forEach(function (h) { enCours[h] = true; });
       function liberer() { aDemander.forEach(function (h) { delete enCours[h]; }); }
 
-      return Promise.resolve()
+      var promesse = Promise.resolve()
         .then(function () { return requete(urlTeintes(origineApp, aDemander)); })
         .then(function (reponse) {
           if (!reponse || !reponse.ok) throw new Error('HTTP ' + (reponse && reponse.status));
@@ -622,9 +851,24 @@
           liberer();
           console.warn('[Colibri] Couleurs des teintes indisponibles', erreur);
         });
+      // Requête en cours, par référence : attendue par `quandConnue`
+      aDemander.forEach(function (h) { enCours[h] = promesse; });
+      return promesse;
     }
 
-    return { hex: hex, reference: reference, chargerCouleurs: chargerCouleurs };
+    /**
+     * Promise de ce que l'API a renvoyé pour la référence, une fois la requête
+     * terminée (en cours, ou lancée ici) ; null si elle est inconnue ou si la
+     * requête a échoué. Ne rejette jamais.
+     */
+    function quandConnue(origineApp, handle) {
+      var attente = Object.prototype.hasOwnProperty.call(connues, handle)
+        ? null
+        : enCours[handle] || chargerCouleurs(origineApp, [handle], function () {});
+      return Promise.resolve(attente).then(function () { return reference(handle); });
+    }
+
+    return { hex: hex, reference: reference, chargerCouleurs: chargerCouleurs, quandConnue: quandConnue };
   }
 
   // Couleurs des teintes pour la page (une seule instance)
@@ -748,11 +992,15 @@
   /**
    * Ouvre le simulateur en surimpression plein écran : zone Wizart en haut,
    * barre Colibri en bas, toujours visible.
-   * options : { origineApp, token, piece, teinte, essai, retour, surSelection(handles), surFermeture() }
+   * options : { origineApp, token, piece, teinte, essai, retour, origine, surSelection(handles), surFermeture() }
    * (`essai` : ESSAI_PHOTO, galerie, ou ESSAI_EXEMPLE, pièce d'exemple, par défaut ;
-   * `retour` : RETOUR_BOUTIQUE ou RETOUR_CALCULATEUR, libellé du retour).
+   * `retour` : RETOUR_BOUTIQUE ou RETOUR_CALCULATEUR, libellé du retour ;
+   * `origine` : ORIGINE_*, paramètre des événements GA4 `simulateur_*`).
    * Un seul simulateur à la fois ; toute issue appelle exactement un rappel.
    * Les teintes retenues repartent de zéro à chaque ouverture.
+   * Mesure GA4 : ouverture, photo importée, pièce d'exemple, chaque
+   * application (une teinte réappliquée compte à nouveau), « Utiliser… » et
+   * fermeture sans choix (`sortie` : barre, Wizart ou chargement).
    */
   var simulateurOuvert = null;
 
@@ -762,6 +1010,12 @@
     var racine = document.documentElement;
     var debordementInitial = racine.style.overflow;
     racine.style.overflow = 'hidden';
+
+    var origine = options.origine;
+    mesure.marquerSimulateur();
+    mesure.envoyer('simulateur_ouvert', estTypePiece(options.piece)
+      ? { origine: origine, piece: options.piece }
+      : { origine: origine });
 
     // Hôte dans la page (styles en ligne : le thème ne peut pas le déplacer)
     var hote = creer('div', { 'data-colibri': 'surimpression' });
@@ -792,7 +1046,7 @@
     var barre = creerBarre({
       origineApp: options.origineApp,
       retour: options.retour,
-      surFermer: function () { session.fermer(); },
+      surFermer: function () { fermerPar(SORTIE_BARRE); },
       surUtiliser: function () {
         selectionner(teintes.map(function (t) { return t.handle; }));
       },
@@ -828,11 +1082,36 @@
       if (avecRappel !== false) options.surFermeture();
     };
 
+    // Fermeture sans choix par le client (mesurée), puis comme session.fermer()
+    function fermerPar(sortie) {
+      if (termine) return;
+      mesure.envoyer('simulateur_ferme', { origine: origine, sortie: sortie, nb_essais: teintes.length });
+      session.fermer();
+    }
+
     function selectionner(handles) {
       if (termine || handles.length === 0) return;
+      // Avant le rappel : la page Simulateur navigue vers le configurateur
+      mesure.envoyer('simulateur_choix_utilise', { origine: origine, nb_essais: handles.length });
       termine = true;
       nettoyer();
       options.surSelection(handles);
+    }
+
+    // Application mesurée : type de la référence renvoyé par l'app (le même
+    // appel que la pastille), place dans « Vos essais » au moment de l'action
+    function mesurerApplication(teinte, rang) {
+      var parametres = {
+        origine: origine,
+        produit: teinte.handle.slice(0, MAX_LONGUEUR_PARAMETRE),
+        rang_essai: rang,
+      };
+      mesure.envoyer('simulateur_produit_applique', avantDelai(
+        couleursTeintes.quandConnue(options.origineApp, teinte.handle), DELAI_TYPE_PRODUIT_MS, null
+      ).then(function (reference) {
+        parametres.type_produit = typeProduit(reference);
+        return parametres;
+      }));
     }
 
     // Chaque application d'une teinte sur un mur la retient (nettoyer la
@@ -841,11 +1120,16 @@
       if (termine) return;
       var appliquees = lireApplication(donnees);
       if (appliquees.length === 0) return;
-      appliquees.forEach(function (teinte) { teintes = retenirTeinte(teintes, teinte); });
+      var rangs = [];
+      appliquees.forEach(function (teinte) {
+        teintes = retenirTeinte(teintes, teinte);
+        rangs.push(teintes.length);
+      });
       barre.definir(teintes);
+      appliquees.forEach(function (teinte, index) { mesurerApplication(teinte, rangs[index]); });
     }
 
-    boutonAttente.addEventListener('click', function () { session.fermer(); });
+    boutonAttente.addEventListener('click', function () { fermerPar(SORTIE_CHARGEMENT); });
     simulateurOuvert = session;
 
     chargerKit().then(function (kit) {
@@ -858,7 +1142,18 @@
       });
       ecoutes.retour.forEach(function (valeur) {
         // Le DepKit détruit lui-même le visualiseur sur le bouton retour
-        abonnements.push(kit.EventBus.subscribe(function () { session.fermer(); }, valeur, null));
+        abonnements.push(kit.EventBus.subscribe(function () { fermerPar(SORTIE_WIZART); }, valeur, null));
+      });
+      var mesures = evenementsMesures(kit.VISUALIZER_EVENTS);
+      mesures.photo.forEach(function (valeur) {
+        abonnements.push(kit.EventBus.subscribe(function () {
+          if (!termine) mesure.envoyer('simulateur_photo_importee', { origine: origine });
+        }, valeur, null));
+      });
+      mesures.exemple.forEach(function (valeur) {
+        abonnements.push(kit.EventBus.subscribe(function () {
+          if (!termine) mesure.envoyer('simulateur_piece_exemple', { origine: origine });
+        }, valeur, null));
       });
 
       visualiseur = new kit.Visualizer(
@@ -872,7 +1167,7 @@
     }).catch(function (erreur) {
       // Simulateur indisponible : retour à l'état d'avant, sans blocage
       console.warn('[Colibri] Simulateur indisponible', erreur);
-      session.fermer();
+      fermerPar(SORTIE_CHARGEMENT);
     });
 
     return session;
@@ -963,6 +1258,11 @@
         window.location.href = data.url;
       }
 
+      // Événement GA4 du calculateur (liste blanche appliquée par lireMesure)
+      if (data.type === 'colibri:mesure') {
+        mesure.envoyer(data.evenement, data.parametres);
+      }
+
       // Popup couleur → simulateur en surimpression, retour des teintes
       if (data.type === 'colibri:simulateur:ouvrir') {
         if (!simulateurDisponible(config, kitInitial)) {
@@ -980,6 +1280,7 @@
           // Pièce d'exemple du type de la pièce (galerie s'il n'y en a pas)
           essai: ESSAI_EXEMPLE,
           retour: RETOUR_CALCULATEUR,
+          origine: ORIGINE_CALCULATEUR,
           surSelection: function (handles) {
             ecrireSession(CLE_SESSION_PIECE, null);
             // Ordre d'application : la dernière est la plus récente
@@ -1122,6 +1423,7 @@
     // premier, les pièces d'exemple à côté (décision du 26/10). La pièce reste
     // transmise au calculateur.
     function essayer(piece, bouton) {
+      mesure.envoyer('simulateur_piece_choisie', { piece: piece });
       // Relue en cas de redirection du PIM Wizart (vendorCode[]) vers le configurateur
       ecrireSession(CLE_SESSION_PIECE, piece);
       ouvrirSimulateur({
@@ -1131,6 +1433,8 @@
         teinte: teinte,
         essai: ESSAI_PHOTO,
         retour: RETOUR_BOUTIQUE,
+        // Arrivée par le bouton « Voir dans ma pièce » d'une fiche (`?teinte=`)
+        origine: origineSimulateur(teinte),
         surSelection: function (handles) {
           ecrireSession(CLE_SESSION_PIECE, null);
           window.location.href = urlConfigurateur(window.location.origin, piece, handles, configurateur);
@@ -1174,6 +1478,11 @@
   function demarrer(racine, config) {
     var script = document.currentScript;
     var mode = script ? script.getAttribute('data-colibri') : null;
+    mesure = creerMesure({
+      idGa4: config.idGa4,
+      fenetre: racine,
+      session: { lire: lireSession, ecrire: ecrireSession },
+    });
     var lancer = function () {
       if (mode === 'configurateur') demarrerConfigurateur(config, script);
       else if (mode === 'simulateur') demarrerSimulateur(config, script);
@@ -1217,6 +1526,19 @@
     urlTeintes: urlTeintes,
     creerCouleursTeintes: creerCouleursTeintes,
     evenementsEcoutes: evenementsEcoutes,
+    evenementsMesures: evenementsMesures,
+    MESURES_CALCULATEUR: MESURES_CALCULATEUR,
+    lireMesure: lireMesure,
+    lireIdGa4: lireIdGa4,
+    lireDebug: lireDebug,
+    parametresCommuns: parametresCommuns,
+    typeProduit: typeProduit,
+    origineSimulateur: origineSimulateur,
+    avantDelai: avantDelai,
+    creerMesure: creerMesure,
+    ORIGINE_PAGE_SIMULATEUR: ORIGINE_PAGE_SIMULATEUR,
+    ORIGINE_CALCULATEUR: ORIGINE_CALCULATEUR,
+    ORIGINE_FICHE_PRODUIT: ORIGINE_FICHE_PRODUIT,
     interieurWizart: interieurWizart,
     reglagesVisualiseur: reglagesVisualiseur,
     ESSAI_PHOTO: ESSAI_PHOTO,

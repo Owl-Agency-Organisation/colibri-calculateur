@@ -464,3 +464,40 @@ Retours du 23/10 hors de ce lot :
       des couleurs, libellé de l'icône Historique
 - [ ] **Version suivante** : connexion obligatoire pour utiliser sa photo,
       points de fidélité
+
+## Statistiques GA4 du simulateur et du calculateur (branche : `feat/statistiques-ga4`)
+
+> Décision du 21/10/2026 : des événements GA4 simples, sans outil
+> supplémentaire. Tous partent de la page Shopify, par le script hébergé, avec
+> le `gtag` de la boutique (propriété `G-GXWQE6WJRV`, Consent Mode Axeptio) :
+> le simulateur directement, le calculateur par le message `colibri:mesure`.
+> L'achat (`purchase`) reste envoyé par l'intégration Google de Shopify.
+> Détail : `docs/EMBED_SHOPIFY.md`, section 4.
+
+- [x] Fonction unique d'envoi dans le script hébergé : `gtag('event', …)`
+      vers `send_to` = `NEXT_PUBLIC_GA4_ID`, seulement si `gtag` existe et si
+      l'ID est configuré ; rien de chargé, consentement jamais touché
+- [x] Paramètres communs : `parcours_simulateur` (session), `traffic_type:
+      internal` sur `/pages/test-…`, `debug_mode` avec `colibri_debug=1`
+      (mémorisé pour la session, écrit en console)
+- [x] Événements du simulateur : pièce choisie, ouverture, photo importée,
+      pièce d'exemple, produit appliqué (type, référence, rang), choix
+      utilisé, fermeture sans choix (barre, Wizart, chargement) ; écoute de
+      `CUSTOM_INTERIOR_UPLOAD` et `PREDEFINED_INTERIOR_SELECT` (clés vérifiées
+      dans le DepKit v1.1.3, objet `VISUALIZER_EVENTS`)
+- [x] Message `colibri:mesure` (app → page) : `mesurer()` aux mêmes endroits
+      que les `track()` Vercel (inchangés), origine parente ; côté script,
+      origine de l'iframe, liste blanche des noms et des clés, types vérifiés
+- [x] Labo `/labo/pont` : faux `gtag` et journal des événements GA4
+- [x] Tests : correspondance DepKit → GA4, paramètres communs, aucun envoi
+      sans `gtag` ou sans ID, `colibri:mesure` filtré, envoi côté app
+- [x] Vercel Preview : `NEXT_PUBLIC_GA4_ID=G-GXWQE6WJRV` (constaté le 27/10 dans
+      le script servi par le preview de la branche)
+- [ ] Vercel Production : `NEXT_PUBLIC_GA4_ID=G-GXWQE6WJRV`, puis redéployer
+      (Philippe ; à vérifier, `/embed/colibri.js` de production doit porter
+      `"idGa4":"G-GXWQE6WJRV"`)
+- [ ] Vérifier les envois réels vers `G-GXWQE6WJRV` sur une page de test de la
+      boutique (`?colibri_debug=1`, DebugView)
+- [ ] GA4 : filtre de trafic interne (`traffic_type = internal`) actif, et
+      dimensions personnalisées des paramètres à créer (`origine`, `piece`,
+      `type_produit`, `produit`, `sortie`, `arrivee`, `parcours_simulateur`…)
