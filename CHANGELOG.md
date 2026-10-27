@@ -7,6 +7,41 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Statistiques GA4 du simulateur et du calculateur
+
+#### Ajouté
+- **Événements GA4 du parcours**, du choix de la pièce à la sortie du
+  calculateur, tous envoyés depuis la page Shopify par le script hébergé avec
+  le `gtag` de la boutique (`send_to` = `NEXT_PUBLIC_GA4_ID`) : rien n'est
+  chargé, le consentement reste géré par le Consent Mode de la boutique.
+  Sans `gtag` ou sans ID : aucun envoi. Aucune donnée personnelle.
+- Simulateur : `simulateur_piece_choisie`, `simulateur_ouvert`,
+  `simulateur_photo_importee`, `simulateur_piece_exemple`,
+  `simulateur_produit_applique` (type, référence, rang dans « Vos essais »),
+  `simulateur_choix_utilise`, `simulateur_ferme` (barre, Wizart ou
+  chargement), avec `origine` (page Simulateur, calculateur, fiche produit).
+- Calculateur : nouveau message `colibri:mesure` (app → page), envoyé aux
+  mêmes endroits que les événements Vercel Analytics (inchangés) :
+  `configurateur_demarre`, `configurateur_selection_simulateur`,
+  `configurateur_piece_validee`, `configurateur_surfaces_saisies`,
+  `configurateur_options_validees`, `configurateur_panier_atteint`,
+  `configurateur_sortie`. Le script n'accepte que l'origine de l'iframe et une
+  liste blanche de noms, de clés et de types.
+- Paramètres communs : `parcours_simulateur`, `traffic_type: internal` sur
+  les pages `/pages/test-…`, `debug_mode` avec `?colibri_debug=1` (mémorisé
+  pour la session, événements écrits en console).
+- Variable `NEXT_PUBLIC_GA4_ID` (`.env.local.example`, `docs/EMBED_SHOPIFY.md`).
+- Labo `/labo/pont` : faux `gtag` et journal des événements GA4 ; boutons du
+  faux simulateur pour la photo importée et la pièce d'exemple.
+
+#### Tests
+- Script exécuté de bout en bout dans un faux navigateur (sans dépendance) :
+  correspondance DepKit → GA4 et paramètres, ordre des événements, paramètres
+  communs, aucun envoi sans `gtag` ou sans ID, `colibri:mesure` (origine, nom,
+  clé, type), liste blanche identique côté app et côté script.
+- App : message envoyé au parent avec l'origine parente, appels `track()`
+  inchangés.
+
 ### Simulateur : retours de Colibri du 23/10 (lot v1)
 
 #### Modifié

@@ -17,7 +17,9 @@ https://calculateur.colibripeinture.com/embed/colibri.js
   - **token Wizart** = `NEXT_PUBLIC_WIZART_TOKEN` (variable Vercel, lue au build :
     un ajout ou un changement exige un redéploiement). Absent : pas de
     simulateur (aucune entrée dans l'app, pas de bouton sur les fiches teintes et papier peint,
-    message « momentanément indisponible » sur la page Simulateur).
+    message « momentanément indisponible » sur la page Simulateur) ;
+  - **ID GA4** = `NEXT_PUBLIC_GA4_ID` (même règle). Absent : aucun événement GA4
+    (section 4).
 - Chaque page appelle le script en deux lignes : un élément hôte + la balise
   `<script>` avec l'attribut `data-colibri` qui fixe le mode.
 - Le simulateur Wizart (Deployment Kit) n'est chargé que sur la page Simulateur
@@ -282,6 +284,120 @@ sinon il envoie `data-teinte`. L'URL est relue au clic : le thème change
 (`openWithProduct`). `data-variantes` est facultatif : absent, rien ne change
 (fiches teintes) ; JSON illisible : ignoré avec un avertissement en console ;
 entrées invalides (id non numérique, SKU hors motif) écartées.
+
+## 4. Statistiques GA4 — parcours simulateur et calculateur
+
+Décision du 21/10 : des événements GA4 simples, sans outil supplémentaire.
+**Tous les événements partent de la page Shopify**, envoyés par le script
+hébergé avec le `gtag` que la boutique charge déjà (propriété
+`G-GXWQE6WJRV`) :
+
+- événements du simulateur : émis par le script lui-même ;
+- événements du calculateur : l'app les envoie à la page par le message
+  `colibri:mesure` (contrat : `lib/embed-messages.ts`), le script les relaie.
+
+Pourquoi la page et pas l'iframe : elle porte le consentement Axeptio et
+l'identifiant GA4 du visiteur. Un `gtag` dans l'iframe demanderait une seconde
+configuration GA4 et une seconde gestion du consentement, avec un risque de
+compter deux fois. L'achat (`purchase`) reste envoyé par l'intégration Google
+de Shopify.
+
+**Envoi** : `gtag('event', nom, { …paramètres, send_to: <ID GA4> })`, seulement
+si `window.gtag` est une fonction et si l'ID GA4 est configuré. Sinon, rien :
+le script ne charge pas `gtag.js`, n'écrit pas dans le `dataLayer` et n'a
+aucune solution de repli. **Consentement** : le script n'appelle jamais
+`gtag('consent', …)` et n'attend pas Axeptio ; le Consent Mode de la boutique
+(`analytics_storage` refusé par défaut) met les événements en attente et
+applique lui-même le choix du client.
+
+**ID GA4** : `NEXT_PUBLIC_GA4_ID` (variable Vercel, publique, lue au build :
+un ajout ou un changement exige un redéploiement), injecté dans la
+configuration du script par la route, comme le token Wizart. Vide ou invalide
+(autre chose que `G-…`) : aucun événement. À renseigner en **Production** et
+en **Preview** (`G-GXWQE6WJRV`). Sur un preview seulement (mode labo, jamais en
+production), à défaut de la variable, l'attribut `data-ga4-labo="G-…"` de la
+balise du script en tient lieu (labo `/labo/pont`, page de test d'un preview).
+
+**Aucune donnée personnelle** : jamais d'e-mail, de nom, d'adresse, de texte
+libre, de photo ni d'URL de photo. Seulement des valeurs d'une liste fermée,
+des références produit (handle de teinte, SKU de papier peint) et des nombres.
+
+### Paramètres communs (ajoutés à chaque événement)
+
+| Paramètre | Valeur |
+|---|---|
+| `parcours_simulateur` | `oui` si le simulateur a déjà été ouvert pendant la session de navigation (onglet), sinon `non`. Passe à `oui` dès `simulateur_ouvert` |
+| `traffic_type` | `internal` seulement sur les pages dont le chemin commence par `/pages/test-` (paramètre lu par le filtre de trafic interne de GA4) ; absent sinon |
+| `debug_mode` | `true` quand l'URL de la page contient `colibri_debug=1`, mémorisé pour la session (`colibri_debug=0` l'arrête) ; absent sinon (GA4 passe en debug dès que le paramètre existe, même à `false`). Chaque événement est alors aussi écrit dans la console (`console.info`, « [Colibri] GA4 ») |
+| `send_to` | l'ID GA4 configuré |
+
+### Événements du simulateur (script, page Shopify)
+
+`origine` : `page_simulateur` (page Simulateur), `calculateur` (popup couleur
+du configurateur) ou `fiche_produit` (page Simulateur ouverte par le bouton
+« Voir dans ma pièce » d'une fiche, reconnue à son `?teinte=` : le bouton
+lui-même n'envoie rien).
+
+| Événement | Quand | Paramètres |
+|---|---|---|
+| `simulateur_piece_choisie` | Clic sur une pièce de la page Simulateur | `piece` |
+| `simulateur_ouvert` | La surimpression s'ouvre | `origine`, `piece` (type de pièce interne, `chambre`…) |
+| `simulateur_photo_importee` | DepKit `CUSTOM_INTERIOR_UPLOAD` (`photo_uploaded`) | `origine` |
+| `simulateur_piece_exemple` | DepKit `PREDEFINED_INTERIOR_SELECT` (`predefined_interior_selected`) | `origine` |
+| `simulateur_produit_applique` | DepKit `PRODUCT_APPLY`, à chaque application (une teinte réappliquée compte à nouveau) | `origine`, `type_produit` (`peinture` / `papier_peint`), `produit` (handle ou SKU), `rang_essai` |
+| `simulateur_choix_utilise` | « Utiliser mon choix → » / « Utiliser mes choix (n) → » | `origine`, `nb_essais` |
+| `simulateur_ferme` | Fermeture sans utiliser de choix | `origine`, `sortie`, `nb_essais` |
+
+- `type_produit` vient de `/api/embed/teintes` (le même appel que la pastille
+  de la barre) : le script attend sa réponse, 4 s au plus ; référence
+  inconnue de la boutique ou API muette : envoyé sans `type_produit`. Les
+  événements partent toujours dans l'ordre des actions.
+- `rang_essai` : place de la référence dans « Vos essais » au moment de
+  l'application (une teinte réappliquée passe en dernier) ; de 1 à 50, le
+  maximum de la barre (l'app n'en garde que 12).
+- `sortie` : `barre` (« ← Retour à la boutique » / « ← Retour au
+  calculateur »), `wizart` (bouton retour de Wizart, `BACK_BUTTON_CLICK`) ou
+  `chargement` (bouton de l'écran de chargement, ou simulateur impossible à
+  charger).
+- Les clés du DepKit sont celles de `WizartDeploymentKit.VISUALIZER_EVENTS`
+  (v1.1.3, relevées dans le code du kit le 27/10/2026). Écouter
+  `CUSTOM_INTERIOR_UPLOAD` et `PREDEFINED_INTERIOR_SELECT` ne change rien au
+  simulateur.
+
+### Événements du calculateur (app → `colibri:mesure` → script)
+
+Envoyés par `mesurer()` (`lib/mesure.ts`) seulement quand l'app est embarquée,
+vers l'origine parente (`getParentOrigin()`, jamais `*`), aux mêmes endroits
+que les événements Vercel Analytics, qui restent en place. Le script n'accepte
+que l'origine de l'iframe et une liste blanche (`MESURES_CALCULATEUR` dans
+`embed/colibri.js` = `SCHEMA_MESURES` dans `lib/embed-messages.ts`, vérifié par
+test) : nom inconnu → message ignoré ; clé inconnue, chaîne de plus de 100
+caractères ou nombre non fini → paramètre ignoré, sans erreur.
+
+| Événement | Point de l'app | Paramètres |
+|---|---|---|
+| `configurateur_demarre` | « Démarrer un nouveau projet » (`calcul_demarre`), ou suite choisie sur « Votre sélection du simulateur » | `arrivee` (`directe` / `simulateur`) |
+| `configurateur_selection_simulateur` | Affichage de l'écran « Votre sélection du simulateur » | `nb_teintes` (références reconnues : teintes et papiers peints) |
+| `configurateur_piece_validee` | `piece_validee` | `type_piece` |
+| `configurateur_surfaces_saisies` | `surfaces_saisies` | `nombre_murs` |
+| `configurateur_options_validees` | `options_validees` | `kit`, `renovation` (`oui` / `non`) |
+| `configurateur_panier_atteint` | `panier_atteint` | — |
+| `configurateur_sortie` | `sortie_choisie` | `sortie` (`checkout` / `permalink` / `estimation`) |
+
+L'ouverture du simulateur depuis la popup couleur est comptée par
+`simulateur_ouvert` (`origine: calculateur`) : pas d'événement de plus.
+
+### Vérifier
+
+- **Labo** `/labo/pont` d'un preview : `gtag` y est remplacé par une fonction de
+  test et le « Journal des événements GA4 » affiche chaque événement (nom et
+  paramètres), dans l'ordre, sans GA4 réel. Parcours type : popup couleur →
+  teinte puis papier peint → « Utiliser… » → rouvrir → « ← Retour au
+  calculateur ». Boutons du faux simulateur pour la photo et la pièce
+  d'exemple.
+- **Boutique** : page de test `/pages/test-…` avec le script du preview et
+  `?colibri_debug=1` : événements dans la console et dans DebugView de GA4,
+  marqués `traffic_type: internal`.
 
 ---
 

@@ -126,7 +126,7 @@ Configurer les variables d'environnement dans Vercel (Production + Preview). Cha
 
 ## Analytics de parcours
 
-Événements Vercel Analytics anonymes (aucune donnée personnelle) : `calcul_demarre`, `piece_validee`, `surfaces_saisies`, `options_validees`, `panier_atteint`, `sortie_choisie` (`checkout` / `permalink` / `estimation`). Ils mesurent où les utilisateurs décrochent dans le tunnel.
+Événements Vercel Analytics anonymes (aucune donnée personnelle) : `calcul_demarre`, `piece_validee`, `surfaces_saisies`, `options_validees`, `panier_atteint`, `sortie_choisie` (`checkout` / `permalink` / `estimation`). Ils mesurent où les utilisateurs décrochent dans le tunnel. Les mêmes étapes, et celles du simulateur, sont aussi envoyées à GA4 depuis la page Shopify (`NEXT_PUBLIC_GA4_ID`, voir `docs/EMBED_SHOPIFY.md`, section 4).
 
 ## Documentation
 
