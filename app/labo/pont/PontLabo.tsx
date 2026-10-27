@@ -18,9 +18,15 @@ import type { TypePiece } from '@/lib/types';
  * (`BACK_BUTTON_CLICK`). Il affiche les réglages reçus (bouton retour,
  * intérieur ou galerie) et propose aussi deux papiers peints réels (SKU de
  * variante « Lé »), résolus par la vraie route du preview.
+ * Mesure GA4 : `gtag` est remplacé par une fonction de test, et le journal
+ * des événements GA4 montre ce que le script enverrait (nom et paramètres),
+ * sans GA4 réel. ID : `NEXT_PUBLIC_GA4_ID` du preview, sinon `data-ga4-labo`.
  */
 
 const HANDLE_INCONNU = 'teinte-inconnue-test';
+// ID GA4 de test (attribut `data-ga4-labo`, lu en mode labo seulement) quand
+// le preview n'a pas `NEXT_PUBLIC_GA4_ID` : rien ne part, `gtag` est factice
+const ID_GA4_LABO = 'G-LABO000000';
 const CLE_SESSION_PIECE = 'colibri-simulateur-piece';
 const TEINTE_INCONNUE: Teinte = { handle: HANDLE_INCONNU, titre: 'Teinte inconnue (test)', nomComplet: 'Inconnue - Teinte de test' };
 
@@ -69,6 +75,13 @@ interface EntreeJournal {
   message: string;
 }
 
+interface EvenementGa4 {
+  id: number;
+  heure: string;
+  nom: string;
+  parametres: string;
+}
+
 // ---------- Faux Wizart Deployment Kit ----------
 
 interface OptionsVisualiseur {
@@ -95,6 +108,9 @@ type RappelEvenement = (evenement: { eventName: string; data: unknown }) => void
 const EVENEMENTS = {
   PRODUCT_APPLY: 'product_apply',
   BACK_BUTTON_CLICK: 'back_button_click',
+  // Valeurs réelles du DepKit v1.1.3 (mesure GA4 seulement)
+  CUSTOM_INTERIOR_UPLOAD: 'photo_uploaded',
+  PREDEFINED_INTERIOR_SELECT: 'predefined_interior_selected',
 } as const;
 
 /** Charge de `PRODUCT_APPLY`, même forme que le DepKit v1.1.3 (embed/fixtures) */
@@ -219,6 +235,7 @@ export function PontLabo() {
   const [teintes, setTeintes] = useState<Teinte[]>([]);
   const [erreurCatalogue, setErreurCatalogue] = useState<string | null>(null);
   const [journal, setJournal] = useState<EntreeJournal[]>([]);
+  const [evenementsGa4, setEvenementsGa4] = useState<EvenementGa4[]>([]);
   const [fauxOuvert, setFauxOuvert] = useState<FauxVisualiseur | null>(null);
   // Teinte posée sur chaque mur de la fausse photo (affichage seulement)
   const [murs, setMurs] = useState<(Teinte | null)[]>([null, null, null]);
@@ -231,6 +248,7 @@ export function PontLabo() {
   const emettreRef = useRef<((nom: string, data: unknown) => void) | null>(null);
   const hoteRef = useRef<HTMLDivElement>(null);
   const compteurRef = useRef(0);
+  const compteurGa4Ref = useRef(0);
 
   const consigner = useCallback((sens: string, message: unknown) => {
     const entree: EntreeJournal = {
@@ -240,6 +258,18 @@ export function PontLabo() {
       message: JSON.stringify(message),
     };
     setJournal((precedent) => [entree, ...precedent].slice(0, 200));
+  }, []);
+
+  // Faux gtag : la page Shopify charge le vrai, le script n'appelle que gtag('event', …)
+  const consignerGa4 = useCallback((commande: unknown, nom: unknown, parametres: unknown) => {
+    const evenement: EvenementGa4 = {
+      id: compteurGa4Ref.current++,
+      heure: heure(),
+      nom: commande === 'event' ? String(nom) : `gtag('${String(commande)}') inattendu`,
+      parametres: JSON.stringify(parametres ?? null),
+    };
+    // Ordre chronologique : le parcours se lit de haut en bas
+    setEvenementsGa4((precedents) => [...precedents, evenement].slice(-200));
   }, []);
 
   // Dernières teintes connues, pour l'ouverture sur une teinte (openWithProduct)
@@ -285,6 +315,9 @@ export function PontLabo() {
     installe = true;
 
     emettreRef.current = installerFauxKit(controleurRef);
+    Object.assign(window, {
+      gtag: (commande: unknown, nom: unknown, parametres: unknown) => consignerGa4(commande, nom, parametres),
+    });
     hote.addEventListener('colibri:message', (evenement) => {
       if (evenement instanceof CustomEvent) {
         const detail: { sens?: string; message?: unknown } = evenement.detail ?? {};
@@ -303,10 +336,11 @@ export function PontLabo() {
     const script = document.createElement('script');
     script.src = '/embed/colibri.js';
     script.setAttribute('data-colibri', 'configurateur');
+    script.setAttribute('data-ga4-labo', ID_GA4_LABO);
     script.onerror = () => consigner('labo', { erreur: 'chargement de /embed/colibri.js impossible' });
     hote.after(script);
     consigner('labo', { script: '/embed/colibri.js', mode: 'configurateur', url: window.location.href });
-  }, [consigner]);
+  }, [consigner, consignerGa4]);
 
   // Teintes réelles de la boutique, pour que l'app les reconnaisse
   useEffect(() => {
@@ -349,6 +383,12 @@ export function PontLabo() {
   const retourWizart = () => {
     consigner('faux Wizart', { evenement: 'BACK_BUTTON_CLICK' });
     emettreRef.current?.(EVENEMENTS.BACK_BUTTON_CLICK, {});
+  };
+
+  // Étapes Wizart mesurées : photo importée, pièce d'exemple choisie
+  const emettreEtape = (cle: 'CUSTOM_INTERIOR_UPLOAD' | 'PREDEFINED_INTERIOR_SELECT') => {
+    consigner('faux Wizart', { evenement: cle });
+    emettreRef.current?.(EVENEMENTS[cle], {});
   };
 
   // Envoie colibri:simulateur:ouvrir depuis l'iframe de l'app, exactement
@@ -491,6 +531,28 @@ export function PontLabo() {
       {/* Hôte du configurateur : le script y insère l'iframe */}
       <div ref={hoteRef} id="colibri-configurator" className="rounded-lg border border-dashed border-gray-300" />
 
+      <section className="rounded-lg border border-gray-200 bg-white p-4" data-labo="journal-ga4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-gray-900">Journal des événements GA4 ({evenementsGa4.length})</h2>
+          <button type="button" onClick={() => setEvenementsGa4([])} className="text-xs text-gray-500 underline">Vider</button>
+        </div>
+        <p className="mt-1 text-xs text-gray-600">
+          Ce que le script envoie avec le <code>gtag</code> de la page (ici une fonction de test : rien ne part vers
+          GA4), dans l’ordre. Parcours type&nbsp;: ouvrir le simulateur depuis la popup, appliquer une teinte puis un
+          papier peint, «&nbsp;Utiliser…&nbsp;», puis rouvrir et fermer sans choix.
+        </p>
+        <ol className="mt-3 max-h-96 space-y-1 overflow-y-auto font-mono text-[11px]">
+          {evenementsGa4.length === 0 && <li className="text-gray-500">Aucun événement.</li>}
+          {evenementsGa4.map((e, index) => (
+            <li key={e.id} className="break-all rounded bg-emerald-50 px-2 py-1" data-labo="evenement-ga4">
+              <span className="text-gray-500">{index + 1}. {e.heure}</span>{' '}
+              <span className="font-semibold text-gray-800">{e.nom}</span>{' '}
+              <span className="text-gray-700">{e.parametres}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
+
       <section className="rounded-lg border border-gray-200 bg-white p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-gray-900">Journal des messages ({journal.length})</h2>
@@ -574,6 +636,12 @@ export function PontLabo() {
             </button>
             <button type="button" onClick={retourWizart} className="rounded border border-gray-300 px-3 py-1.5 text-gray-700">
               Émettre BACK_BUTTON_CLICK
+            </button>
+            <button type="button" onClick={() => emettreEtape('CUSTOM_INTERIOR_UPLOAD')} className="rounded border border-gray-300 px-3 py-1.5 text-gray-700">
+              Importer une photo (CUSTOM_INTERIOR_UPLOAD)
+            </button>
+            <button type="button" onClick={() => emettreEtape('PREDEFINED_INTERIOR_SELECT')} className="rounded border border-gray-300 px-3 py-1.5 text-gray-700">
+              Pièce d’exemple (PREDEFINED_INTERIOR_SELECT)
             </button>
           </div>
         </div>,
