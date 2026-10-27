@@ -392,16 +392,6 @@
   }
 
   /**
-   * ID GA4 utilisé par la page : celui de la configuration (`NEXT_PUBLIC_GA4_ID`).
-   * En mode labo seulement (previews, jamais en production), à défaut,
-   * l'attribut `data-ga4-labo` de la balise du script (labo /labo/pont, pages
-   * de test d'un preview sans la variable).
-   */
-  function idGa4Page(config, idLabo) {
-    return lireIdGa4(config.idGa4) || (config.labo === true ? lireIdGa4(idLabo) : '');
-  }
-
-  /**
    * Mode debug : `colibri_debug=1` dans l'URL l'active pour la session,
    * `colibri_debug=0` l'arrête ; sinon, l'état mémorisé.
    */
@@ -1489,7 +1479,7 @@
     var script = document.currentScript;
     var mode = script ? script.getAttribute('data-colibri') : null;
     mesure = creerMesure({
-      idGa4: idGa4Page(config, script ? script.getAttribute('data-ga4-labo') : null),
+      idGa4: config.idGa4,
       fenetre: racine,
       session: { lire: lireSession, ecrire: ecrireSession },
     });
@@ -1540,7 +1530,6 @@
     MESURES_CALCULATEUR: MESURES_CALCULATEUR,
     lireMesure: lireMesure,
     lireIdGa4: lireIdGa4,
-    idGa4Page: idGa4Page,
     lireDebug: lireDebug,
     parametresCommuns: parametresCommuns,
     typeProduit: typeProduit,

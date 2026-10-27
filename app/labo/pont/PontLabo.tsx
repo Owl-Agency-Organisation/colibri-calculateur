@@ -20,13 +20,10 @@ import type { TypePiece } from '@/lib/types';
  * variante « Lé »), résolus par la vraie route du preview.
  * Mesure GA4 : `gtag` est remplacé par une fonction de test, et le journal
  * des événements GA4 montre ce que le script enverrait (nom et paramètres),
- * sans GA4 réel. ID : `NEXT_PUBLIC_GA4_ID` du preview, sinon `data-ga4-labo`.
+ * sans GA4 réel. ID : `NEXT_PUBLIC_GA4_ID` du preview (absent : journal vide).
  */
 
 const HANDLE_INCONNU = 'teinte-inconnue-test';
-// ID GA4 de test (attribut `data-ga4-labo`, lu en mode labo seulement) quand
-// le preview n'a pas `NEXT_PUBLIC_GA4_ID` : rien ne part, `gtag` est factice
-const ID_GA4_LABO = 'G-LABO000000';
 const CLE_SESSION_PIECE = 'colibri-simulateur-piece';
 const TEINTE_INCONNUE: Teinte = { handle: HANDLE_INCONNU, titre: 'Teinte inconnue (test)', nomComplet: 'Inconnue - Teinte de test' };
 
@@ -336,7 +333,6 @@ export function PontLabo() {
     const script = document.createElement('script');
     script.src = '/embed/colibri.js';
     script.setAttribute('data-colibri', 'configurateur');
-    script.setAttribute('data-ga4-labo', ID_GA4_LABO);
     script.onerror = () => consigner('labo', { erreur: 'chargement de /embed/colibri.js impossible' });
     hote.after(script);
     consigner('labo', { script: '/embed/colibri.js', mode: 'configurateur', url: window.location.href });
@@ -540,6 +536,7 @@ export function PontLabo() {
           Ce que le script envoie avec le <code>gtag</code> de la page (ici une fonction de test : rien ne part vers
           GA4), dans l’ordre. Parcours type&nbsp;: ouvrir le simulateur depuis la popup, appliquer une teinte puis un
           papier peint, «&nbsp;Utiliser…&nbsp;», puis rouvrir et fermer sans choix.
+          Sans <code>NEXT_PUBLIC_GA4_ID</code> sur ce déploiement, le journal reste vide.
         </p>
         <ol className="mt-3 max-h-96 space-y-1 overflow-y-auto font-mono text-[11px]">
           {evenementsGa4.length === 0 && <li className="text-gray-500">Aucun événement.</li>}

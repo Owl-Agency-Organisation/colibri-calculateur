@@ -314,9 +314,8 @@ applique lui-même le choix du client.
 un ajout ou un changement exige un redéploiement), injecté dans la
 configuration du script par la route, comme le token Wizart. Vide ou invalide
 (autre chose que `G-…`) : aucun événement. À renseigner en **Production** et
-en **Preview** (`G-GXWQE6WJRV`). Sur un preview seulement (mode labo, jamais en
-production), à défaut de la variable, l'attribut `data-ga4-labo="G-…"` de la
-balise du script en tient lieu (labo `/labo/pont`, page de test d'un preview).
+en **Preview** (`G-GXWQE6WJRV`). L'ID vient uniquement de cette configuration,
+labo `/labo/pont` compris.
 
 **Aucune donnée personnelle** : jamais d'e-mail, de nom, d'adresse, de texte
 libre, de photo ni d'URL de photo. Seulement des valeurs d'une liste fermée,

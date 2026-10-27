@@ -34,7 +34,6 @@ interface ScriptColibri {
   lireMesure(donnees: Record<string, unknown>): Record<string, unknown> | null;
   lireMessageApp(donnees: unknown): Record<string, unknown> | null;
   lireIdGa4(valeur: unknown): string;
-  idGa4Page(config: Config, idLabo: string | null): string;
   lireDebug(recherche: string, memorise: boolean): boolean;
   parametresCommuns(contexte: { simulateurOuvert: boolean; chemin: unknown; debug: boolean }): Record<string, unknown>;
   typeProduit(reference: unknown): string | null;
@@ -395,14 +394,12 @@ describe('mesure GA4 — aucun envoi sans gtag ou sans ID GA4', () => {
     expect(source).not.toContain('googletagmanager.com');
   });
 
-  it('ID du labo (data-ga4-labo) : seulement en mode labo, à défaut de NEXT_PUBLIC_GA4_ID', () => {
-    const s = colibriPur();
-    expect(s.idGa4Page({ ...CONFIG, idGa4: '', labo: true }, 'G-LABO1234')).toBe('G-LABO1234');
-    expect(s.idGa4Page({ ...CONFIG, idGa4: ID_GA4, labo: true }, 'G-LABO1234')).toBe(ID_GA4);
-    expect(s.idGa4Page({ ...CONFIG, idGa4: '', labo: false }, 'G-LABO1234')).toBe('');
-    expect(s.idGa4Page({ ...CONFIG, idGa4: '' }, 'G-LABO1234')).toBe('');
-    expect(s.idGa4Page({ ...CONFIG, idGa4: '', labo: true }, 'pas-un-id')).toBe('');
-    expect(s.lireIdGa4(` ${ID_GA4} `)).toBe(ID_GA4);
+  it('l’ID vient uniquement de la configuration : mode labo sans ID, aucun envoi', async () => {
+    const { navigateur } = page('configurateur', {}, { ...CONFIG, idGa4: '', labo: true });
+    depuisApp(navigateur, { type: 'colibri:mesure', evenement: 'configurateur_panier_atteint', parametres: {} });
+    await attendre();
+    expect(navigateur.gtag).not.toHaveBeenCalled();
+    expect(colibriPur().lireIdGa4(` ${ID_GA4} `)).toBe(ID_GA4);
   });
 });
 
@@ -562,7 +559,7 @@ describe('route /embed/colibri.js — ID GA4 injecté', () => {
       vi.stubEnv('NEXT_PUBLIC_GA4_ID', vide);
       const sansId = await config();
       expect(sansId).not.toHaveProperty('idGa4');
-      expect(colibriPur().idGa4Page(sansId, null)).toBe('');
+      expect(colibriPur().lireIdGa4(sansId.idGa4)).toBe('');
     }
   });
 });
