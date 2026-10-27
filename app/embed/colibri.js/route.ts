@@ -8,6 +8,9 @@ import path from 'node:path';
  *   preview pilote donc ce preview) ;
  * - token Wizart (`NEXT_PUBLIC_WIZART_TOKEN`, public par nature, lu au build :
  *   un ajout dans Vercel exige un redéploiement). Absent : pas de simulateur ;
+ * - ID de la propriété GA4 de la boutique (`NEXT_PUBLIC_GA4_ID`, public, lu au
+ *   build, validé par le script) : destination (`send_to`) des événements
+ *   envoyés avec le `gtag` de la page. Vide : clé absente, aucun événement ;
  * - indicateur `labo` (`NEXT_PUBLIC_COLIBRI_LABO`, fixé au build, jamais en
  *   production) : seul cas où un kit déjà présent sur la page (faux simulateur
  *   de /labo/pont) tient lieu de token.
@@ -30,10 +33,12 @@ function lireSource(): string {
 }
 
 export function GET(request: Request) {
+  const idGa4 = process.env.NEXT_PUBLIC_GA4_ID?.trim() ?? '';
   const config = {
     origineApp: new URL(request.url).origin,
     tokenWizart: process.env.NEXT_PUBLIC_WIZART_TOKEN?.trim() ?? '',
     labo: process.env.NEXT_PUBLIC_COLIBRI_LABO === '1',
+    ...(idGa4 ? { idGa4 } : {}),
   };
   const script = lireSource().replace(MARQUEUR_CONFIG, JSON.stringify(config));
 
