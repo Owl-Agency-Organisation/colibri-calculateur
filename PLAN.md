@@ -491,8 +491,11 @@ Retours du 23/10 hors de ce lot :
 - [x] Labo `/labo/pont` : faux `gtag` et journal des événements GA4
 - [x] Tests : correspondance DepKit → GA4, paramètres communs, aucun envoi
       sans `gtag` ou sans ID, `colibri:mesure` filtré, envoi côté app
-- [ ] Vercel : `NEXT_PUBLIC_GA4_ID=G-GXWQE6WJRV` en Production et en Preview,
-      puis redéployer (Philippe)
+- [x] Vercel Preview : `NEXT_PUBLIC_GA4_ID=G-GXWQE6WJRV` (constaté le 27/10 dans
+      le script servi par le preview de la branche)
+- [ ] Vercel Production : `NEXT_PUBLIC_GA4_ID=G-GXWQE6WJRV`, puis redéployer
+      (Philippe ; à vérifier, `/embed/colibri.js` de production doit porter
+      `"idGa4":"G-GXWQE6WJRV"`)
 - [ ] Vérifier les envois réels vers `G-GXWQE6WJRV` sur une page de test de la
       boutique (`?colibri_debug=1`, DebugView)
 - [ ] GA4 : filtre de trafic interne (`traffic_type = internal`) actif, et
