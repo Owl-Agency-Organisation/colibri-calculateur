@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Couleur, TypePiece } from '@/lib/types';
-import { chargerCouleur, chargerCouleurs } from '@/lib/couleur';
+import { chargerCouleur, chargerCouleurs, type ProduitChoisi } from '@/lib/couleur';
 import { getTeintesEssayees, ajouterSelectionSimulateur } from '@/lib/store/teintesEssayees';
 import { ajouterPapiersPeintsSimulateur } from '@/lib/store/papiersPeintsEssayes';
 import { ecouterSimulateur, useSimulateurDisponible } from '@/lib/embed-parent';
@@ -16,6 +16,8 @@ import {
 } from '@/lib/papierPeint';
 import { trierReferences } from '@/lib/referencesSimulateur';
 import { selectionnerCollectionsTeintes } from '@/lib/collectionsTeintes';
+import type { TeinteIndex } from '@/lib/rechercheTeintes';
+import { RechercheTeintes } from '@/components/modals/RechercheTeintes';
 
 interface Collection {
   id: string;
@@ -278,19 +280,10 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition,
     loadProducts(collectionHandle);
   };
 
-  const handleSelectProduct = async (product: Product) => {
-    // Récupérer les détails complets du produit (avec metafields)
+  /** Charge les détails complets d'une teinte (avec metafields) et la pose sur la surface */
+  const choisirProduit = async (produit: ProduitChoisi, collection: string) => {
     try {
-      const couleur = await chargerCouleur(product.handle, {
-        targetFinition,
-        collection: collections.find(c => c.handle === selectedCollection)?.title || '',
-        produit: {
-          id: product.id,
-          handle: product.handle,
-          title: product.title,
-          imageUrl: product.images.edges[0]?.node.url || '',
-        },
-      });
+      const couleur = await chargerCouleur(produit.handle, { targetFinition, collection, produit });
       if (!couleur) throw new Error('Erreur lors du chargement du produit');
 
       onSelect(couleur, 'popup');
@@ -300,6 +293,23 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition,
       console.error(err);
     }
   };
+
+  const handleSelectProduct = (product: Product) =>
+    choisirProduit(
+      {
+        id: product.id,
+        handle: product.handle,
+        title: product.title,
+        imageUrl: product.images.edges[0]?.node.url || '',
+      },
+      collections.find(c => c.handle === selectedCollection)?.title || ''
+    );
+
+  const handleSelectRecherche = (teinte: TeinteIndex) =>
+    choisirProduit(
+      { id: teinte.id, handle: teinte.handle, title: teinte.titre, imageUrl: teinte.imageUrl },
+      teinte.collection
+    );
 
   const handleSelectTeinteEssayee = (couleur: Couleur) => {
     onSelect(couleur, 'popup');
@@ -355,6 +365,11 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition,
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
                 <p className="text-sm text-red-800">{error}</p>
               </div>
+            )}
+
+            {/* Recherche par nom, toutes familles confondues */}
+            {!attenteSimulateur && (
+              <RechercheTeintes targetFinition={targetFinition} onChoisir={handleSelectRecherche} />
             )}
 
             {attenteSimulateur && (

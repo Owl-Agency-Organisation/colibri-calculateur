@@ -7,6 +7,38 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Popup couleur : recherche de teintes par nom
+
+#### Ajouté
+- **Champ « Rechercher une teinte par son nom »** en tête de la popup couleur
+  (murs et plafond), avec suggestions dès 2 caractères, toutes familles
+  confondues : vignette, nom court et famille. Clic ou Entrée pose la teinte
+  sur la surface, comme un choix dans une famille. Flèches haut/bas pour
+  parcourir, Échap pour effacer la saisie (la popup reste ouverte).
+- Recherche sans accents ni majuscules, mots dans le désordre ; le début du
+  nom passe en premier, puis un mot du nom, une partie de mot, et enfin le nom
+  de la famille (« beige » propose les teintes de « Les Beiges »). 8
+  suggestions au plus.
+- Même filtre de finition que la liste des familles : dans une famille, seules
+  les teintes proposées dans la finition recommandée ; toute la famille si
+  aucune ne l'est.
+- Route `/api/shopify/teintes` : index des teintes des familles affichées
+  (même règle `selectionnerCollectionsTeintes`, sans doublon). Chargé une fois
+  par visite à la première mise au point du champ, puis filtré localement :
+  aucune requête par caractère saisi.
+- Suggestions affichées dans le flux de la popup (pas de liste superposée,
+  rognée dans l'iframe de la boutique). Combobox accessible (ARIA).
+
+#### Modifié
+- Lecture du catalogue Storefront regroupée dans `lib/shopify-catalogue.ts`,
+  partagée par les routes collections, produits d'une collection et teintes.
+  Réponses JSON inchangées.
+
+#### Tests
+- `lib/rechercheTeintes.test.ts` : index sans doublon, normalisation, longueur
+  minimale, classement, plusieurs mots, recherche par famille, « Les » ignoré,
+  filtre de finition, limite, vignettes.
+
 ### Popup couleur : toutes les familles de teintes, sans les laques
 
 #### Corrigé
