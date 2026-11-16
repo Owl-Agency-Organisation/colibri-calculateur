@@ -15,6 +15,7 @@ import {
   type PapierPeint,
 } from '@/lib/papierPeint';
 import { trierReferences } from '@/lib/referencesSimulateur';
+import { selectionnerCollectionsTeintes } from '@/lib/collectionsTeintes';
 
 interface Collection {
   id: string;
@@ -219,13 +220,10 @@ export function CouleurModal({ isOpen, onClose, onSelect, title, targetFinition,
     try {
       const response = await fetch('/api/shopify/collections');
       if (!response.ok) throw new Error('Erreur lors du chargement des collections');
-      const data = await response.json();
-      
-      // Filtrer les collections de couleurs (Les Blancs, Les Bleus, etc.)
-      const colorCollections = data.collections.filter((c: Collection) => 
-        c.title.startsWith('Les ') || c.title === 'Schmidt X Colibri'
-      );
-      setCollections(colorCollections);
+      const data: { collections: Collection[] } = await response.json();
+
+      // Familles de couleurs murales, hors laques et sélections thématiques
+      setCollections(selectionnerCollectionsTeintes(data.collections));
     } catch (err) {
       setError('Impossible de charger les collections');
       console.error(err);

@@ -6,6 +6,7 @@ import { clearProjetData } from '@/lib/store/projetStore';
 import { LIBELLES_PIECES } from '@/lib/pieces';
 import { libellePapierPeint, type PapierPeint } from '@/lib/papierPeint';
 import type { TypePiece } from '@/lib/types';
+import { selectionnerCollectionsTeintes } from '@/lib/collectionsTeintes';
 
 /**
  * Labo du pont simulateur : charge le vrai script `/embed/colibri.js` de ce
@@ -345,9 +346,7 @@ export function PontLabo() {
         const reponse = await fetch('/api/shopify/collections');
         if (!reponse.ok) throw new Error(`collections : HTTP ${reponse.status}`);
         const { collections }: { collections: { handle: string; title: string }[] } = await reponse.json();
-        const couleurs = collections
-          .filter((c) => c.title.startsWith('Les ') || c.title === 'Schmidt X Colibri')
-          .slice(0, 2);
+        const couleurs = selectionnerCollectionsTeintes(collections).slice(0, 2);
         const listes = await Promise.all(
           couleurs.map(async (c) => {
             const r = await fetch(`/api/shopify/collections/${c.handle}`);

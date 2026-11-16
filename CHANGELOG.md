@@ -7,6 +7,33 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Popup couleur : toutes les familles de teintes, sans les laques
+
+#### Corrigé
+- **Familles manquantes** (dont « Les Beiges ») : `/api/shopify/collections`
+  ne lisait que les 30 premières collections de la boutique (qui en compte
+  57), dans l'ordre de création. Toute famille créée après les laques était
+  coupée. La route parcourt désormais toutes les pages (`first: 100` + curseur).
+- **Teintes manquantes dans une famille** : `/api/shopify/collections/[handle]`
+  s'arrêtait à 50 produits (« Les Blancs teintés » en compte 53). Même
+  pagination complète.
+- **Laques affichées** : le filtre « titre commençant par Les » laissait
+  passer les « Les laques … ». Filtre unique `lib/collectionsTeintes.ts`
+  (popup couleur et labo du pont), aligné sur l'export Wizart : familles
+  « Les … » hors laques et sélections thématiques (Pastels, Peps, Tendances),
+  plus « Schmidt X Colibri ».
+
+#### Modifié
+- Familles triées par ordre alphabétique (« Les Beiges » en tête),
+  « Schmidt X Colibri » en dernier, au lieu de l'ordre de création Shopify.
+- Routes catalogue typées (plus de `any`), forme de réponse inchangée.
+
+#### Tests
+- `lib/collectionsTeintes.test.ts` : titres réels de la boutique → les
+  14 familles A→Z puis Schmidt X Colibri ; laques et sélections écartées.
+- `lib/shopify-pagination.test.ts` : plusieurs pages, page unique, curseur
+  bloqué, connexion absente.
+
 ### Statistiques GA4 du simulateur et du calculateur
 
 #### Ajouté
